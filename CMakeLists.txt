@@ -14,4 +14,6 @@ add_executable(ByteForge_Engine main.cpp
         src/memory/defs.hpp
         src/ecs/ecs.cpp
         src/core/result.hpp
+        src/memory/mem_pool.cpp
+        src/memory/mem_pool.hpp
 )

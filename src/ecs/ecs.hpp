@@ -7,6 +7,7 @@
 #include "../container/map.hpp"
 #include "../fmt/fmt.hpp"
 #include "../memory/defs.hpp"
+#include "../memory/mem_pool.hpp"
 
 #define ECS_MAX_MAPPED_MEMORY GB(4)
 
@@ -32,9 +33,9 @@ namespace ecs
     };
 
     using DeltaTime = float;
-    using EntityID = uint32_t;
 
     class Nexus;
+    class Entity;
 
     struct ComponentView
     {
@@ -51,54 +52,36 @@ namespace ecs
     private:
         friend Nexus;
         bool m_is_active = true;
+        Entity *m_owner;
+        Nexus *m_nexus;
     };
 
-    class BaseEntity
+    class Entity final
     {
     public:
-        explicit BaseEntity(EntityID id) :
-            m_id(id),
+        Entity() :
             m_state(EntityState::Enabled)
         {}
 
     private:
         friend Nexus;
 
-        EntityID m_id;
         EntityState m_state;
+        // byte offset inside the memory pool for freeing
+        size_t m_offset;
         forge::HashMap<std::type_index, ComponentView> m_components;
     };
 
-    class Nexus
+    class Nexus final
     {
         struct ComponentType
         {
-            uint8_t *memory;
-            size_t offset;
-            size_t length;
-            size_t component_size;
-            std::vector<size_t> free_list;
-
-            EcsResult init(size_t size);
-
-            void destroy();
-
-             std::pair<uint8_t*, size_t> allocate();
-
-            template<class T>
-            std::pair<T*, size_t> allocate()
-            {
-                auto [mem, offset] = allocate();
-
-                return {new (mem) T(), offset};
-            }
-
-            void free(size_t offset_to_free);
+            forge::MemPool mem_pool;
 
             template<class T>
             void free(size_t offset_to_free)
             {
-                auto *mem = (T*)memory + offset_to_free;
+                auto *mem = (T*)mem_pool.memory() + offset_to_free;
 
                 if (std::derived_from<T, BaseComponent>)
                 {
@@ -107,12 +90,19 @@ namespace ecs
                 }
 
                 mem->~T();
+
+                mem_pool.free(offset_to_free);
             }
 
             void update(DeltaTime delta) const;
         };
 
     public:
+
+        Nexus()
+        {
+            m_entities.init(sizeof(Entity), ECS_MAX_MAPPED_MEMORY);
+        }
 
         template<class T>
         EcsResult register_component(bool should_update = false)
@@ -124,19 +114,18 @@ namespace ecs
                 return EcsResult::ComponentAlreadyRegistered;
             }
 
-            ComponentType ct;
+            auto emplaced = m_type_table.emplace(type, ComponentType{});
 
-            auto result = ct.init(sizeof(T));
+            auto result = emplaced.first->second.mem_pool.init(sizeof(T), ECS_MAX_MAPPED_MEMORY);
 
-            if (result != EcsResult::Ok)
+            if (!result)
             {
-                return result;
+                return EcsResult::CouldNotAllocateComponentMemory;
             }
-
-            auto emplaced = m_type_table.emplace(type, std::move(ct));
 
             if (std::derived_from<T, BaseComponent> && should_update)
             {
+
                 m_update_table.emplace_back(type);
             }
 
@@ -153,7 +142,7 @@ namespace ecs
                 return;
             }
 
-            it->second.destroy();
+            it->second.mem_pool.destroy();
 
             m_type_table.erase(it);
         }
@@ -164,59 +153,34 @@ namespace ecs
             return m_type_table.contains(typeid(T));
         }
 
-        bool is_entity_valid(EntityID id) const
+        inline bool is_entity_valid(Entity *entity) const
         {
-            if (id >= m_entities.size())
-            {
-                return false;
-            }
-
-            return m_entities[id].m_state != EntityState::Invalid;
+            return entity == nullptr || entity->m_state != EntityState::Invalid;
         }
 
-        EntityID create_entity()
+        Entity* create_entity()
         {
-            if (!m_entity_free_list.empty())
-            {
-                auto id = m_entity_free_list.back();
-
-                m_entity_free_list.pop_back();
-
-                auto &entity = m_entities[id];
-
-                entity.m_state = EntityState::Enabled;
-
-                return id;
-            }
-
-            auto id = m_entities.size();
-
-            auto &entity = m_entities.emplace_back(id);
-
-            entity.m_id = id;
-
-            return id;
+            auto [entity, _] = m_entities.allocate<Entity>();
+            return entity;
         }
 
-        void delete_entity(EntityID id)
+        void delete_entity(Entity *entity)
         {
-            if (!is_entity_valid(id))
+            if (!is_entity_valid(entity))
             {
                 return;
             }
 
-            auto &entity = m_entities[id];
+            entity->m_state = EntityState::Invalid;
+            entity->m_components.clear();
 
-            entity.m_state = EntityState::Invalid;
-            entity.m_components.clear();
-
-            m_entity_free_list.push_back(id);
+            m_entities.free(entity->m_offset);
         }
 
         template<class T>
-        T* add_component(EntityID id, bool should_update = false, std::optional<std::string_view> name = std::nullopt)
+        T* add_component(Entity *entity, bool should_update = false, std::optional<std::string_view> name = std::nullopt)
         {
-            if (!is_entity_valid(id))
+            if (!is_entity_valid(entity))
             {
                 return nullptr;
             }
@@ -226,13 +190,11 @@ namespace ecs
                 register_component<T>(should_update);
             }
 
-            auto &entity = m_entities[id];
-
             auto &ct = m_type_table[typeid(T)];
 
-            auto [ptr, offset] = ct.allocate<T>();
+            auto [ptr, offset] = ct.mem_pool.allocate<T>();
 
-            entity.m_components[typeid(T)] =
+            entity->m_components[typeid(T)] =
             {
                 .offset =  offset,
                 .pointer = (uint8_t*)ptr
@@ -240,25 +202,23 @@ namespace ecs
 
             if (name.has_value())
             {
-                m_name_table.emplace(name, entity.m_id);
+                m_name_table.emplace(name.value(), entity);
             }
 
             return ptr;
         }
 
         template<class T>
-        EcsResult remove_component(EntityID id)
+        EcsResult remove_component(Entity *entity)
         {
-            if (!is_entity_valid(id))
+            if (!is_entity_valid(entity))
             {
                 return EcsResult::EntityDoesNotExist;
             }
 
-            auto &entity = m_entities[id];
+            auto iter = entity->m_components.find(typeid(T));
 
-            auto iter = entity.m_components.find(typeid(T));
-
-            if (iter == entity.m_components.end())
+            if (iter == entity->m_components.end())
             {
                 return EcsResult::EntityDoesNotHaveComponent;
             }
@@ -267,22 +227,20 @@ namespace ecs
 
             ct.free<T>(iter->second.offset);
 
-            entity.m_components.erase(iter);
+            entity->m_components.erase(iter);
 
             return EcsResult::Ok;
         }
 
         template<class T>
-        T* get_component(EntityID id)
+        T* get_component(Entity *entity)
         {
-            if (!is_entity_valid(id))
+            if (!is_entity_valid(entity))
             {
                 return nullptr;
             }
 
-            auto &entity = m_entities[id];
-
-            return (T*)entity.m_components[typeid(T)].pointer;
+            return (T*)entity->m_components[typeid(T)].pointer;
         }
 
         void update() const
@@ -302,9 +260,8 @@ namespace ecs
 
     private:
         forge::HashMap<std::type_index, ComponentType> m_type_table;
-        forge::HashMap<std::string, EntityID, ENABLE_TRANSPARENT_HASH> m_name_table;
-        std::vector<BaseEntity> m_entities;
-        std::vector<EntityID> m_entity_free_list;
+        forge::HashMap<std::string, Entity*, ENABLE_TRANSPARENT_HASH> m_name_table;
+        forge::MemPool m_entities;
         std::vector<std::type_index> m_update_table;
     };
 }
