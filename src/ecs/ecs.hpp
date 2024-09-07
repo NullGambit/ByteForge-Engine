@@ -9,7 +9,7 @@
 #include "../memory/defs.hpp"
 #include "../memory/mem_pool.hpp"
 
-#define ECS_MAX_MAPPED_MEMORY GB(4)
+#define ECS_MAX_MAPPED_MEMORY GB(8)
 
 namespace ecs
 {
@@ -164,6 +164,16 @@ namespace ecs
             return entity;
         }
 
+        template<class ...Args>
+        Entity* create_entity()
+        {
+            auto [entity, _] = m_entities.allocate<Entity>();
+
+            ((add_components<Args>(entity)), ...);
+
+            return entity;
+        }
+
         void delete_entity(Entity *entity)
         {
             if (!is_entity_valid(entity))
@@ -206,6 +216,12 @@ namespace ecs
             }
 
             return ptr;
+        }
+
+        template<class ...Args>
+        void add_components(Entity *entity)
+        {
+            ((add_component<Args>(entity), ...));
         }
 
         template<class T>

@@ -17,27 +17,35 @@ class HealthComponent : public ecs::BaseComponent
 public:
 	void update(ecs::DeltaTime delta) override
 	{
-		fmt::println("updated health");
+		m_health += 1;
+		// fmt::println("updated health");
 	}
-
+	float m_health;
 };
 
 int main()
 {
 	ecs::Nexus nexus;
 
-	for (int i = 0; i < 100'000; i++)
+	auto start = std::chrono::high_resolution_clock::now();
+
+	for (int i = 0; i < 1'000'000; i++)
 	{
 		auto *entity = nexus.create_entity();
 
 		nexus.add_component<MyData>(entity);
 		nexus.add_component<HealthComponent>(entity, true);
-
-		auto *data = nexus.get_component<MyData>(entity);
-
-		fmt::print("{} {}\n", data->x, data->s);
 	}
 
+	auto end = std::chrono::high_resolution_clock::now();
+
+	std::cout << "Create time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << '\n';
+
+	start = std::chrono::high_resolution_clock::now();
 
 	nexus.update();
+
+	end = std::chrono::high_resolution_clock::now();
+
+	std::cout << "Update time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << '\n';
 }
