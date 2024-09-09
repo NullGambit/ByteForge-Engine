@@ -16,4 +16,5 @@ add_executable(ByteForge_Engine main.cpp
         src/core/result.hpp
         src/memory/mem_pool.cpp
         src/memory/mem_pool.hpp
+        src/ecs/macro_warcrimes.hpp
 )
