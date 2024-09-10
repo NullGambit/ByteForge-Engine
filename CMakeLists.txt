@@ -3,9 +3,14 @@ project(ByteForge_Engine)
 
 set(CMAKE_CXX_STANDARD 20)
 
-include_directories(dep/unordered_dense/include/)
+include_directories(dep/unordered_dense/include/ dep/glfw-3.3-stable/include/ dep/glad/include/)
+
+add_subdirectory(dep/glfw-3.3-stable/)
 
 add_executable(ByteForge_Engine main.cpp
+        dep/glad/include/glad/glad.h
+        dep/glad/include/KHR/khrplatform.h
+        dep/glad/src/glad.c
         src/ecs/ecs.hpp
         src/fmt/fmt.hpp
         src/util/types.hpp
@@ -17,4 +22,9 @@ add_executable(ByteForge_Engine main.cpp
         src/memory/mem_pool.cpp
         src/memory/mem_pool.hpp
         src/ecs/macro_warcrimes.hpp
+        src/events/signal.hpp
+        src/system/window.cpp
+        src/system/window.hpp
 )
+
+target_link_libraries(ByteForge_Engine glfw)

@@ -114,7 +114,7 @@ void ecs::Nexus::delete_entity(Entity* entity)
 	// TODO: make sure constructor is called
 	for (auto &[index, cv] : entity->m_components)
 	{
-		m_type_table[index].mem_pool.free(cv.offset);
+		m_component_table[index].mem_pool.free(cv.offset);
 	}
 
 	entity->m_components.clear();

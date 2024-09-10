@@ -1,7 +1,7 @@
 
 field_count = int(input("Enter field count:"))
 
-output = ""
+output = "#define FIELD_ENTRY(field) {#field, &field}\n"
 
 for i in range(field_count):
     n = i + 1

@@ -2,81 +2,36 @@
 #include <typeindex>
 
 #include "src/ecs/ecs.hpp"
+#include "src/events/signal.hpp"
 #include "src/fmt/fmt.hpp"
 #include "src/memory/mem_pool.hpp"
 #include "src/util/types.hpp"
-
-struct MyData
-{
-	int x = 10;
-	std::string s = "Hello World!";
-};
-
-class HealthComponent : public ecs::BaseComponent
-{
-public:
-	void update(ecs::DeltaTime delta) override
-	{
-		m_health += 1;
-	}
-
-	EXPORT_FIELDS(max_health, m_health, m_damage_reduction)
-
-	float max_health = 100;
-private:
-	float m_health = max_health;
-	float m_damage_reduction = 0.5;
-};
-
-void print_field(const ecs::ComponentField& field)
-{
-	fmt::print("{} = ", field.name);
-
-	std::string value;
-
-	switch (field.var.index())
-	{
-		case 0:
-		{
-			value = std::to_string(*std::get<0>(field.var));
-			break;
-		}
-	}
-
-	fmt::println("{}", value);
-}
+#include "glad/glad.h"
+#include "GLFW/glfw3.h"
+#include "src/system/window.hpp"
 
 int main()
 {
-	HealthComponent health;
+	forge::Window window;
 
-	for (auto &field : health.export_fields())
+	auto ok = window.open("ByteForge Engine", 720, 480);
+
+	if (!ok)
 	{
-		print_field(field);
+		fmt::fatal("could not open window");
 	}
-	// ecs::Nexus nexus;
-	//
-	// auto start = std::chrono::high_resolution_clock::now();
-	//
-	// for (int i = 0; i < 1'000'000; i++)
-	// {
-	// 	auto *entity = nexus.create_entity();
-	//
-	// 	entity->add_component<HealthComponent>(entity);
-	//
-	// 	nexus.remove_component<HealthComponent>(entity);
-	// 	nexus.delete_entity(entity);
-	// }
-	//
-	// auto end = std::chrono::high_resolution_clock::now();
-	//
-	// std::cout << "Create time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << '\n';
-	//
-	// start = std::chrono::high_resolution_clock::now();
-	//
-	// nexus.update();
-	//
-	// end = std::chrono::high_resolution_clock::now();
-	//
-	// std::cout << "Update time: " << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << '\n';
+
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+	{
+		fmt::fatal("could init glad");
+	}
+
+	glClearColor(255, 0, 0, 255);
+
+	while (window.should_stay_open())
+	{
+		glClear(GL_COLOR_BUFFER_BIT);
+		window.handle_events();
+		window.swap_buffers();
+	}
 }

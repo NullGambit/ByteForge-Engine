@@ -10,6 +10,7 @@
 #include "../memory/defs.hpp"
 #include "../memory/mem_pool.hpp"
 #include "macro_warcrimes.hpp"
+#include "../events/signal.hpp"
 
 #define ECS_MAX_MAPPED_MEMORY GB(8)
 
@@ -44,6 +45,8 @@ namespace ecs
         size_t offset;
         uint8_t *pointer;
     };
+
+    using OnComponentDestroy = forge::Signal<void()>;
 
     using FieldVar = std::variant<float*, double*, int*, std::string*>;
 
@@ -87,17 +90,7 @@ namespace ecs
         void add_components(bool should_update = false);
 
         template<class T>
-        T* get_component()
-        {
-            auto iter = m_components.find(typeid(T));
-
-            if (iter == m_components.end())
-            {
-                return nullptr;
-            }
-
-            return (T*)iter->second.pointer;
-        }
+        T* get_component(std::optional<void(*)()> on_destroy = std::nullopt);
 
         inline Entity *get_children()
         {
@@ -120,6 +113,10 @@ namespace ecs
 
         void foreach_child(std::function<void(Entity*)> callback, bool recursive = false, Entity *root = nullptr);
 
+        template<class T>
+        EcsResult remove_component();
+
+
     private:
         friend Nexus;
 
@@ -135,11 +132,13 @@ namespace ecs
         Entity *m_siblings = nullptr;
     };
 
+
     class Nexus final
     {
         struct ComponentType
         {
             forge::MemPool mem_pool;
+            forge::HashMap<size_t, OnComponentDestroy> destroy_signals;
 
             template<class T>
             void free(size_t offset_to_free)
@@ -172,12 +171,12 @@ namespace ecs
         {
             const auto &type = typeid(T);
 
-            if (m_type_table.contains(type))
+            if (m_component_table.contains(type))
             {
                 return EcsResult::ComponentAlreadyRegistered;
             }
 
-            auto emplaced = m_type_table.emplace(type, ComponentType{});
+            auto emplaced = m_component_table.emplace(type, ComponentType{});
 
             auto result = emplaced.first->second.mem_pool.init(sizeof(T), ECS_MAX_MAPPED_MEMORY);
 
@@ -199,22 +198,22 @@ namespace ecs
         template<class T>
         void unregister_component()
         {
-            auto it = m_type_table.find(typeid(T));
+            auto it = m_component_table.find(typeid(T));
 
-            if (it == m_type_table.end())
+            if (it == m_component_table.end())
             {
                 return;
             }
 
             it->second.mem_pool.destroy();
 
-            m_type_table.erase(it);
+            m_component_table.erase(it);
         }
 
         template<class T>
         bool is_component_registered() const
         {
-            return m_type_table.contains(typeid(T));
+            return m_component_table.contains(typeid(T));
         }
 
         inline bool is_entity_valid(Entity *entity) const
@@ -258,7 +257,7 @@ namespace ecs
                 register_component<T>(should_update);
             }
 
-            auto &ct = m_type_table[typeid(T)];
+            auto &ct = m_component_table[typeid(T)];
 
             auto [ptr, offset] = ct.mem_pool.allocate<T>();
 
@@ -297,7 +296,16 @@ namespace ecs
                 return EcsResult::EntityDoesNotHaveComponent;
             }
 
-            auto &ct = m_type_table[typeid(T)];
+            auto &ct = m_component_table[typeid(T)];
+
+            auto destroy_iter = ct.destroy_signals.find(iter->second.offset);
+
+            if (destroy_iter != ct.destroy_signals.end())
+            {
+                auto &signal = destroy_iter->second;
+                signal();
+                ct.destroy_signals.erase(destroy_iter);
+            }
 
             ct.free<T>(iter->second.offset);
 
@@ -310,9 +318,9 @@ namespace ecs
         {
             for (auto &type : m_update_table)
             {
-                auto iter = m_type_table.find(type);
+                auto iter = m_component_table.find(type);
 
-                if (iter == m_type_table.end())
+                if (iter == m_component_table.end())
                 {
                     continue;
                 }
@@ -322,10 +330,13 @@ namespace ecs
         }
 
     private:
-        forge::HashMap<std::type_index, ComponentType> m_type_table;
+        friend Entity;
+
+        forge::HashMap<std::type_index, ComponentType> m_component_table;
         forge::HashMap<std::string_view, Entity*> m_name_table;
         std::vector<std::type_index> m_update_table;
         forge::MemPool m_entities;
+        std::vector<std::pair<std::type_index, size_t>> m_remove_queue;
     };
 
     template<class T>
@@ -338,5 +349,46 @@ namespace ecs
     void Entity::add_components(bool should_update)
     {
         m_nexus->add_components<Args...>(this, should_update);
+    }
+
+    template<class T>
+    T* Entity::get_component(std::optional<void(*)()> on_destroy)
+    {
+        auto iter = m_components.find(typeid(T));
+
+        if (iter == m_components.end())
+        {
+            return nullptr;
+        }
+
+        if (on_destroy.has_value())
+        {
+            auto ct_iter = m_nexus->m_component_table.find(typeid(T));
+            auto offset = iter->second.offset;
+
+            if (ct_iter != m_nexus->m_component_table.end())
+            {
+                auto &ct = ct_iter->second;
+
+                auto destroy_iter = ct.destroy_signals.find(offset);
+                auto &signal = destroy_iter->second;
+
+                if (destroy_iter == ct.destroy_signals.end())
+                {
+                    auto emplaced = ct.destroy_signals.emplace(offset, OnComponentDestroy());
+                    signal = emplaced.first->second;
+                }
+
+                signal.connect(on_destroy.value());
+            }
+        }
+
+        return (T*)iter->second.pointer;
+    }
+
+    template<class T>
+    EcsResult Entity::remove_component()
+    {
+        return m_nexus->remove_component<T>(this);
     }
 }
