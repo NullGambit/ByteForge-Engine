@@ -25,6 +25,9 @@ add_executable(ByteForge_Engine main.cpp
         src/events/signal.hpp
         src/system/window.cpp
         src/system/window.hpp
+        src/core/isub_system.hpp
+        src/system/window_sub_system.cpp
+        src/system/window_sub_system.hpp
 )
 
 target_link_libraries(ByteForge_Engine glfw)

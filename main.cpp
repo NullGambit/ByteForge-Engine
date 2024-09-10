@@ -9,9 +9,14 @@
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 #include "src/system/window.hpp"
+#include "src/system/window_sub_system.hpp"
 
 int main()
 {
+	forge::WindowSubSystem window_sub_system;
+
+	window_sub_system.init();
+
 	forge::Window window;
 
 	auto ok = window.open("ByteForge Engine", 720, 480);
@@ -31,7 +36,9 @@ int main()
 	while (window.should_stay_open())
 	{
 		glClear(GL_COLOR_BUFFER_BIT);
-		window.handle_events();
+		window_sub_system.update();
 		window.swap_buffers();
 	}
+
+	window_sub_system.shutdown();
 }

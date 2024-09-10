@@ -6,11 +6,7 @@
 
 forge::Window::Window()
 {
-	if (!sm_is_init)
-	{
-		glfwInit();
-		sm_is_init = true;
-	}
+
 
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
@@ -19,17 +15,15 @@ forge::Window::Window()
 
 forge::Window::~Window()
 {
-	if (m_handle)
-	{
-		close();
-	}
-
-	glfwTerminate();
+	close();
 }
 
 void forge::Window::close()
 {
-	glfwDestroyWindow(m_handle);
+	if (m_handle)
+	{
+		glfwDestroyWindow(m_handle);
+	}
 	m_handle = nullptr;
 }
 
@@ -55,11 +49,6 @@ bool forge::Window::should_close() const
 bool forge::Window::should_stay_open() const
 {
 	return !glfwWindowShouldClose(m_handle);
-}
-
-void forge::Window::handle_events() const
-{
-	glfwPollEvents();
 }
 
 void forge::Window::swap_buffers() const
