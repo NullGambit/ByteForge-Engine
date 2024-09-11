@@ -31,4 +31,9 @@ namespace util
     {
         return demangle_name(typeid(T).name());
     }
+
+    static inline std::string_view type_name(std::type_index index)
+    {
+        return demangle_name(index.name());
+    }
 }

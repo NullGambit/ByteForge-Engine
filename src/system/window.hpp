@@ -20,6 +20,8 @@ namespace forge
 
 		bool should_stay_open() const;
 
+		void set_should_close(bool value);
+
 		void swap_buffers() const;
 
 	private:

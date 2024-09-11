@@ -12,7 +12,10 @@ namespace forge
 		virtual void shutdown() = 0;
 		virtual void update() = 0;
 
-		virtual std::string_view error_message() const { return {}; };
-		virtual bool is_ok() const { return true;};
+		[[nodiscard]]
+		virtual std::string_view error_message() const { return {}; }
+
+		[[nodiscard]]
+		virtual bool is_ok() const { return true; }
 	};
 }

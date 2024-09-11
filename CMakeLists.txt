@@ -3,7 +3,7 @@ project(ByteForge_Engine)
 
 set(CMAKE_CXX_STANDARD 20)
 
-include_directories(dep/unordered_dense/include/ dep/glfw-3.3-stable/include/ dep/glad/include/)
+include_directories(src/ dep/unordered_dense/include/ dep/glfw-3.3-stable/include/ dep/glad/include/)
 
 add_subdirectory(dep/glfw-3.3-stable/)
 
@@ -28,6 +28,12 @@ add_executable(ByteForge_Engine main.cpp
         src/core/isub_system.hpp
         src/system/window_sub_system.cpp
         src/system/window_sub_system.hpp
+        src/graphics/ogl_renderer/ogl_shader.cpp
+        src/graphics/ogl_renderer/ogl_shader.hpp
+        src/graphics/ogl_renderer/ogl_render_sub_system.cpp
+        src/graphics/ogl_renderer/ogl_render_sub_system.hpp
+        src/core/engine.hpp
+        src/core/engine.cpp
 )
 
 target_link_libraries(ByteForge_Engine glfw)

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <typeindex>
 
+#include "core/engine.hpp"
 #include "src/ecs/ecs.hpp"
 #include "src/events/signal.hpp"
 #include "src/fmt/fmt.hpp"
@@ -13,32 +14,16 @@
 
 int main()
 {
-	forge::WindowSubSystem window_sub_system;
+	auto &engine = forge::Engine::get_instance();
 
-	window_sub_system.init();
-
-	forge::Window window;
-
-	auto ok = window.open("ByteForge Engine", 720, 480);
+	auto ok = engine.window.open("ByteForge Engine", 720, 480);
 
 	if (!ok)
 	{
 		fmt::fatal("could not open window");
 	}
 
-	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-	{
-		fmt::fatal("could init glad");
-	}
+	engine.run();
 
-	glClearColor(255, 0, 0, 255);
-
-	while (window.should_stay_open())
-	{
-		glClear(GL_COLOR_BUFFER_BIT);
-		window_sub_system.update();
-		window.swap_buffers();
-	}
-
-	window_sub_system.shutdown();
+	engine.shutdown();
 }

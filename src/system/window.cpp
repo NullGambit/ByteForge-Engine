@@ -5,13 +5,7 @@
 #include <GLFW/glfw3.h>
 
 forge::Window::Window()
-{
-
-
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-}
+{}
 
 forge::Window::~Window()
 {
@@ -49,6 +43,11 @@ bool forge::Window::should_close() const
 bool forge::Window::should_stay_open() const
 {
 	return !glfwWindowShouldClose(m_handle);
+}
+
+void forge::Window::set_should_close(bool value)
+{
+	glfwSetWindowShouldClose(m_handle, value);
 }
 
 void forge::Window::swap_buffers() const

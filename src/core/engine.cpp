@@ -1,0 +1,45 @@
+#pragma once
+
+#include "engine.hpp"
+
+#include "system/window_sub_system.hpp"
+#include "system/window.hpp"
+#include "graphics/ogl_renderer/ogl_render_sub_system.hpp"
+
+void forge::Engine::quit()
+{
+	window.set_should_close(true);
+}
+
+void forge::Engine::init()
+{
+	add_subsystem<WindowSubSystem>();
+
+	renderer = add_subsystem<OglRenderSubSystem>();
+
+	for (const auto &subsystem : m_subsystems)
+	{
+		subsystem->init();
+	}
+}
+
+void forge::Engine::run()
+{
+	while (window.should_stay_open())
+	{
+		for (const auto &subsystem : m_subsystems)
+		{
+			subsystem->update();
+		}
+
+		window.swap_buffers();
+	}
+}
+
+void forge::Engine::shutdown()
+{
+	for (const auto &subsystem : m_subsystems)
+	{
+		subsystem->shutdown();
+	}
+}
