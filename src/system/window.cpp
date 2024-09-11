@@ -1,11 +1,15 @@
-#pragma once
-
 #include "window.hpp"
 
 #include <GLFW/glfw3.h>
 
-forge::Window::Window()
-{}
+#include "fmt/fmt.hpp"
+
+void framebuffer_resize_callback(GLFWwindow *window, int width, int height)
+{
+	auto *windowPtr = (forge::Window*)glfwGetWindowUserPointer(window);
+
+	windowPtr->on_resize(width, height);
+}
 
 forge::Window::~Window()
 {
@@ -31,6 +35,9 @@ bool forge::Window::open(std::string_view name, int width, int height)
 	}
 
 	glfwMakeContextCurrent(m_handle);
+
+	glfwSetWindowUserPointer(m_handle, this);
+	glfwSetFramebufferSizeCallback(m_handle, framebuffer_resize_callback);
 
 	return true;
 }

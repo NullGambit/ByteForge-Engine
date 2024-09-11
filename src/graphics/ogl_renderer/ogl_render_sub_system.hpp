@@ -14,6 +14,8 @@ namespace forge
 	private:
 		bool m_ok = true;
 		std::string_view m_error_message;
+
+		void handle_framebuffer_resize(int width, int height);
 	};
 
 }

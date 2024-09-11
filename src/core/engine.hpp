@@ -12,6 +12,13 @@ namespace forge
 
 namespace forge
 {
+	struct EngineInitOptions
+	{
+		std::string_view window_title;
+		int window_width;
+		int window_height;
+	};
+
 	class Engine
 	{
 	public:
@@ -29,11 +36,16 @@ namespace forge
 
 		void quit();
 
-		void init();
+		void init(const EngineInitOptions &options);
 
 		void run();
 
 		void shutdown();
+
+		const EngineInitOptions& get_init_options() const
+		{
+			return m_init_options;
+		}
 
 		template<class T>
 		inline T* add_subsystem() requires std::derived_from<T, ISubSystem>
@@ -45,5 +57,6 @@ namespace forge
 		OglRenderSubSystem *renderer;
 	private:
 		std::vector<std::unique_ptr<ISubSystem>> m_subsystems;
+		EngineInitOptions m_init_options;
 	};
 }

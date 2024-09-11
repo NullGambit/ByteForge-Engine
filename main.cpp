@@ -16,12 +16,12 @@ int main()
 {
 	auto &engine = forge::Engine::get_instance();
 
-	auto ok = engine.window.open("ByteForge Engine", 720, 480);
-
-	if (!ok)
+	engine.init(
 	{
-		fmt::fatal("could not open window");
-	}
+		.window_title = "ByteForge Engine",
+		.window_width = 720,
+		.window_height = 480,
+	});
 
 	engine.run();
 

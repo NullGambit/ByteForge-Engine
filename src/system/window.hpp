@@ -1,6 +1,8 @@
 #pragma once
 #include <string_view>
 
+#include "events/signal.hpp"
+
 class GLFWwindow;
 
 namespace forge
@@ -8,8 +10,6 @@ namespace forge
 	class Window
 	{
 	public:
-		Window();
-
 		~Window();
 
 		void close();
@@ -24,8 +24,9 @@ namespace forge
 
 		void swap_buffers() const;
 
+		Signal<void(int, int)> on_resize;
+
 	private:
 		GLFWwindow *m_handle;
-		inline static bool sm_is_init;
 	};
 }
