@@ -17,6 +17,7 @@ void forge::Engine::init(const EngineInitOptions &options)
 	m_init_options = options;
 
 	add_subsystem<WindowSubSystem>();
+
 	renderer = add_subsystem<OglRenderSubSystem>();
 
 	for (const auto &subsystem : m_subsystems)
@@ -25,7 +26,7 @@ void forge::Engine::init(const EngineInitOptions &options)
 
 		if (!subsystem->is_ok())
 		{
-			fmt::println("Failed to initialize subsystem! Message: {}", subsystem->error_message());
+			fmt::println("Failed to initialize subsystem: {}", subsystem->error_message());
 		}
 	}
 }

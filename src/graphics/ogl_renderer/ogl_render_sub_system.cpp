@@ -20,6 +20,7 @@ void forge::OglRenderSubSystem::init()
 	glClearColor(255, 0, 0, 1);
 
 	auto &engine = Engine::get_instance();
+
 	// TODO: remove connection
 	engine.window.on_resize.connect(this, &OglRenderSubSystem::handle_framebuffer_resize);
 }

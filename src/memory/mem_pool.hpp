@@ -87,6 +87,22 @@ namespace forge
 			return {new (mem) T(), offset};
 		}
 
+		template<class T>
+		std::pair<T*, size_t> allocate(T &&data)
+		{
+			auto [mem, offset] = allocate();
+
+			return {new (mem) T(std::forward<T>(data)), offset};
+		}
+
+		template<class T, class... Args>
+		std::pair<T*, size_t> emplace(Args ...args)
+		{
+			auto [mem, offset] = allocate();
+
+			return {new (mem) T(std::forward<Args>(args)...), offset};
+		}
+
 		void free(size_t offset_to_free);
 
 		template<class T>
@@ -98,6 +114,8 @@ namespace forge
 
 			free(offset_to_free);
 		}
+
+		void reset();
 
 		inline size_t length() const
 		{

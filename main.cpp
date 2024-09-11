@@ -11,19 +11,36 @@
 #include "GLFW/glfw3.h"
 #include "src/system/window.hpp"
 #include "src/system/window_sub_system.hpp"
+#include "type_box/type_box.hpp"
 
 int main()
 {
-	auto &engine = forge::Engine::get_instance();
+	// auto &engine = forge::Engine::get_instance();
+	//
+	// engine.init(
+	// {
+	// 	.window_title = "ByteForge Engine",
+	// 	.window_width = 720,
+	// 	.window_height = 480,
+	// });
+	//
+	// engine.run();
+	//
+	// engine.shutdown();
 
-	engine.init(
+	forge::TypeBox type_box;
+
+	type_box.put(std::string{"Hello, World!"});
+
+	auto opt = type_box.fetch<std::string>();
+
+	if (opt.has_value())
 	{
-		.window_title = "ByteForge Engine",
-		.window_width = 720,
-		.window_height = 480,
-	});
+		auto &funnel = opt.value();
 
-	engine.run();
-
-	engine.shutdown();
+		for (int i = 0; i < funnel.size(); i++)
+		{
+			std::cout << *funnel.next() << '\n';
+		}
+	}
 }

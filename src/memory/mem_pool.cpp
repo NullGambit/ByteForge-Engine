@@ -59,3 +59,11 @@ void forge::MemPool::free(size_t offset_to_free)
 {
 	m_free_list.push_back(offset_to_free);
 }
+
+// TODO: add an option to call destructors
+void forge::MemPool::reset()
+{
+	m_offset = 0;
+	m_length = 0;
+	m_free_list.clear();
+}

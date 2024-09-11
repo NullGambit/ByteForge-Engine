@@ -34,6 +34,7 @@ add_executable(ByteForge_Engine main.cpp
         src/graphics/ogl_renderer/ogl_render_sub_system.hpp
         src/core/engine.hpp
         src/core/engine.cpp
+        src/type_box/type_box.hpp
 )
 
 target_link_libraries(ByteForge_Engine glfw)
