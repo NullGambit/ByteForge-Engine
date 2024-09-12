@@ -1,4 +1,5 @@
 #include <iostream>
+#include <thread>
 #include <typeindex>
 
 #include "core/engine.hpp"
@@ -30,17 +31,68 @@ int main()
 
 	forge::TypeBox type_box;
 
-	type_box.put(std::string{"Hello, World!"});
-
-	auto opt = type_box.fetch<std::string>();
-
-	if (opt.has_value())
+	std::thread
 	{
-		auto &funnel = opt.value();
-
-		for (int i = 0; i < funnel.size(); i++)
+		[&type_box]
 		{
-			std::cout << *funnel.next() << '\n';
+			auto i = 0;
+
+			while (true)
+			{
+				type_box.emplace<std::string>(std::string{"hello #"} + std::to_string(i++));
+			}
+		}
+	}.detach();
+
+	std::thread
+	{
+		[&type_box]
+		{
+			while (true)
+			{
+				auto opt = type_box.fetch<std::string>();
+
+				if (opt.has_value())
+				{
+					auto &funnel = opt.value();
+
+					for (int i = 0; i < funnel.size(); i++)
+					{
+						auto *value = funnel.next();
+
+						if (value == nullptr)
+						{
+							continue;
+						}
+
+						std::cout << "got from thread " << *value << '\n';
+					}
+				}
+			}
+		}
+	}.detach();
+
+	while (true)
+	{
+		auto opt = type_box.fetch<std::string>(false);
+
+		if (opt.has_value())
+		{
+			auto &funnel = opt.value();
+
+			for (int i = 0; i < funnel.size(); i++)
+			{
+				auto *value = funnel.next();
+
+				if (value == nullptr)
+				{
+					continue;
+				}
+
+				std::cout << *value << '\n';
+			}
+
+			type_box.clear_all();
 		}
 	}
 }

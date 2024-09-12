@@ -13,12 +13,21 @@ namespace forge
 
 	class MemPool
 	{
+		typedef void(*DestroyTypeFunc)(uint8_t*);
 
 	public:
 		MemPool() = default;
 		~MemPool();
 
 		bool init(size_t element_size, size_t map_size);
+
+		template<class T>
+		bool init(size_t map_size)
+		{
+			set_destructor<T>();
+			return init(sizeof(T), map_size);
+		}
+
 		void destroy();
 
 		MemPool(const MemPool& other) :
@@ -80,6 +89,16 @@ namespace forge
 		MemPoolObject allocate();
 
 		template<class T>
+		void set_destructor()
+		{
+			m_destroy_func = [](uint8_t *ptr)
+			{
+				auto *data = (T*)ptr;
+				data->~T();
+			};
+		}
+
+		template<class T>
 		std::pair<T*, size_t> allocate()
 		{
 			auto [mem, offset] = allocate();
@@ -115,7 +134,7 @@ namespace forge
 			free(offset_to_free);
 		}
 
-		void reset();
+		void reset(bool destroy = true);
 
 		inline size_t length() const
 		{
@@ -144,5 +163,6 @@ namespace forge
 		size_t m_element_size;
 		size_t m_map_size;
 		std::vector<size_t> m_free_list;
+		DestroyTypeFunc m_destroy_func;
 	};
 }

@@ -1,10 +1,12 @@
 #pragma once
 #include <atomic>
+#include <mutex>
 #include <typeindex>
 
 #include "container/map.hpp"
 #include "memory/mem_pool.hpp"
 #include "memory/defs.hpp"
+#include "sync/atomic_scope_lock.hpp"
 
 #define TYPE_BOX_MAX_MEM GB(2)
 
@@ -13,7 +15,6 @@ namespace forge
 	struct TypeBoxData
 	{
 		MemPool mem_pool;
-		std::unique_ptr<std::atomic_flag> is_locked = std::make_unique<std::atomic_flag>();
 	};
 
 	template<class T>
@@ -23,14 +24,7 @@ namespace forge
 
 		TypeFunnel(TypeBoxData &data) :
 			m_data(data)
-		{
-			m_data.is_locked->test_and_set(std::memory_order_acquire);
-		}
-
-		~TypeFunnel()
-		{
-			m_data.is_locked->clear(std::memory_order_release);
-		}
+		{}
 
 		inline size_t size() const
 		{
@@ -39,7 +33,7 @@ namespace forge
 
 		T* next()
 		{
-			if (m_offset > size())
+			if (m_offset >= m_data.mem_pool.offset())
 			{
 				return nullptr;
 			}
@@ -68,6 +62,8 @@ namespace forge
 		template<class T>
 		void put(T &&data)
 		{
+			std::lock_guard lock { m_mutex };
+
 			auto &type_data = get_or_emplace<T>();
 
 			type_data.mem_pool.allocate(std::forward<T>(data));
@@ -76,14 +72,30 @@ namespace forge
 		template<class T, class ...Args>
 		void emplace(Args &&...args)
 		{
+			std::lock_guard lock { m_mutex };
+
 			auto &type_data = get_or_emplace<T>();
 
 			type_data.mem_pool.template emplace<T>(std::forward<Args>(args)...);
 		}
 
 		template<class T>
-		std::optional<TypeFunnel<T>> fetch()
+		std::optional<TypeFunnel<T>> fetch(bool wait = true)
 		{
+			if (wait)
+			{
+				m_mutex.lock();
+			}
+			else
+			{
+				if (!m_mutex.try_lock())
+				{
+					return std::nullopt;
+				}
+			}
+
+			std::lock_guard lock (m_mutex, std::adopt_lock);
+
 			auto iter = m_type_container.find(typeid(T));
 
 			if (iter == m_type_container.end())
@@ -91,12 +103,12 @@ namespace forge
 				return std::nullopt;
 			}
 
-			if (iter->second.is_locked->test(std::memory_order_relaxed))
-			{
-				return std::nullopt;
-			}
-
 			return iter->second;
+		}
+
+		void clear_temp()
+		{
+
 		}
 
 		template<class T>
@@ -111,10 +123,10 @@ namespace forge
 			{
 				type_data.mem_pool.reset();
 			}
-
-			m_type_container.clear();
 		}
+
 	private:
+		std::mutex m_mutex;
 		HashMap<std::type_index, TypeBoxData> m_type_container;
 
 		template<class T>
@@ -125,7 +137,7 @@ namespace forge
 			if (iter == m_type_container.end())
 			{
 				iter = m_type_container.emplace(typeid(T), TypeBoxData{}).first;
-				iter->second.mem_pool.init(sizeof(T), TYPE_BOX_MAX_MEM);
+				iter->second.mem_pool.init<T>(TYPE_BOX_MAX_MEM);
 			}
 
 			return iter->second;

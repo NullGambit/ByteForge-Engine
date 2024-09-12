@@ -35,6 +35,7 @@ add_executable(ByteForge_Engine main.cpp
         src/core/engine.hpp
         src/core/engine.cpp
         src/type_box/type_box.hpp
+        src/sync/atomic_scope_lock.hpp
 )
 
 target_link_libraries(ByteForge_Engine glfw)
