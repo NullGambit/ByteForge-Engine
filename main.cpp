@@ -13,25 +13,37 @@
 #include "src/system/window.hpp"
 #include "src/system/window_sub_system.hpp"
 #include "src/events/type_box.hpp"
+#include "system/fs_monitor.hpp"
 #include "util/macros.hpp"
 
 int main()
 {
-	auto &engine = forge::Engine::get_instance();
+	// auto &engine = forge::Engine::get_instance();
+	//
+	// auto ok = engine.init(
+	// {
+	// 	.window_title = "ByteForge Engine",
+	// 	.window_width = 720,
+	// 	.window_height = 480,
+	// });
+	//
+	// if (!ok)
+	// {
+	// 	return -1;
+	// }
+	//
+	// engine.run();
+	//
+	// engine.shutdown();
+	forge::FsMonitor monitor;
 
-	auto ok = engine.init(
+	monitor.add_watch("./", forge::FSE_FILE_CREATE, [](auto events, auto path)
 	{
-		.window_title = "ByteForge Engine",
-		.window_width = 720,
-		.window_height = 480,
+		fmt::println("modified path {}", path);
 	});
 
-	if (!ok)
+	while (true)
 	{
-		return -1;
+		monitor.poll();
 	}
-
-	engine.run();
-
-	engine.shutdown();
 }

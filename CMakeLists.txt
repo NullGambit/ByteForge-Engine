@@ -39,6 +39,9 @@ add_executable(ByteForge_Engine main.cpp
         src/system/io.cpp
         src/system/io.hpp
         src/util/macros.hpp
+        src/system/fs_monitor.hpp
+        src/system/linux/linux_fs_monitor.cpp
+        src/system/linux/linux_fs_monitor.hpp
 )
 
 target_link_libraries(ByteForge_Engine glfw)
