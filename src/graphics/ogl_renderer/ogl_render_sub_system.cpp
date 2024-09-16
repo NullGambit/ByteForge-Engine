@@ -1,33 +1,66 @@
-#pragma once
-
 #include "ogl_render_sub_system.hpp"
 
+#include "ogl_shader.hpp"
 #include "core/engine.hpp"
 #include "fmt/fmt.hpp"
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
-void forge::OglRenderSubSystem::init()
+std::string forge::OglRenderSubSystem::init()
 {
-	m_ok = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+	auto ok = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
-	if (!m_ok)
+	if (!ok)
 	{
-		m_error_message = "could not init glad";
-		return;
+		return "could not init glad";
 	}
 
-	glClearColor(255, 0, 0, 1);
+	// glClearColor(255, 0, 0, 1);
 
 	auto &engine = Engine::get_instance();
 
 	// TODO: remove connection
 	engine.window.on_resize.connect(this, &OglRenderSubSystem::handle_framebuffer_resize);
+
+	auto shader = OglShader::load({"assets/shaders/triangles.frag", "assets/shaders/triangles.vert"});
+
+	if (!shader.has_value())
+	{
+		return "could not load shaders";
+	}
+
+	m_tri_shader = shader.value();
+
+	float vertices[] =
+	{
+		-0.5f, -0.5f, 0.0f,
+		 0.5f, -0.5f, 0.0f,
+		 0.0f,  0.5f, 0.0f
+	};
+
+	uint32_t vbo;
+
+	glGenVertexArrays(1, &m_vao);
+	glBindVertexArray(m_vao);
+
+	glGenBuffers(1, &vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
+	glEnableVertexAttribArray(0);
+
+	return {};
 }
 
 void forge::OglRenderSubSystem::update()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	m_tri_shader.use();
+	glBindVertexArray(m_vao);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
 void forge::OglRenderSubSystem::shutdown()

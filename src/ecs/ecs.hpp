@@ -11,10 +11,11 @@
 #include "../memory/mem_pool.hpp"
 #include "macro_warcrimes.hpp"
 #include "../events/signal.hpp"
+#include "core/isub_system.hpp"
 
 #define ECS_MAX_MAPPED_MEMORY GB(8)
 
-namespace ecs
+namespace forge
 {
     enum class EcsResult
     {
@@ -124,7 +125,7 @@ namespace ecs
         EntityState m_state;
         // byte offset inside the memory pool for freeing
         size_t m_offset;
-        forge::HashMap<std::type_index, ComponentView> m_components;
+        HashMap<std::type_index, ComponentView> m_components;
 
         Nexus  *m_nexus;
         Entity *m_parent = nullptr;
@@ -133,12 +134,12 @@ namespace ecs
     };
 
 
-    class Nexus final
+    class Nexus final : public ISubSystem
     {
         struct ComponentType
         {
-            forge::MemPool mem_pool;
-            forge::HashMap<size_t, OnComponentDestroy> destroy_signals;
+            MemPool mem_pool;
+            HashMap<size_t, OnComponentDestroy> destroy_signals;
 
             template<class T>
             void free(size_t offset_to_free)
@@ -161,10 +162,11 @@ namespace ecs
 
     public:
 
-        Nexus()
-        {
-            m_entities.init(sizeof(Entity), ECS_MAX_MAPPED_MEMORY);
-        }
+        std::string init() override;
+
+        void shutdown() override;
+
+        bool is_critical() override { return true; }
 
         template<class T>
         EcsResult register_component(bool should_update = false)
@@ -224,7 +226,7 @@ namespace ecs
         template<class ...Args>
         Entity* create_entity(std::optional<std::string_view> name = std::nullopt)
         {
-            auto [entity, _] = m_entities.allocate<Entity>();
+            auto [entity, _] = m_entities.emplace<Entity>();
 
             entity->m_nexus = this;
 
@@ -259,7 +261,7 @@ namespace ecs
 
             auto &ct = m_component_table[typeid(T)];
 
-            auto [ptr, offset] = ct.mem_pool.allocate<T>();
+            auto [ptr, offset] = ct.mem_pool.emplace<T>();
 
             if constexpr (std::derived_from<T, BaseComponent>)
             {
@@ -314,7 +316,7 @@ namespace ecs
             return EcsResult::Ok;
         }
 
-        void update() const
+        void update() override
         {
             for (auto &type : m_update_table)
             {
@@ -332,10 +334,10 @@ namespace ecs
     private:
         friend Entity;
 
-        forge::HashMap<std::type_index, ComponentType> m_component_table;
-        forge::HashMap<std::string_view, Entity*> m_name_table;
+        HashMap<std::type_index, ComponentType> m_component_table;
+        HashMap<std::string_view, Entity*> m_name_table;
         std::vector<std::type_index> m_update_table;
-        forge::MemPool m_entities;
+        MemPool m_entities;
         std::vector<std::pair<std::type_index, size_t>> m_remove_queue;
     };
 

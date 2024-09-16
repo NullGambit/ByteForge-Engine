@@ -12,87 +12,26 @@
 #include "GLFW/glfw3.h"
 #include "src/system/window.hpp"
 #include "src/system/window_sub_system.hpp"
-#include "type_box/type_box.hpp"
+#include "src/events/type_box.hpp"
+#include "util/macros.hpp"
 
 int main()
 {
-	// auto &engine = forge::Engine::get_instance();
-	//
-	// engine.init(
-	// {
-	// 	.window_title = "ByteForge Engine",
-	// 	.window_width = 720,
-	// 	.window_height = 480,
-	// });
-	//
-	// engine.run();
-	//
-	// engine.shutdown();
+	auto &engine = forge::Engine::get_instance();
 
-	forge::TypeBox type_box;
-
-	std::thread
+	auto ok = engine.init(
 	{
-		[&type_box]
-		{
-			auto i = 0;
+		.window_title = "ByteForge Engine",
+		.window_width = 720,
+		.window_height = 480,
+	});
 
-			while (true)
-			{
-				type_box.emplace<std::string>(std::string{"hello #"} + std::to_string(i++));
-			}
-		}
-	}.detach();
-
-	std::thread
+	if (!ok)
 	{
-		[&type_box]
-		{
-			while (true)
-			{
-				auto opt = type_box.fetch<std::string>();
-
-				if (opt.has_value())
-				{
-					auto &funnel = opt.value();
-
-					for (int i = 0; i < funnel.size(); i++)
-					{
-						auto *value = funnel.next();
-
-						if (value == nullptr)
-						{
-							continue;
-						}
-
-						std::cout << "got from thread " << *value << '\n';
-					}
-				}
-			}
-		}
-	}.detach();
-
-	while (true)
-	{
-		auto opt = type_box.fetch<std::string>(false);
-
-		if (opt.has_value())
-		{
-			auto &funnel = opt.value();
-
-			for (int i = 0; i < funnel.size(); i++)
-			{
-				auto *value = funnel.next();
-
-				if (value == nullptr)
-				{
-					continue;
-				}
-
-				std::cout << *value << '\n';
-			}
-
-			type_box.clear_all();
-		}
+		return -1;
 	}
+
+	engine.run();
+
+	engine.shutdown();
 }

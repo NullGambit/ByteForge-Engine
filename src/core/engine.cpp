@@ -6,29 +6,48 @@
 #include "system/window_sub_system.hpp"
 #include "system/window.hpp"
 #include "graphics/ogl_renderer/ogl_render_sub_system.hpp"
+#include "util/types.hpp"
 
 void forge::Engine::quit()
 {
 	window.set_should_close(true);
 }
 
-void forge::Engine::init(const EngineInitOptions &options)
+// TODO: currently if a user subsystem is added it will be added before the builtin subsystems which might not be desired behavior
+// TODO: find some way to defer initialization to a later point
+bool forge::Engine::init(const EngineInitOptions &options)
 {
 	m_init_options = options;
 
 	add_subsystem<WindowSubSystem>();
 
 	renderer = add_subsystem<OglRenderSubSystem>();
+	nexus = add_subsystem<Nexus>();
 
 	for (const auto &subsystem : m_subsystems)
 	{
-		subsystem->init();
-
-		if (!subsystem->is_ok())
+		if (subsystem == nullptr)
 		{
-			fmt::println("Failed to initialize subsystem: {}", subsystem->error_message());
+			fmt::println("invalid subsystem found");
+			return false;
+		}
+
+		auto result = subsystem->init();
+
+		if (!result.empty())
+		{
+			auto name = util::type_name(typeid(*subsystem));
+
+			fmt::println("Failed to initialize subsystem ({}): {}", name, result);
+
+			if (subsystem->is_critical())
+			{
+				return false;
+			}
 		}
 	}
+
+	return true;
 }
 
 void forge::Engine::run()
@@ -37,7 +56,10 @@ void forge::Engine::run()
 	{
 		for (const auto &subsystem : m_subsystems)
 		{
-			subsystem->update();
+			if (subsystem->should_update())
+			{
+				subsystem->update();
+			}
 		}
 
 		window.swap_buffers();

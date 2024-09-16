@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "isub_system.hpp"
+#include "ecs/ecs.hpp"
 #include "system/window.hpp"
 
 namespace forge
@@ -36,7 +37,7 @@ namespace forge
 
 		void quit();
 
-		void init(const EngineInitOptions &options);
+		bool init(const EngineInitOptions &options);
 
 		void run();
 
@@ -47,14 +48,15 @@ namespace forge
 			return m_init_options;
 		}
 
-		template<class T>
-		inline T* add_subsystem() requires std::derived_from<T, ISubSystem>
+		template<class T, class ...Args>
+		inline T* add_subsystem(Args ...args) requires std::derived_from<T, ISubSystem>
 		{
-			return (T*)m_subsystems.emplace_back(std::make_unique<T>()).get();
+			return (T*)m_subsystems.emplace_back(std::make_unique<T>(args...)).get();
 		}
 
 		Window window;
 		OglRenderSubSystem *renderer;
+		Nexus *nexus;
 	private:
 		std::vector<std::unique_ptr<ISubSystem>> m_subsystems;
 		EngineInitOptions m_init_options;

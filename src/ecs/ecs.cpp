@@ -2,7 +2,7 @@
 
 #include <sys/mman.h>
 
-void ecs::Entity::remove_child(Entity *child)
+void forge::Entity::remove_child(Entity *child)
 {
 	auto *node = m_children;
 
@@ -17,7 +17,7 @@ void ecs::Entity::remove_child(Entity *child)
 	}
 }
 
-void ecs::Entity::add_child(Entity *child)
+void forge::Entity::add_child(Entity *child)
 {
 	if (child->m_parent != nullptr)
 	{
@@ -48,7 +48,7 @@ void ecs::Entity::add_child(Entity *child)
 	node->m_siblings = child;
 }
 
-void ecs::Entity::foreach_child(std::function<void(Entity*)> callback, bool recursive, Entity *root)
+void forge::Entity::foreach_child(std::function<void(Entity*)> callback, bool recursive, Entity *root)
 {
 	Entity *node;
 
@@ -73,7 +73,7 @@ void ecs::Entity::foreach_child(std::function<void(Entity*)> callback, bool recu
 		}
 	}
 }
-void ecs::Nexus::ComponentType::update(DeltaTime delta) const
+void forge::Nexus::ComponentType::update(DeltaTime delta) const
 {
 	auto *memory = mem_pool.memory();
 
@@ -90,7 +90,20 @@ void ecs::Nexus::ComponentType::update(DeltaTime delta) const
 	}
 }
 
-ecs::Entity* ecs::Nexus::get_entity(const std::string_view name)
+std::string forge::Nexus::init()
+{
+	m_entities.init(sizeof(Entity), ECS_MAX_MAPPED_MEMORY);
+
+	return {};
+}
+
+// TODO: handle shutdown
+void forge::Nexus::shutdown()
+{
+
+}
+
+forge::Entity* forge::Nexus::get_entity(const std::string_view name)
 {
 	auto it = m_name_table.find(name);
 
@@ -102,7 +115,7 @@ ecs::Entity* ecs::Nexus::get_entity(const std::string_view name)
 	return it->second;
 }
 
-void ecs::Nexus::delete_entity(Entity* entity)
+void forge::Nexus::delete_entity(Entity* entity)
 {
 	if (!is_entity_valid(entity))
 	{

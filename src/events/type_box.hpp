@@ -3,10 +3,10 @@
 #include <mutex>
 #include <typeindex>
 
-#include "container/map.hpp"
-#include "memory/mem_pool.hpp"
-#include "memory/defs.hpp"
-#include "sync/atomic_scope_lock.hpp"
+#include "../container/map.hpp"
+#include "../memory/mem_pool.hpp"
+#include "../memory/defs.hpp"
+#include "../sync/atomic_scope_lock.hpp"
 
 #define TYPE_BOX_MAX_MEM GB(2)
 
@@ -15,6 +15,8 @@ namespace forge
 	struct TypeBoxData
 	{
 		MemPool mem_pool;
+		Signal<void()> on_data_available;
+		std::unique_ptr<std::mutex> mutex = std::make_unique<std::mutex>();
 	};
 
 	template<class T>
@@ -29,6 +31,11 @@ namespace forge
 		inline size_t size() const
 		{
 			return m_data.mem_pool.length();
+		}
+
+		auto obtain_lock() const
+		{
+			return std::lock_guard { *m_data.mutex };
 		}
 
 		T* next()
@@ -70,7 +77,7 @@ namespace forge
 		}
 
 		template<class T, class ...Args>
-		void emplace(Args &&...args)
+		void emplace(Args ...args)
 		{
 			std::lock_guard lock { m_mutex };
 
@@ -80,21 +87,9 @@ namespace forge
 		}
 
 		template<class T>
-		std::optional<TypeFunnel<T>> fetch(bool wait = true)
+		std::optional<TypeFunnel<T>> fetch()
 		{
-			if (wait)
-			{
-				m_mutex.lock();
-			}
-			else
-			{
-				if (!m_mutex.try_lock())
-				{
-					return std::nullopt;
-				}
-			}
-
-			std::lock_guard lock (m_mutex, std::adopt_lock);
+			std::shared_lock lock { m_mutex };
 
 			auto iter = m_type_container.find(typeid(T));
 
@@ -119,6 +114,8 @@ namespace forge
 
 		void clear_all()
 		{
+			std::lock_guard lock { m_mutex };
+
 			for (auto &[index, type_data] : m_type_container)
 			{
 				type_data.mem_pool.reset();
@@ -126,8 +123,9 @@ namespace forge
 		}
 
 	private:
-		std::mutex m_mutex;
+		std::shared_mutex m_mutex;
 		HashMap<std::type_index, TypeBoxData> m_type_container;
+		// HashMap<std::type_index, TypeBoxData> m_temp_type_container;
 
 		template<class T>
 		TypeBoxData& get_or_emplace()

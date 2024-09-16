@@ -1,19 +1,23 @@
 #pragma once
+#include <cstdint>
+
+#include "ogl_shader.hpp"
 #include "../../core/isub_system.hpp"
 
 namespace forge
 {
-
 	class OglRenderSubSystem : public ISubSystem
 	{
 	public:
-		void init() override;
+		std::string init() override;
 		void update() override;
 		void shutdown() override;
+		bool is_critical() override { return true; }
 
 	private:
-		bool m_ok = true;
-		std::string_view m_error_message;
+
+		uint32_t m_vao;
+		OglShader m_tri_shader;
 
 		void handle_framebuffer_resize(int width, int height);
 	};
