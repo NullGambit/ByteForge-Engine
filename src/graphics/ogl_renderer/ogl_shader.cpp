@@ -7,6 +7,8 @@
 #include "system/io.hpp"
 #include "util/macros.hpp"
 
+#define SHADER_ERROR_LOG_SIZE 512
+
 uint32_t ext_to_shader_type(const std::filesystem::path &path)
 {
 	auto ext = path.extension();
@@ -19,19 +21,13 @@ uint32_t ext_to_shader_type(const std::filesystem::path &path)
 	{
 		return GL_FRAGMENT_SHADER;
 	}
-	else
-	{
-		return GL_NONE;
-	}
+
+	return GL_NONE;
 }
 
-#define SHADER_ERROR_LOG_SIZE 512
-
-std::optional<forge::OglShader> forge::OglShader::load(const ShaderSource &source)
+bool forge::OglShader::compile(const ShaderSource& source)
 {
-	OglShader shader;
-
-	shader.m_program = glCreateProgram();
+	m_program = glCreateProgram();
 
 	char info_buffer[SHADER_ERROR_LOG_SIZE];
 
@@ -42,9 +38,16 @@ std::optional<forge::OglShader> forge::OglShader::load(const ShaderSource &sourc
 			continue;
 		}
 
-		UNWRAP_OR_RETURN(contents, read_entire_file(path));
+		UNWRAP_OR_RETURN_FALSE(contents, read_entire_file(path));
 
 		auto type = ext_to_shader_type(path);
+
+		if (type == GL_NONE)
+		{
+			fmt::println("unsupported glsl shader type found");
+			continue;
+		}
+
 		auto id = glCreateShader(type);
 		auto *data = contents.data();
 
@@ -60,39 +63,48 @@ std::optional<forge::OglShader> forge::OglShader::load(const ShaderSource &sourc
 			glGetShaderInfoLog(id, SHADER_ERROR_LOG_SIZE, nullptr, info_buffer);
 			// TODO replace with an actual logger
 			fmt::println("[warning] Could not compile shader at path {}. Reason:\n{}", path.c_str(), info_buffer);
-			return std::nullopt;
+			glDeleteProgram(m_program);
+			return false;
 		}
 
-		glAttachShader(shader.m_program, id);
-		// glDeleteShader(id);
+		glAttachShader(m_program, id);
+		glDeleteShader(id);
 	}
 
-	glLinkProgram(shader.m_program);
+	glLinkProgram(m_program);
 
 	int ok;
 
-	glGetProgramiv(shader.m_program, GL_LINK_STATUS, &ok);
+	glGetProgramiv(m_program, GL_LINK_STATUS, &ok);
 
 	if (!ok)
 	{
-		glGetProgramInfoLog(shader.m_program, SHADER_ERROR_LOG_SIZE, nullptr, info_buffer);
+		glGetProgramInfoLog(m_program, SHADER_ERROR_LOG_SIZE, nullptr, info_buffer);
 		// TODO replace with an actual logger
 		fmt::println("[warning] Could not link shader program. Reason:\n{}", info_buffer);
-		return std::nullopt;
+		glDeleteProgram(m_program);
+		return false;
 	}
 
-	return shader;
+	return true;
 }
 
-forge::OglShader::~OglShader()
+void forge::OglShader::destroy()
 {
 	if (m_program > 0)
 	{
 		glDeleteProgram(m_program);
 	}
+
+	m_program = 0;
 }
 
-void forge::OglShader::use()
+forge::OglShader::~OglShader()
+{
+	destroy();
+}
+
+void forge::OglShader::use() const
 {
 	glUseProgram(m_program);
 }

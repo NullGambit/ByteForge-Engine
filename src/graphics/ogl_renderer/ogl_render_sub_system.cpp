@@ -6,6 +6,8 @@
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
+#define SHADER_PATH "assets/shaders/"
+
 std::string forge::OglRenderSubSystem::init()
 {
 	auto ok = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
@@ -15,21 +17,22 @@ std::string forge::OglRenderSubSystem::init()
 		return "could not init glad";
 	}
 
-	// glClearColor(255, 0, 0, 1);
+	glClearColor(0, 255, 76, 255);
 
 	auto &engine = Engine::get_instance();
 
 	// TODO: remove connection
 	engine.window.on_resize.connect(this, &OglRenderSubSystem::handle_framebuffer_resize);
 
-	auto shader = OglShader::load({"assets/shaders/triangles.frag", "assets/shaders/triangles.vert"});
 
-	if (!shader.has_value())
-	{
-		return "could not load shaders";
-	}
+	// load builtin shaders
 
-	m_tri_shader = shader.value();
+#define C(expr) \
+	if (!(expr)) return "could not load or compile builtin shader" \
+
+	C(m_tri_shader.compile({SHADER_PATH"triangles.frag", SHADER_PATH"triangles.vert"}));
+
+#undef C
 
 	float vertices[] =
 	{

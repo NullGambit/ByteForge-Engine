@@ -2,6 +2,8 @@
 
 #include "engine.hpp"
 
+#include <ranges>
+
 #include "fmt/fmt.hpp"
 #include "system/window_sub_system.hpp"
 #include "system/window.hpp"
@@ -68,8 +70,10 @@ void forge::Engine::run()
 
 void forge::Engine::shutdown()
 {
-	for (const auto &subsystem : m_subsystems)
+	// shutdown and destructs subsystems in reverse order in which they were initialized to ensure correct cleanup
+	for (auto &subsystem : std::ranges::reverse_view(m_subsystems))
 	{
 		subsystem->shutdown();
+		subsystem.reset();
 	}
 }

@@ -54,9 +54,9 @@ namespace forge
 			return (T*)m_subsystems.emplace_back(std::make_unique<T>(args...)).get();
 		}
 
-		Window window;
 		OglRenderSubSystem *renderer;
 		Nexus *nexus;
+		Window window;
 	private:
 		std::vector<std::unique_ptr<ISubSystem>> m_subsystems;
 		EngineInitOptions m_init_options;

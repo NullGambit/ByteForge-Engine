@@ -14,22 +14,36 @@ namespace forge
 		Max,
 	};
 
-	constexpr auto ShaderTypeCount = (size_t)ShaderType::Max;
-	using ShaderSource = std::array<std::filesystem::path, ShaderTypeCount>;
+	constexpr auto SHADER_TYPE_COUNT = (size_t)ShaderType::Max;
+	using ShaderSource = std::array<std::filesystem::path, SHADER_TYPE_COUNT>;
 
 	class OglShader
 	{
 	public:
-		static std::optional<OglShader> load(const ShaderSource &source);
+		bool compile(const ShaderSource &source);
+		void destroy();
+
+		OglShader() = default;
+
+		OglShader(OglShader &&other) :
+			m_program(other.m_program)
+		{
+			other.m_program = 0;
+		}
 
 		~OglShader();
 
-		void use();
+		void use() const;
+
+		[[nodiscard]]
+		uint32_t get_program() const
+		{
+			return m_program;
+		}
 
 	private:
 		uint32_t m_program;
 
 		uint32_t make_program();
-
 	};
 }
