@@ -6,26 +6,34 @@
 #include <string>
 #include <sys/inotify.h>
 
+#include "core/isub_system.hpp"
+
 namespace forge
 {
 	// TODO add more events
 	enum LINUX_FS_EVENT : uint32_t
 	{
-		FSE_MODIFY = IN_MODIFY,
-		FSE_ACCESS = IN_ACCESS,
-		FSE_CREATE = IN_CREATE,
-		FSE_DELETE = IN_DELETE_SELF,
-		FSE_FILE_CREATE = IN_CREATE,
-		FSE_FILE_DELETE = IN_DELETE,
+		LINUX_FSE_MODIFY = IN_MODIFY,
+		LINUX_FSE_ACCESS = IN_ACCESS,
+		LINUX_FSE_CREATE = IN_CREATE,
+		LINUX_FSE_DELETE = IN_DELETE_SELF,
+		LINUX_FSE_FILE_CREATE = IN_CREATE,
+		LINUX_FSE_FILE_DELETE = IN_DELETE,
 	};
 
-	class LinuxFsMonitor
+	class LinuxFsMonitor : public ISubSystem
 	{
 	public:
 		using Callback = std::function<void(uint32_t, std::string_view path)>;
 
-		LinuxFsMonitor();
-		~LinuxFsMonitor();
+		std::string init() override;
+		void shutdown() override;
+		void update() override;
+
+		SubSystemThreadMode get_thread_mode() override
+		{
+			return SubSystemThreadMode::SeparateThread;
+		}
 
 		int add_watch(std::string_view path, uint32_t events, Callback callback);
 		bool remove_watch(int wd) const;
@@ -34,13 +42,13 @@ namespace forge
 	private:
 		int m_fd;
 
-		struct Monitors
+		struct Watchers
 		{
 			uint32_t events;
 			Callback callback;
 		};
 
-		std::vector<Monitors> m_monitors;
+		std::vector<Watchers> m_watchers;
 		std::string m_event_buffer;
 	};
 }

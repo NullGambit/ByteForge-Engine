@@ -3,6 +3,7 @@
 #include "engine.hpp"
 
 #include <ranges>
+#include <thread>
 
 #include "fmt/fmt.hpp"
 #include "system/window_sub_system.hpp"
@@ -25,6 +26,7 @@ bool forge::Engine::init(const EngineInitOptions &options)
 
 	renderer = add_subsystem<OglRenderSubSystem>();
 	nexus = add_subsystem<Nexus>();
+	fs_monitor = add_subsystem<FsMonitor>();
 
 	for (const auto &subsystem : m_subsystems)
 	{
@@ -54,11 +56,13 @@ bool forge::Engine::init(const EngineInitOptions &options)
 
 void forge::Engine::run()
 {
+	start_threaded_subsystems();
+
 	while (window.should_stay_open())
 	{
 		for (const auto &subsystem : m_subsystems)
 		{
-			if (subsystem->should_update())
+			if (subsystem->should_update() && subsystem->get_thread_mode() == SubSystemThreadMode::MainThread)
 			{
 				subsystem->update();
 			}
@@ -70,10 +74,42 @@ void forge::Engine::run()
 
 void forge::Engine::shutdown()
 {
+	stop_threaded_subsystems();
+
 	// shutdown and destructs subsystems in reverse order in which they were initialized to ensure correct cleanup
 	for (auto &subsystem : std::ranges::reverse_view(m_subsystems))
 	{
 		subsystem->shutdown();
 		subsystem.reset();
+	}
+}
+
+void forge::Engine::start_threaded_subsystems()
+{
+	for (const auto &subsystem : m_subsystems)
+	{
+		if (subsystem->get_thread_mode() == SubSystemThreadMode::SeparateThread)
+		{
+			m_update_threads.emplace_back(&ISubSystem::threaded_update, subsystem.get());
+		}
+	}
+}
+
+void forge::Engine::stop_threaded_subsystems()
+{
+	for (const auto &subsystem : m_subsystems)
+	{
+		if (subsystem->get_thread_mode() == SubSystemThreadMode::SeparateThread)
+		{
+			subsystem->stop();
+		}
+	}
+
+	for (auto &thread : m_update_threads)
+	{
+		if (thread.joinable())
+		{
+			thread.join();
+		}
 	}
 }

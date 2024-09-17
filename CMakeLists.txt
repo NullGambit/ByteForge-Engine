@@ -3,7 +3,15 @@ project(ByteForge_Engine)
 
 set(CMAKE_CXX_STANDARD 20)
 
-include_directories(src/ dep/unordered_dense/include/ dep/glfw-3.3-stable/include/ dep/glad/include/)
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_definitions(SHADER_HOT_RELOAD)
+endif()
+
+include_directories(
+        src/
+        dep/unordered_dense/include/
+        dep/glfw-3.3-stable/include/
+        dep/glad/include/)
 
 add_subdirectory(dep/glfw-3.3-stable/)
 

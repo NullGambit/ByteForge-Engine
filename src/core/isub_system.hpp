@@ -1,8 +1,21 @@
 #pragma once
+#include <atomic>
 #include <string_view>
+
+#include "fmt/fmt.hpp"
 
 namespace forge
 {
+	enum class SubSystemThreadMode
+	{
+		// will run on the main thread
+		MainThread,
+		// will be updated on a different thread but will wait until all other main and offload threads are done updating to start the next frame
+		OffloadThread,
+		// will run on its own thread and won't wait for other subsystems to finish updating
+		SeparateThread,
+	};
+
 	class ISubSystem
 	{
 	public:
@@ -15,10 +28,27 @@ namespace forge
 
 		virtual bool should_update() { return true; }
 
-		// will run the update method on its own thread
-		virtual bool should_be_threaded() { return false; }
+		inline void stop()
+		{
+			m_threaded_should_stop = false;
+		}
+
+		// will set the thread mode at the beginning of the run loop
+		virtual SubSystemThreadMode get_thread_mode() { return SubSystemThreadMode::MainThread; }
 
 		// if true the system init call must succeed or else the engine will fail to init
 		virtual bool is_critical() { return false; }
+
+		// will be called if the thread mode is set to SeparateThread
+		void threaded_update()
+		{
+			while (m_threaded_should_stop)
+			{
+				update();
+			}
+		}
+
+	private:
+		std::atomic_bool m_threaded_should_stop = true;
 	};
 }

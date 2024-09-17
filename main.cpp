@@ -18,32 +18,26 @@
 
 int main()
 {
-	// auto &engine = forge::Engine::get_instance();
-	//
-	// auto ok = engine.init(
-	// {
-	// 	.window_title = "ByteForge Engine",
-	// 	.window_width = 720,
-	// 	.window_height = 480,
-	// });
-	//
-	// if (!ok)
-	// {
-	// 	return -1;
-	// }
-	//
-	// engine.run();
-	//
-	// engine.shutdown();
-	forge::FsMonitor monitor;
+	auto &engine = forge::Engine::get_instance();
 
-	monitor.add_watch("./", forge::FSE_FILE_CREATE, [](auto events, auto path)
+	auto ok = engine.init(
 	{
-		fmt::println("modified path {}", path);
+		.window_title = "ByteForge Engine",
+		.window_width = 720,
+		.window_height = 480,
 	});
 
-	while (true)
+	engine.fs_monitor->add_watch("test.txt", forge::FSE_MODIFY, [](auto events, auto path)
 	{
-		monitor.poll();
+		fmt::println("modified path");
+	});
+
+	if (!ok)
+	{
+		return -1;
 	}
+
+	engine.run();
+
+	engine.shutdown();
 }

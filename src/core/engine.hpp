@@ -1,9 +1,12 @@
 #pragma once
+
 #include <memory>
 #include <vector>
+#include <thread>
 
 #include "isub_system.hpp"
 #include "ecs/ecs.hpp"
+#include "system/fs_monitor.hpp"
 #include "system/window.hpp"
 
 namespace forge
@@ -56,9 +59,16 @@ namespace forge
 
 		OglRenderSubSystem *renderer;
 		Nexus *nexus;
+		FsMonitor *fs_monitor;
+		// TODO: create some sort of window factory class that will create windows and will swap their buffers in the main loop
 		Window window;
 	private:
 		std::vector<std::unique_ptr<ISubSystem>> m_subsystems;
 		EngineInitOptions m_init_options;
+		// threads for subsystems with a SeparateThread mode
+		std::vector<std::thread> m_update_threads;
+
+		void start_threaded_subsystems();
+		void stop_threaded_subsystems();
 	};
 }

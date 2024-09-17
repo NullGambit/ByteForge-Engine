@@ -14,15 +14,28 @@
 
 #define INITIAL_MONITOR_SIZE 50
 
-forge::LinuxFsMonitor::LinuxFsMonitor()
+std::string forge::LinuxFsMonitor::init()
 {
 	m_fd = inotify_init1(IN_NONBLOCK);
-	m_monitors.resize(INITIAL_MONITOR_SIZE);
+
+	if (m_fd == -1)
+	{
+		return "could not init inotify";
+	}
+
+	m_watchers.resize(INITIAL_MONITOR_SIZE);
+
+	return {};
 }
 
-forge::LinuxFsMonitor::~LinuxFsMonitor()
+void forge::LinuxFsMonitor::shutdown()
 {
 	close(m_fd);
+}
+
+void forge::LinuxFsMonitor::update()
+{
+	poll();
 }
 
 int forge::LinuxFsMonitor::add_watch(std::string_view path, uint32_t events, Callback callback)
@@ -34,12 +47,12 @@ int forge::LinuxFsMonitor::add_watch(std::string_view path, uint32_t events, Cal
 		return -1;
 	}
 
-	if (wd >= m_monitors.size())
+	if (wd >= m_watchers.size())
 	{
-		m_monitors.resize(m_monitors.size() * 2);
+		m_watchers.resize(m_watchers.size() * 2);
 	}
 
-	m_monitors[wd] =
+	m_watchers[wd] =
 	{
 		events,
 		std::move(callback)
@@ -75,11 +88,11 @@ uint32_t forge::LinuxFsMonitor::poll()
 	while (bytes_processed < bytes_read)
 	{
 		auto event = (inotify_event*)(m_event_buffer.data() + bytes_processed);
-		auto monitor = m_monitors[event->wd];
+		auto watcher = m_watchers[event->wd];
 
-		if (event->mask & monitor.events)
+		if (event->mask & watcher.events)
 		{
-			monitor.callback(event->mask, std::string_view{event->name, event->len});
+			watcher.callback(event->mask, std::string_view{event->name, event->len});
 		}
 
 		bytes_processed += sizeof(inotify_event) + event->len;
