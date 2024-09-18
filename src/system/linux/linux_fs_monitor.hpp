@@ -32,7 +32,7 @@ namespace forge
 
 		SubSystemThreadMode get_thread_mode() override
 		{
-			return SubSystemThreadMode::SeparateThread;
+			return SubSystemThreadMode::OffloadThread;
 		}
 
 		int add_watch(std::string_view path, uint32_t events, Callback callback);

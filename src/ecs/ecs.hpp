@@ -168,6 +168,11 @@ namespace forge
 
         bool is_critical() override { return true; }
 
+        SubSystemThreadMode get_thread_mode() override
+        {
+            return SubSystemThreadMode::OffloadThread;
+        }
+
         template<class T>
         EcsResult register_component(bool should_update = false)
         {

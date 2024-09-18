@@ -24,6 +24,8 @@ namespace forge
 
 		void swap_buffers() const;
 
+		void set_context();
+
 		Signal<void(int, int)> on_resize;
 
 	private:

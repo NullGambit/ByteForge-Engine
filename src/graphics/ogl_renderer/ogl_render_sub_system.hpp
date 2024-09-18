@@ -14,6 +14,11 @@ namespace forge
 		void shutdown() override;
 		bool is_critical() override { return true; }
 
+		// SubSystemThreadMode get_thread_mode() override
+		// {
+		// 	return SubSystemThreadMode::OffloadThread;
+		// }
+
 	private:
 
 		uint32_t m_vao;

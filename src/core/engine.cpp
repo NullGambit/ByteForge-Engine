@@ -2,6 +2,7 @@
 
 #include "engine.hpp"
 
+#include <condition_variable>
 #include <ranges>
 #include <thread>
 
@@ -60,6 +61,9 @@ void forge::Engine::run()
 
 	while (window.should_stay_open())
 	{
+		start_offload_threads();
+
+		// updates main thread subsystems
 		for (const auto &subsystem : m_subsystems)
 		{
 			if (subsystem->should_update() && subsystem->get_thread_mode() == SubSystemThreadMode::MainThread)
@@ -68,8 +72,18 @@ void forge::Engine::run()
 			}
 		}
 
+		// TODO: this should swap all window buffers
 		window.swap_buffers();
+
+		// waits till all offload threads are done
+		{
+			std::unique_lock lock { m_offload_mutex };
+			m_cv_done.wait(lock, [&offload_counter = m_offload_counter]{ return offload_counter <= 0; });
+		}
 	}
+
+	// start one last time so the offload threads won't get stuck waiting
+	start_offload_threads();
 }
 
 void forge::Engine::shutdown()
@@ -88,9 +102,23 @@ void forge::Engine::start_threaded_subsystems()
 {
 	for (const auto &subsystem : m_subsystems)
 	{
+		if (!subsystem->should_update())
+		{
+			continue;
+		}
+
 		if (subsystem->get_thread_mode() == SubSystemThreadMode::SeparateThread)
 		{
 			m_update_threads.emplace_back(&ISubSystem::threaded_update, subsystem.get());
+		}
+		if (subsystem->get_thread_mode() == SubSystemThreadMode::OffloadThread)
+		{
+			m_update_threads.emplace_back(&ISubSystem::offload_update, subsystem.get(),
+				std::ref(m_should_start), std::ref(m_offload_counter),
+				std::ref(m_cv_start), std::ref(m_cv_done),
+				std::ref(m_offload_mutex));
+
+			++m_offload_systems;
 		}
 	}
 }
@@ -99,7 +127,7 @@ void forge::Engine::stop_threaded_subsystems()
 {
 	for (const auto &subsystem : m_subsystems)
 	{
-		if (subsystem->get_thread_mode() == SubSystemThreadMode::SeparateThread)
+		if (subsystem->get_thread_mode() != SubSystemThreadMode::MainThread)
 		{
 			subsystem->stop();
 		}
@@ -112,4 +140,12 @@ void forge::Engine::stop_threaded_subsystems()
 			thread.join();
 		}
 	}
+}
+
+void forge::Engine::start_offload_threads()
+{
+	std::unique_lock lock { m_offload_mutex };
+	m_offload_counter = m_offload_systems;
+	m_should_start = true;
+	m_cv_start.notify_all();
 }

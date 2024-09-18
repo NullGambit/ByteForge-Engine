@@ -68,7 +68,20 @@ namespace forge
 		// threads for subsystems with a SeparateThread mode
 		std::vector<std::thread> m_update_threads;
 
+		// ======== member variables for offload subsystems ========
+
+		std::mutex m_offload_mutex;
+		std::condition_variable m_cv_start;
+		std::condition_variable m_cv_done;
+		int m_offload_systems = 0;
+		std::atomic_int m_offload_counter = 0;
+		std::atomic_bool m_should_start = false;
+
+		// ==============================================
+
 		void start_threaded_subsystems();
 		void stop_threaded_subsystems();
+
+		void start_offload_threads();
 	};
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include <atomic>
+#include <condition_variable>
 #include <string_view>
 
 #include "fmt/fmt.hpp"
@@ -30,7 +31,7 @@ namespace forge
 
 		inline void stop()
 		{
-			m_threaded_should_stop = false;
+			m_threaded_should_run = false;
 		}
 
 		// will set the thread mode at the beginning of the run loop
@@ -42,13 +43,39 @@ namespace forge
 		// will be called if the thread mode is set to SeparateThread
 		void threaded_update()
 		{
-			while (m_threaded_should_stop)
+			while (m_threaded_should_run)
 			{
-				update();
+				if (should_update())
+				{
+					update();
+				}
+			}
+		}
+
+		// will be called if the thread mode is set to OffloadThread
+		void offload_update(std::atomic_bool &should_start, std::atomic_int &counter,
+			std::condition_variable &cv_start, std::condition_variable &cv_done, std::mutex &mutex)
+		{
+			while (m_threaded_should_run)
+			{
+				std::unique_lock lock { mutex };
+
+				cv_start.wait(lock, [&should_start] { return should_start.load(); });
+
+				if (should_update())
+				{
+					update();
+				}
+
+				if (--counter <= 0)
+				{
+					cv_done.notify_one();
+					should_start = false;
+				}
 			}
 		}
 
 	private:
-		std::atomic_bool m_threaded_should_stop = true;
+		std::atomic_bool m_threaded_should_run = true;
 	};
 }

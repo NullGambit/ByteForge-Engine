@@ -34,7 +34,7 @@ bool forge::Window::open(std::string_view name, int width, int height)
 		return false;
 	}
 
-	glfwMakeContextCurrent(m_handle);
+	set_context();
 
 	glfwSetWindowUserPointer(m_handle, this);
 	glfwSetFramebufferSizeCallback(m_handle, framebuffer_resize_callback);
@@ -60,4 +60,9 @@ void forge::Window::set_should_close(bool value)
 void forge::Window::swap_buffers() const
 {
 	glfwSwapBuffers(m_handle);
+}
+
+void forge::Window::set_context()
+{
+	glfwMakeContextCurrent(m_handle);
 }
