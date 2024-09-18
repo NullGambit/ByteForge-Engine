@@ -5,6 +5,25 @@
 
 #include "core/engine.hpp"
 #include "src/util/types.hpp"
+#include "core/logging.hpp"
+#include "graphics/ogl_renderer/ogl_render_sub_system.hpp"
+
+
+class DebugRenderComponent : public forge::BaseComponent
+{
+public:
+	std::mutex m_mutex;
+	void update(forge::DeltaTime delta) override
+	{
+		auto &engine = forge::Engine::get_instance();
+
+		if (glfwGetKey(engine.window.get_handle(), GLFW_KEY_R))
+		{
+			forge::SharedWindowContext context {m_mutex, engine.window};
+			engine.renderer->toggle_wireframe();
+		}
+	}
+};
 
 int main()
 {
@@ -16,6 +35,10 @@ int main()
 		.window_width = 720,
 		.window_height = 480,
 	});
+
+	auto *entity = engine.nexus->create_entity();
+
+	entity->add_component<DebugRenderComponent>(true);
 
 	if (!ok)
 	{

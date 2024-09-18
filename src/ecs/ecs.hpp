@@ -133,7 +133,6 @@ namespace forge
         Entity *m_siblings = nullptr;
     };
 
-
     class Nexus final : public ISubSystem
     {
         struct ComponentType

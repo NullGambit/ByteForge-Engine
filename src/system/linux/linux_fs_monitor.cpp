@@ -65,7 +65,14 @@ int forge::LinuxFsMonitor::add_watch(std::string_view path, uint32_t events, Cal
 
 bool forge::LinuxFsMonitor::remove_watch(int wd)
 {
+	if (wd >= m_watchers.size())
+	{
+		return false;
+	}
+
 	std::lock_guard lock {m_mutex};
+
+	m_watchers[wd].is_alive = false;
 
 	return inotify_rm_watch(m_fd, wd) == 0;
 }
@@ -96,7 +103,7 @@ uint32_t forge::LinuxFsMonitor::poll()
 		auto event = (inotify_event*)(m_event_buffer.data() + bytes_processed);
 		auto watcher = m_watchers[event->wd];
 
-		if (event->mask & watcher.events)
+		if (event->mask & watcher.events && watcher.is_alive)
 		{
 			watcher.callback(event->mask, std::string_view{event->name, event->len});
 		}

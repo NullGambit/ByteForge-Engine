@@ -21,6 +21,8 @@ namespace forge
 		std::string_view window_title;
 		int window_width;
 		int window_height;
+		uint8_t log_flags;
+		std::string_view log_file;
 	};
 
 	class Engine
@@ -67,6 +69,7 @@ namespace forge
 		EngineInitOptions m_init_options;
 		// threads for subsystems with a SeparateThread mode
 		std::vector<std::thread> m_update_threads;
+		std::vector<ISubSystem*> m_main_thread_subsystems;
 
 		// ======== member variables for offload subsystems ========
 
@@ -79,7 +82,7 @@ namespace forge
 
 		// ==============================================
 
-		void start_threaded_subsystems();
+		void start_subsystems();
 		void stop_threaded_subsystems();
 
 		void start_offload_threads();

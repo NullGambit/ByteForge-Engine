@@ -50,6 +50,7 @@ namespace forge
 		{
 			uint32_t events;
 			Callback callback;
+			bool is_alive = true;
 		};
 
 		std::vector<Watchers> m_watchers;

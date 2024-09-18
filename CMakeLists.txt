@@ -51,6 +51,7 @@ add_executable(ByteForge_Engine main.cpp
         src/system/linux/linux_fs_monitor.cpp
         src/system/linux/linux_fs_monitor.hpp
         src/core/isub_system.cpp
+        src/core/logging.hpp
 )
 
 target_link_libraries(ByteForge_Engine glfw)

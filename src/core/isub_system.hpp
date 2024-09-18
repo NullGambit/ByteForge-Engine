@@ -43,7 +43,6 @@ namespace forge
 		// will be called if the thread mode is set to SeparateThread
 		void threaded_update();
 
-
 		// will be called if the thread mode is set to OffloadThread
 		void offload_update(std::atomic_bool &should_start, std::atomic_int &counter,
 			std::condition_variable &cv_start, std::condition_variable &cv_done, std::mutex &mutex);

@@ -19,8 +19,10 @@ namespace forge
 		// 	return SubSystemThreadMode::OffloadThread;
 		// }
 
-	private:
+		void toggle_wireframe();
 
+	private:
+		bool m_draw_wireframe = false;
 		uint32_t m_vao;
 		OglShader m_tri_shader;
 

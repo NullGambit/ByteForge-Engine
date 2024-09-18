@@ -6,6 +6,7 @@
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 #include "core/engine.hpp"
+#include "core/logging.hpp"
 #include "system/io.hpp"
 #include "util/macros.hpp"
 
@@ -45,12 +46,14 @@ bool forge::OglShader::compile(const ShaderSource &source)
 				continue;
 			}
 
-			m_wd = engine.fs_monitor->add_watch(path.c_str(), FSE_MODIFY, [&](auto events, auto path)
+			m_wd = engine.fs_monitor->add_watch(path.c_str(), FSE_MODIFY, [&](auto events, auto p)
 			{
 				SharedWindowContext context(m_mutex, engine.window);
 
 				destroy();
 				compile_implementation();
+
+				log::info("reloaded shader at path {}", path.c_str());
 			});
 		}
 	}
@@ -104,7 +107,7 @@ bool forge::OglShader::compile_implementation()
 
 		if (type == GL_NONE)
 		{
-			fmt::println("unsupported glsl shader type found");
+			log::warn("unsupported glsl shader type found");
 			continue;
 		}
 
@@ -121,9 +124,11 @@ bool forge::OglShader::compile_implementation()
 		if (!ok)
 		{
 			glGetShaderInfoLog(id, SHADER_ERROR_LOG_SIZE, nullptr, info_buffer);
-			// TODO replace with an actual logger
-			fmt::println("[warning] Could not compile shader at path {}. Reason:\n{}", path.c_str(), info_buffer);
+
+			log::warn("Could not compile shader at path {}. Reason:\n{}", path.c_str(), info_buffer);
+
 			glDeleteProgram(m_program);
+
 			return false;
 		}
 
@@ -140,9 +145,11 @@ bool forge::OglShader::compile_implementation()
 	if (!ok)
 	{
 		glGetProgramInfoLog(m_program, SHADER_ERROR_LOG_SIZE, nullptr, info_buffer);
-		// TODO replace with an actual logger
-		fmt::println("[warning] Could not link shader program. Reason:\n{}", info_buffer);
+
+		log::warn("Could not link shader program. Reason:\n{}", info_buffer);
+
 		glDeleteProgram(m_program);
+
 		return false;
 	}
 

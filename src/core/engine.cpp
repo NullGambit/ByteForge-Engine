@@ -6,6 +6,7 @@
 #include <ranges>
 #include <thread>
 
+#include "logging.hpp"
 #include "fmt/fmt.hpp"
 #include "system/window_sub_system.hpp"
 #include "system/window.hpp"
@@ -23,6 +24,13 @@ bool forge::Engine::init(const EngineInitOptions &options)
 {
 	m_init_options = options;
 
+	if (!m_init_options.log_file.empty())
+	{
+		log::set_outfile(m_init_options.log_file);
+	}
+
+	log::set_flags(m_init_options.log_flags);
+
 	add_subsystem<WindowSubSystem>();
 
 	fs_monitor = add_subsystem<FsMonitor>();
@@ -39,16 +47,20 @@ bool forge::Engine::init(const EngineInitOptions &options)
 
 		auto result = subsystem->init();
 
+		auto name = util::type_name(typeid(*subsystem));
+
 		if (!result.empty())
 		{
-			auto name = util::type_name(typeid(*subsystem));
-
-			fmt::println("Failed to initialize subsystem ({}): {}", name, result);
+			log::warn("Failed to initialize subsystem ({}): {}", name, result);
 
 			if (subsystem->is_critical())
 			{
 				return false;
 			}
+		}
+		else
+		{
+			log::info("Initialized subsystem {}", name);
 		}
 	}
 
@@ -57,7 +69,7 @@ bool forge::Engine::init(const EngineInitOptions &options)
 
 void forge::Engine::run()
 {
-	start_threaded_subsystems();
+	start_subsystems();
 
 	while (window.should_stay_open())
 	{
@@ -65,9 +77,9 @@ void forge::Engine::run()
 		start_offload_threads();
 
 		// updates main thread subsystems
-		for (const auto &subsystem : m_subsystems)
+		for (const auto &subsystem : m_main_thread_subsystems)
 		{
-			if (subsystem->should_update() && subsystem->get_thread_mode() == SubSystemThreadMode::MainThread)
+			if (subsystem->should_update())
 			{
 				subsystem->update();
 			}
@@ -97,20 +109,15 @@ void forge::Engine::shutdown()
 	}
 }
 
-void forge::Engine::start_threaded_subsystems()
+void forge::Engine::start_subsystems()
 {
 	for (const auto &subsystem : m_subsystems)
 	{
-		if (!subsystem->should_update())
-		{
-			continue;
-		}
-
 		if (subsystem->get_thread_mode() == SubSystemThreadMode::SeparateThread)
 		{
 			m_update_threads.emplace_back(&ISubSystem::threaded_update, subsystem.get());
 		}
-		if (subsystem->get_thread_mode() == SubSystemThreadMode::OffloadThread)
+		else if (subsystem->get_thread_mode() == SubSystemThreadMode::OffloadThread)
 		{
 			m_update_threads.emplace_back(&ISubSystem::offload_update, subsystem.get(),
 				std::ref(m_should_start), std::ref(m_offload_counter),
@@ -118,6 +125,10 @@ void forge::Engine::start_threaded_subsystems()
 				std::ref(m_offload_mutex));
 
 			++m_offload_systems;
+		}
+		else
+		{
+			m_main_thread_subsystems.emplace_back(subsystem.get());
 		}
 	}
 }

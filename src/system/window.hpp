@@ -44,7 +44,7 @@ namespace forge
 			m_window(window)
 		{
 			m_mutex.lock();
-			m_worker_window = glfwCreateWindow(1, 1, "", NULL, window.get_handle());  // Hidden window
+			m_worker_window = glfwCreateWindow(1, 1, "", nullptr, window.get_handle());
 			glfwMakeContextCurrent(m_worker_window);
 		}
 
