@@ -32,14 +32,18 @@ namespace forge
 
 		SubSystemThreadMode get_thread_mode() override
 		{
-			return SubSystemThreadMode::OffloadThread;
+			return SubSystemThreadMode::SeparateThread;
 		}
 
 		int add_watch(std::string_view path, uint32_t events, Callback callback);
-		bool remove_watch(int wd) const;
+		bool remove_watch(int wd);
+
 		uint32_t poll();
 
 	private:
+
+		std::mutex m_mutex;
+
 		int m_fd;
 
 		struct Watchers

@@ -41,39 +41,12 @@ namespace forge
 		virtual bool is_critical() { return false; }
 
 		// will be called if the thread mode is set to SeparateThread
-		void threaded_update()
-		{
-			while (m_threaded_should_run)
-			{
-				if (should_update())
-				{
-					update();
-				}
-			}
-		}
+		void threaded_update();
+
 
 		// will be called if the thread mode is set to OffloadThread
 		void offload_update(std::atomic_bool &should_start, std::atomic_int &counter,
-			std::condition_variable &cv_start, std::condition_variable &cv_done, std::mutex &mutex)
-		{
-			while (m_threaded_should_run)
-			{
-				std::unique_lock lock { mutex };
-
-				cv_start.wait(lock, [&should_start] { return should_start.load(); });
-
-				if (should_update())
-				{
-					update();
-				}
-
-				if (--counter <= 0)
-				{
-					cv_done.notify_one();
-					should_start = false;
-				}
-			}
-		}
+			std::condition_variable &cv_start, std::condition_variable &cv_done, std::mutex &mutex);
 
 	private:
 		std::atomic_bool m_threaded_should_run = true;

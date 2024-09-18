@@ -2,6 +2,7 @@
 #include <string_view>
 
 #include "events/signal.hpp"
+#include "GLFW/glfw3.h"
 
 class GLFWwindow;
 
@@ -26,9 +27,36 @@ namespace forge
 
 		void set_context();
 
+		GLFWwindow* get_handle() const;
+
 		Signal<void(int, int)> on_resize;
 
 	private:
 		GLFWwindow *m_handle;
+	};
+
+	template<class T>
+	class SharedWindowContext
+	{
+	public:
+		SharedWindowContext(T &mutex, const Window &window) :
+			m_mutex(mutex),
+			m_window(window)
+		{
+			m_mutex.lock();
+			m_worker_window = glfwCreateWindow(1, 1, "", NULL, window.get_handle());  // Hidden window
+			glfwMakeContextCurrent(m_worker_window);
+		}
+
+		~SharedWindowContext()
+		{
+			glfwDestroyWindow(m_worker_window);
+			m_mutex.unlock();
+		}
+
+	private:
+		GLFWwindow *m_worker_window;
+		T &m_mutex;
+		const Window &m_window;
 	};
 }

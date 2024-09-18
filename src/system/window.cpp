@@ -66,3 +66,8 @@ void forge::Window::set_context()
 {
 	glfwMakeContextCurrent(m_handle);
 }
+
+GLFWwindow* forge::Window::get_handle() const
+{
+	return m_handle;
+}

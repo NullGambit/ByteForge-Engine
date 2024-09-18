@@ -4,6 +4,8 @@
 
 #include "fmt/fmt.hpp"
 #include "glad/glad.h"
+#include "GLFW/glfw3.h"
+#include "core/engine.hpp"
 #include "system/io.hpp"
 #include "util/macros.hpp"
 
@@ -25,13 +27,71 @@ uint32_t ext_to_shader_type(const std::filesystem::path &path)
 	return GL_NONE;
 }
 
-bool forge::OglShader::compile(const ShaderSource& source)
+bool forge::OglShader::compile(const ShaderSource &source)
+{
+	m_source = source;
+
+	auto &engine = Engine::get_instance();
+
+	auto ok = compile_implementation();
+
+#ifdef SHADER_HOT_RELOAD
+	if (ok)
+	{
+		for (auto &path : m_source)
+		{
+			if (path.empty())
+			{
+				continue;
+			}
+
+			m_wd = engine.fs_monitor->add_watch(path.c_str(), FSE_MODIFY, [&](auto events, auto path)
+			{
+				SharedWindowContext context(m_mutex, engine.window);
+
+				destroy();
+				compile_implementation();
+			});
+		}
+	}
+#endif
+
+	return ok;
+}
+
+void forge::OglShader::destroy()
+{
+	if (m_program > 0)
+	{
+		glDeleteProgram(m_program);
+	}
+
+	m_program = 0;
+}
+
+forge::OglShader::~OglShader()
+{
+
+#ifdef SHADER_HOT_RELOAD
+	auto &engine = Engine::get_instance();
+	engine.fs_monitor->remove_watch(m_wd);
+#endif
+
+	destroy();
+}
+
+void forge::OglShader::use() const
+{
+	glUseProgram(m_program);
+}
+
+bool forge::OglShader::compile_implementation()
 {
 	m_program = glCreateProgram();
 
 	char info_buffer[SHADER_ERROR_LOG_SIZE];
 
-	for (auto &path : source)
+	for (auto &path : m_source)
 	{
 		if (path.empty())
 		{
@@ -87,24 +147,4 @@ bool forge::OglShader::compile(const ShaderSource& source)
 	}
 
 	return true;
-}
-
-void forge::OglShader::destroy()
-{
-	if (m_program > 0)
-	{
-		glDeleteProgram(m_program);
-	}
-
-	m_program = 0;
-}
-
-forge::OglShader::~OglShader()
-{
-	destroy();
-}
-
-void forge::OglShader::use() const
-{
-	glUseProgram(m_program);
 }

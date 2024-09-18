@@ -40,6 +40,8 @@ void forge::LinuxFsMonitor::update()
 
 int forge::LinuxFsMonitor::add_watch(std::string_view path, uint32_t events, Callback callback)
 {
+	std::lock_guard lock {m_mutex};
+
 	int wd = inotify_add_watch(m_fd, path.data(), events);
 
 	if (wd == -1)
@@ -61,8 +63,10 @@ int forge::LinuxFsMonitor::add_watch(std::string_view path, uint32_t events, Cal
 	return wd;
 }
 
-bool forge::LinuxFsMonitor::remove_watch(int wd) const
+bool forge::LinuxFsMonitor::remove_watch(int wd)
 {
+	std::lock_guard lock {m_mutex};
+
 	return inotify_rm_watch(m_fd, wd) == 0;
 }
 
@@ -84,6 +88,8 @@ uint32_t forge::LinuxFsMonitor::poll()
 
 	auto bytes_read = read(m_fd, m_event_buffer.data(), bytes_to_read);
 	int bytes_processed = 0;
+
+	std::lock_guard lock {m_mutex};
 
 	while (bytes_processed < bytes_read)
 	{

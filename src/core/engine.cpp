@@ -25,9 +25,9 @@ bool forge::Engine::init(const EngineInitOptions &options)
 
 	add_subsystem<WindowSubSystem>();
 
+	fs_monitor = add_subsystem<FsMonitor>();
 	renderer = add_subsystem<OglRenderSubSystem>();
 	nexus = add_subsystem<Nexus>();
-	fs_monitor = add_subsystem<FsMonitor>();
 
 	for (const auto &subsystem : m_subsystems)
 	{
@@ -61,6 +61,7 @@ void forge::Engine::run()
 
 	while (window.should_stay_open())
 	{
+		// start offload threads update function
 		start_offload_threads();
 
 		// updates main thread subsystems
@@ -76,10 +77,8 @@ void forge::Engine::run()
 		window.swap_buffers();
 
 		// waits till all offload threads are done
-		{
-			std::unique_lock lock { m_offload_mutex };
-			m_cv_done.wait(lock, [&offload_counter = m_offload_counter]{ return offload_counter <= 0; });
-		}
+		std::unique_lock lock { m_offload_mutex };
+		m_cv_done.wait(lock, [&offload_counter = m_offload_counter]{ return offload_counter <= 0; });
 	}
 
 	// start one last time so the offload threads won't get stuck waiting

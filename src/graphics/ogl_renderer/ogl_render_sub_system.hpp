@@ -2,7 +2,7 @@
 #include <cstdint>
 
 #include "ogl_shader.hpp"
-#include "../../core/isub_system.hpp"
+#include "core/isub_system.hpp"
 
 namespace forge
 {

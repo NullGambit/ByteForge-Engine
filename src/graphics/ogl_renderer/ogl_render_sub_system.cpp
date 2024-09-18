@@ -1,12 +1,12 @@
 #include "ogl_render_sub_system.hpp"
 
 #include "ogl_shader.hpp"
-#include "core/engine.hpp"
 #include "fmt/fmt.hpp"
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
+#include "core/engine.hpp"
 
-#define SHADER_PATH "assets/shaders/"
+#define SHADER_PATH "./assets/shaders/"
 
 std::string forge::OglRenderSubSystem::init()
 {

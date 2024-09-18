@@ -1,9 +1,9 @@
 #pragma once
+
 #include <array>
 #include <cstdint>
 #include <filesystem>
-#include <optional>
-#include <string_view>
+#include <mutex>
 
 namespace forge
 {
@@ -38,12 +38,18 @@ namespace forge
 		[[nodiscard]]
 		uint32_t get_program() const
 		{
+			std::lock_guard lock { m_mutex };
 			return m_program;
 		}
 
 	private:
+#ifdef SHADER_HOT_RELOAD
+		uint32_t m_wd;
+#endif
+		mutable std::mutex m_mutex;
+		ShaderSource m_source;
 		uint32_t m_program;
 
-		uint32_t make_program();
+		bool compile_implementation();
 	};
 }
