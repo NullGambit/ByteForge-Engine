@@ -1,5 +1,7 @@
 #pragma once
 #include <cstdint>
+#include <functional>
+#include <vector>
 
 #include "ogl_shader.hpp"
 #include "core/isub_system.hpp"
@@ -25,6 +27,8 @@ namespace forge
 		bool m_draw_wireframe = false;
 		uint32_t m_vao;
 		OglShader m_tri_shader;
+		std::mutex m_command_mutex;
+		std::vector<std::function<void()>> m_command_queue;
 
 		void handle_framebuffer_resize(int width, int height);
 	};

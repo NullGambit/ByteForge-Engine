@@ -19,7 +19,6 @@ public:
 
 		if (glfwGetKey(engine.window.get_handle(), GLFW_KEY_R))
 		{
-			forge::SharedWindowContext context {m_mutex, engine.window};
 			engine.renderer->toggle_wireframe();
 		}
 	}

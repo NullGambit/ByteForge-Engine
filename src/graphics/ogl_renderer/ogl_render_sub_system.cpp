@@ -69,6 +69,17 @@ std::string forge::OglRenderSubSystem::init()
 
 void forge::OglRenderSubSystem::update()
 {
+	{
+		std::lock_guard lock {m_command_mutex};
+
+		for (auto &command : m_command_queue)
+		{
+			command();
+		}
+
+		m_command_queue.clear();
+	}
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	m_tri_shader.use();
@@ -83,8 +94,13 @@ void forge::OglRenderSubSystem::shutdown()
 
 void forge::OglRenderSubSystem::toggle_wireframe()
 {
-	m_draw_wireframe = !m_draw_wireframe;
-	glPolygonMode(GL_FRONT_AND_BACK, m_draw_wireframe ? GL_LINE: GL_FILL);
+	std::lock_guard lock {m_command_mutex};
+
+	m_command_queue.emplace_back([&draw_wireframe = m_draw_wireframe]
+	{
+		draw_wireframe = !draw_wireframe;
+		glPolygonMode(GL_FRONT_AND_BACK, draw_wireframe ? GL_LINE: GL_FILL);
+	});
 }
 
 void forge::OglRenderSubSystem::handle_framebuffer_resize(int width, int height)
