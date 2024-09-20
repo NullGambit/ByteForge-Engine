@@ -11,7 +11,7 @@
 
 namespace forge
 {
-	class OglRenderSubSystem;
+	class OglRenderer;
 }
 
 namespace forge
@@ -59,7 +59,7 @@ namespace forge
 			return (T*)m_subsystems.emplace_back(std::make_unique<T>(args...)).get();
 		}
 
-		OglRenderSubSystem *renderer;
+		OglRenderer *renderer;
 		Nexus *nexus;
 		FsMonitor *fs_monitor;
 		// TODO: create some sort of window factory class that will create windows and will swap their buffers in the main loop

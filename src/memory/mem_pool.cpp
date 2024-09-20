@@ -1,5 +1,3 @@
-#pragma once
-
 #include "mem_pool.hpp"
 
 #include <sys/mman.h>

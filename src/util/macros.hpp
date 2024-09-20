@@ -13,3 +13,7 @@
 	if (!CONCAT(var_name, _012819212).has_value()) return false;		\
 	auto var_name = std::move(CONCAT(var_name, _012819212).value())		\
 
+
+#define EXPAND_VEC4(vec) vec.x, vec.y, vec.z, vec.w
+#define EXPAND_VEC3(vec) vec.x, vec.y, vec.z
+#define EXPAND_VEC2(vec) vec.x, vec.y

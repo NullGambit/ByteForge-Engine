@@ -6,7 +6,8 @@
 #include "core/engine.hpp"
 #include "src/util/types.hpp"
 #include "core/logging.hpp"
-#include "graphics/ogl_renderer/ogl_render_sub_system.hpp"
+#include "GLFW/glfw3.h"
+#include "graphics/ogl_renderer/ogl_renderer.hpp"
 
 
 class DebugRenderComponent : public forge::BaseComponent

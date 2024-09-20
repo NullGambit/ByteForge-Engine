@@ -11,9 +11,10 @@ include_directories(
         src/
         dep/unordered_dense/include/
         dep/glfw-3.3-stable/include/
-        dep/glad/include/)
+        dep/glad/include/
+        dep)
 
-add_subdirectory(dep/glfw-3.3-stable/)
+add_subdirectory(dep/glfw-3.3-stable/ dep/glm)
 
 add_executable(ByteForge_Engine main.cpp
         dep/glad/include/glad/glad.h
@@ -38,8 +39,8 @@ add_executable(ByteForge_Engine main.cpp
         src/system/window_sub_system.hpp
         src/graphics/ogl_renderer/ogl_shader.cpp
         src/graphics/ogl_renderer/ogl_shader.hpp
-        src/graphics/ogl_renderer/ogl_render_sub_system.cpp
-        src/graphics/ogl_renderer/ogl_render_sub_system.hpp
+        src/graphics/ogl_renderer/ogl_renderer.cpp
+        src/graphics/ogl_renderer/ogl_renderer.hpp
         src/core/engine.hpp
         src/core/engine.cpp
         src/events/type_box.hpp
@@ -52,6 +53,7 @@ add_executable(ByteForge_Engine main.cpp
         src/system/linux/linux_fs_monitor.hpp
         src/core/isub_system.cpp
         src/core/logging.hpp
+        src/concurrency/command_buffer.hpp
 )
 
-target_link_libraries(ByteForge_Engine glfw)
+target_link_libraries(ByteForge_Engine glfw ${OPENGL_LIBRARIES})

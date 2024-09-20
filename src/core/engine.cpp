@@ -1,5 +1,3 @@
-#pragma once
-
 #include "engine.hpp"
 
 #include <condition_variable>
@@ -10,7 +8,7 @@
 #include "fmt/fmt.hpp"
 #include "system/window_sub_system.hpp"
 #include "system/window.hpp"
-#include "graphics/ogl_renderer/ogl_render_sub_system.hpp"
+#include "graphics/ogl_renderer/ogl_renderer.hpp"
 #include "util/types.hpp"
 
 void forge::Engine::quit()
@@ -34,7 +32,7 @@ bool forge::Engine::init(const EngineInitOptions &options)
 	add_subsystem<WindowSubSystem>();
 
 	fs_monitor = add_subsystem<FsMonitor>();
-	renderer = add_subsystem<OglRenderSubSystem>();
+	renderer = add_subsystem<OglRenderer>();
 	nexus = add_subsystem<Nexus>();
 
 	for (const auto &subsystem : m_subsystems)

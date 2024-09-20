@@ -36,4 +36,10 @@ namespace util
     {
         return demangle_name(index.name());
     }
+
+    template<class ...A>
+    struct overload : A... { using A::operator()...; };
+
+    template<class... A>
+    overload(A...) -> overload<A...>;
 }

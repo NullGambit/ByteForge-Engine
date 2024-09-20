@@ -2,7 +2,6 @@
 #include <string_view>
 
 #include "events/signal.hpp"
-#include "GLFW/glfw3.h"
 
 class GLFWwindow;
 
@@ -33,30 +32,5 @@ namespace forge
 
 	private:
 		GLFWwindow *m_handle;
-	};
-
-	template<class T>
-	class SharedWindowContext
-	{
-	public:
-		SharedWindowContext(T &mutex, const Window &window) :
-			m_mutex(mutex),
-			m_window(window)
-		{
-			m_mutex.lock();
-			m_worker_window = glfwCreateWindow(1, 1, "", nullptr, window.get_handle());
-			glfwMakeContextCurrent(m_worker_window);
-		}
-
-		~SharedWindowContext()
-		{
-			glfwDestroyWindow(m_worker_window);
-			m_mutex.unlock();
-		}
-
-	private:
-		GLFWwindow *m_worker_window;
-		T &m_mutex;
-		const Window &m_window;
 	};
 }

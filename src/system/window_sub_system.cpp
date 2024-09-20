@@ -1,5 +1,3 @@
-#pragma once
-
 #include "window_sub_system.hpp"
 
 #include "core/engine.hpp"

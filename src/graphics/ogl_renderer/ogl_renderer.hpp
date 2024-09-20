@@ -4,11 +4,12 @@
 #include <vector>
 
 #include "ogl_shader.hpp"
+#include "concurrency/command_buffer.hpp"
 #include "core/isub_system.hpp"
 
 namespace forge
 {
-	class OglRenderSubSystem : public ISubSystem
+	class OglRenderer : public ISubSystem
 	{
 	public:
 		std::string init() override;
@@ -23,12 +24,17 @@ namespace forge
 
 		void toggle_wireframe();
 
+		// allows for manually adding a command that will be run the next frame
+		void add_command(CommandBuffer<>::Callback &&command)
+		{
+			m_command_buffer.emplace(std::forward<CommandBuffer<>::Callback>(command));
+		}
+
 	private:
 		bool m_draw_wireframe = false;
 		uint32_t m_vao;
 		OglShader m_tri_shader;
-		std::mutex m_command_mutex;
-		std::vector<std::function<void()>> m_command_queue;
+		CommandBuffer<> m_command_buffer;
 
 		void handle_framebuffer_resize(int width, int height);
 	};

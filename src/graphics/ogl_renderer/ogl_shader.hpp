@@ -4,6 +4,10 @@
 #include <cstdint>
 #include <filesystem>
 #include <mutex>
+#include <variant>
+
+#include "container/map.hpp"
+#include "glm/glm.hpp"
 
 namespace forge
 {
@@ -16,6 +20,7 @@ namespace forge
 
 	constexpr auto SHADER_TYPE_COUNT = (size_t)ShaderType::Max;
 	using ShaderSource = std::array<std::filesystem::path, SHADER_TYPE_COUNT>;
+	using UniformValue = std::variant<int, float, glm::vec2, glm::vec3, glm::vec4, glm::mat4>;
 
 	class OglShader
 	{
@@ -23,30 +28,30 @@ namespace forge
 		bool compile(const ShaderSource &source);
 		void destroy();
 
-		OglShader() = default;
-
-		OglShader(OglShader &&other) :
-			m_program(other.m_program)
-		{
-			other.m_program = 0;
-		}
-
 		~OglShader();
 
-		void use() const;
+		OglShader& use();
 
 		[[nodiscard]]
 		uint32_t get_program() const
 		{
-			std::lock_guard lock { m_mutex };
 			return m_program;
 		}
+
+        OglShader& set(std::string_view name, int value);
+        OglShader& set(std::string_view name, float value);
+        OglShader& set(std::string_view name, glm::vec2 value);
+        OglShader& set(std::string_view name, glm::vec3 value);
+        OglShader& set(std::string_view name, glm::vec4 value);
+        OglShader& set(std::string_view name, glm::mat4 value);
 
 	private:
 #ifdef SHADER_HOT_RELOAD
 		uint32_t m_wd;
+		// a cache for uniforms used to set uniforms to their previous state when shaders reload
+		HashMap<std::string, UniformValue, ENABLE_TRANSPARENT_HASH> m_cache;
 #endif
-		mutable std::mutex m_mutex;
+
 		ShaderSource m_source;
 		uint32_t m_program;
 

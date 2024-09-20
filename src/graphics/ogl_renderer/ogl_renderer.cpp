@@ -1,4 +1,4 @@
-#include "ogl_render_sub_system.hpp"
+#include "ogl_renderer.hpp"
 
 #include "ogl_shader.hpp"
 #include "fmt/fmt.hpp"
@@ -8,7 +8,7 @@
 
 #define SHADER_PATH "./assets/shaders/"
 
-std::string forge::OglRenderSubSystem::init()
+std::string forge::OglRenderer::init()
 {
 	auto ok = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
@@ -22,7 +22,7 @@ std::string forge::OglRenderSubSystem::init()
 	auto &engine = Engine::get_instance();
 
 	// TODO: remove connection
-	engine.window.on_resize.connect(this, &OglRenderSubSystem::handle_framebuffer_resize);
+	engine.window.on_resize.connect(this, &OglRenderer::handle_framebuffer_resize);
 
 	// load builtin shaders
 
@@ -67,18 +67,9 @@ std::string forge::OglRenderSubSystem::init()
 	return {};
 }
 
-void forge::OglRenderSubSystem::update()
+void forge::OglRenderer::update()
 {
-	{
-		std::lock_guard lock {m_command_mutex};
-
-		for (auto &command : m_command_queue)
-		{
-			command();
-		}
-
-		m_command_queue.clear();
-	}
+	m_command_buffer.execute_all();
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -88,22 +79,20 @@ void forge::OglRenderSubSystem::update()
 	glBindVertexArray(0);
 }
 
-void forge::OglRenderSubSystem::shutdown()
+void forge::OglRenderer::shutdown()
 {
 }
 
-void forge::OglRenderSubSystem::toggle_wireframe()
+void forge::OglRenderer::toggle_wireframe()
 {
-	std::lock_guard lock {m_command_mutex};
-
-	m_command_queue.emplace_back([&draw_wireframe = m_draw_wireframe]
+	m_command_buffer.emplace([&draw_wireframe = m_draw_wireframe]
 	{
 		draw_wireframe = !draw_wireframe;
 		glPolygonMode(GL_FRONT_AND_BACK, draw_wireframe ? GL_LINE: GL_FILL);
 	});
 }
 
-void forge::OglRenderSubSystem::handle_framebuffer_resize(int width, int height)
+void forge::OglRenderer::handle_framebuffer_resize(int width, int height)
 {
 	glViewport(0, 0, width, height);
 }

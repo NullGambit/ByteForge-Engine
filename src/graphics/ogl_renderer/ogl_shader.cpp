@@ -2,6 +2,7 @@
 
 #include "ogl_shader.hpp"
 
+#include "ogl_renderer.hpp"
 #include "fmt/fmt.hpp"
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
@@ -9,6 +10,9 @@
 #include "core/logging.hpp"
 #include "system/io.hpp"
 #include "util/macros.hpp"
+
+#include "glm/gtc/type_ptr.hpp"
+#include "util/types.hpp"
 
 #define SHADER_ERROR_LOG_SIZE 512
 
@@ -26,6 +30,39 @@ uint32_t ext_to_shader_type(const std::filesystem::path &path)
 	}
 
 	return GL_NONE;
+}
+
+void set_uniform(uint32_t program, std::string_view name, const forge::UniformValue &value)
+{
+	auto location = glGetUniformLocation(program, name.data());
+
+	std::visit(util::overload
+	{
+		[location](int value)
+		{
+			glUniform1i(location, value);
+		},
+		[location](float value)
+		{
+			glUniform1f(location, value);
+		},
+		[location](glm::vec2 value)
+		{
+			glUniform2f(location, EXPAND_VEC2(value));
+		},
+		[location](glm::vec3 value)
+		{
+			glUniform3f(location, EXPAND_VEC3(value));
+		},
+		[location](glm::vec4 value)
+		{
+			glUniform4f(location, EXPAND_VEC4(value));
+		},
+		[location](glm::mat4 value)
+		{
+			glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(value));
+		},
+	}, value);
 }
 
 bool forge::OglShader::compile(const ShaderSource &source)
@@ -48,12 +85,22 @@ bool forge::OglShader::compile(const ShaderSource &source)
 
 			m_wd = engine.fs_monitor->add_watch(path.c_str(), FSE_MODIFY, [&](auto events, auto p)
 			{
-				SharedWindowContext context(m_mutex, engine.window);
+				auto &engine = Engine::get_instance();
 
-				destroy();
-				compile_implementation();
+				engine.renderer->add_command([&]
+				{
+					destroy();
+					compile_implementation();
 
-				log::info("reloaded shader at path {}", path.c_str());
+					glUseProgram(m_program);
+
+					for (auto &[name, value] : m_cache)
+					{
+						set_uniform(m_program, name, value);
+					}
+
+					log::info("reloaded shader at path {}", path.c_str());
+				});
 			});
 		}
 	}
@@ -83,9 +130,72 @@ forge::OglShader::~OglShader()
 	destroy();
 }
 
-void forge::OglShader::use() const
+forge::OglShader& forge::OglShader::use()
 {
 	glUseProgram(m_program);
+	return *this;
+}
+
+forge::OglShader& forge::OglShader::set(std::string_view name, int value)
+{
+	auto location = glGetUniformLocation(m_program, name.data());
+	glUniform1i(location, value);
+
+#ifdef SHADER_HOT_RELOAD
+	m_cache[name] = value;
+#endif
+
+	return *this;
+}
+
+forge::OglShader& forge::OglShader::set(std::string_view name, float value)
+{
+	auto location = glGetUniformLocation(m_program, name.data());
+	glUniform1f(location, value);
+#ifdef SHADER_HOT_RELOAD
+	m_cache[name] = value;
+#endif
+	return *this;
+}
+
+forge::OglShader& forge::OglShader::set(std::string_view name, glm::vec2 value)
+{
+	auto location = glGetUniformLocation(m_program, name.data());
+	glUniform2f(location, EXPAND_VEC2(value));
+#ifdef SHADER_HOT_RELOAD
+	m_cache[name] = value;
+#endif
+	return *this;
+}
+
+forge::OglShader& forge::OglShader::set(std::string_view name, glm::vec3 value)
+{
+	auto location = glGetUniformLocation(m_program, name.data());
+	glUniform3f(location, EXPAND_VEC3(value));
+#ifdef SHADER_HOT_RELOAD
+	m_cache[name] = value;
+#endif
+	return *this;
+}
+
+forge::OglShader& forge::OglShader::set(std::string_view name, glm::vec4 value)
+{
+	auto location = glGetUniformLocation(m_program, name.data());
+	glUniform4f(location, EXPAND_VEC4(value));
+#ifdef SHADER_HOT_RELOAD
+	m_cache[name] = value;
+#endif
+	return *this;
+}
+
+forge::OglShader& forge::OglShader::set(std::string_view name, glm::mat4 value)
+{
+	auto location = glGetUniformLocation(m_program, name.data());
+	glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(value));
+#ifdef SHADER_HOT_RELOAD
+	m_cache[name] = value;
+#endif
+	return *this;
 }
 
 bool forge::OglShader::compile_implementation()
