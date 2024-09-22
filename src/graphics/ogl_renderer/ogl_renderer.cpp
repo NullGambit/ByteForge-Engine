@@ -33,11 +33,13 @@ std::string forge::OglRenderer::init()
 
 #undef C
 
+
 	float vertices[] = {
-		0.5f,  0.5f, 0.0f,  // top right
-		0.5f, -0.5f, 0.0f,  // bottom right
-	   -0.5f, -0.5f, 0.0f,  // bottom left
-	   -0.5f,  0.5f, 0.0f   // top left
+		// positions        // texture coords
+		0.5f,  0.5f, 0.0f,   1.0f, 1.0f,   // top right
+		0.5f, -0.5f, 0.0f,   1.0f, 0.0f,   // bottom right
+	   -0.5f, -0.5f, 0.0f,   0.0f, 0.0f,   // bottom left
+	   -0.5f,  0.5f, 0.0f,   0.0f, 1.0f    // top left
    };
 
 	uint32_t indices[] =
@@ -45,6 +47,7 @@ std::string forge::OglRenderer::init()
 		0, 1, 3,   // first triangle
 		1, 2, 3    // second triangle
 	};
+
 
 	uint32_t vbo, ebo;
 
@@ -61,8 +64,13 @@ std::string forge::OglRenderer::init()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)0);
 	glEnableVertexAttribArray(0);
+
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+
+	m_wall_texture.load("assets/textures/wall.jpg");
 
 	return {};
 }
@@ -73,6 +81,7 @@ void forge::OglRenderer::update()
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	m_wall_texture.bind();
 	m_tri_shader.use();
 	glBindVertexArray(m_vao);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);

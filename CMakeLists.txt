@@ -54,6 +54,14 @@ add_executable(ByteForge_Engine main.cpp
         src/core/isub_system.cpp
         src/core/logging.hpp
         src/concurrency/command_buffer.hpp
+        src/graphics/image/image.hpp
+        dep/stb/stb_image.h
+        src/graphics/ogl_renderer/ogl_texture.cpp
+        src/graphics/ogl_renderer/ogl_texture.hpp
+        src/resources/resource.hpp
+        src/graphics/image/stb_image.hpp
+        src/graphics/image/stb_image.cpp
+        src/graphics/image/image.cpp
 )
 
 target_link_libraries(ByteForge_Engine glfw ${OPENGL_LIBRARIES})

@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "ogl_shader.hpp"
+#include "ogl_texture.hpp"
 #include "concurrency/command_buffer.hpp"
 #include "core/isub_system.hpp"
 
@@ -34,6 +35,7 @@ namespace forge
 		bool m_draw_wireframe = false;
 		uint32_t m_vao;
 		OglShader m_tri_shader;
+		OglTexture m_wall_texture;
 		CommandBuffer<> m_command_buffer;
 
 		void handle_framebuffer_resize(int width, int height);

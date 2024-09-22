@@ -198,6 +198,141 @@ forge::OglShader& forge::OglShader::set(std::string_view name, glm::mat4 value)
 	return *this;
 }
 
+struct ShaderParser
+{
+	const std::string &source;
+	size_t off = 0;
+
+	ShaderParser(const std::string &source) :
+		source(source)
+	{}
+
+	bool at_end()
+	{
+		return off >= source.size();
+	}
+
+	char peak()
+	{
+		if (at_end())
+		{
+			return '\0';
+		}
+
+		return source[off];
+	}
+
+	char peak_next()
+	{
+		if (off+1 >= source.size())
+		{
+			return '\0';
+		}
+
+		return source[off + 1];
+	}
+
+	char advance()
+	{
+		return source[off++];
+	}
+
+	bool match(char c)
+	{
+		if (peak() == c)
+		{
+			++off;
+			return true;
+		}
+
+		return false;
+	}
+
+	bool match_two(char a, char b)
+	{
+		if (peak() == a && peak_next() == b)
+		{
+			off += 2;
+			return true;
+		}
+
+		return false;
+	}
+
+	void scan_alpha()
+	{
+		while (!at_end() && isalpha(peak()))
+		{
+			advance();
+		}
+	}
+};
+
+// a terrible parser written to preprocess headers
+std::optional<std::string> preprocess_shader(const std::string &source)
+{
+	ShaderParser parser {source};
+	std::string out;
+
+	out.reserve(source.size() * 2);
+
+	while (!parser.at_end())
+	{
+		if (parser.match_two('/', '/'))
+		{
+			while (!parser.at_end() && !parser.match('\n'))
+			{
+				parser.advance();
+			}
+		}
+		else if (parser.match_two('/', '*'))
+		{
+			while (!parser.at_end() && !parser.match_two('/', '*'))
+			{
+				parser.advance();
+			}
+		}
+		else if (parser.match('#'))
+		{
+			size_t start = parser.off;
+
+			parser.scan_alpha();
+
+			std::string_view name {source.data() + start, parser.off - start};
+
+			if (name != "include")
+			{
+				out += "#";
+				out += name;
+
+				continue;
+			}
+
+			fmt::println(name);
+
+			parser.advance();
+
+			start = parser.off;
+
+			parser.scan_alpha();
+
+			std::string_view path {source.data() + start, parser.off - start};
+
+			parser.advance();
+
+			UNWRAP_OR_RETURN(contents, forge::read_entire_file(path));
+
+			out += contents;
+		}
+		else
+		{
+			out += parser.advance();
+		}
+	}
+
+	return out;
+}
+
 bool forge::OglShader::compile_implementation()
 {
 	m_program = glCreateProgram();
@@ -220,6 +355,8 @@ bool forge::OglShader::compile_implementation()
 			log::warn("unsupported glsl shader type found");
 			continue;
 		}
+
+		// UNWRAP_OR_RETURN_FALSE(processed_contents, preprocess_shader(contents));
 
 		auto id = glCreateShader(type);
 		auto *data = contents.data();
