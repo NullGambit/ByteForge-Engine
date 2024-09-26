@@ -26,6 +26,10 @@ bool forge::Engine::init(const EngineInitOptions &options)
 	{
 		log::set_outfile(m_init_options.log_file);
 	}
+	if (!m_init_options.log_time_fmt.empty())
+	{
+		log::set_time_fmt(m_init_options.log_time_fmt);
+	}
 
 	log::set_flags(m_init_options.log_flags);
 

@@ -2,6 +2,20 @@
 
 #include <sys/mman.h>
 
+void forge::IComponent::set_enabled(bool value)
+{
+	m_is_enabled = value;
+
+	if (m_is_enabled)
+	{
+		on_enabled();
+	}
+	else
+	{
+		on_disabled();
+	}
+}
+
 void forge::Entity::remove_child(Entity *child)
 {
 	auto *node = m_children;
@@ -79,9 +93,9 @@ void forge::Nexus::ComponentType::update(DeltaTime delta) const
 
 	for (int i = 0; i < mem_pool.length(); i++)
 	{
-		auto *component = (BaseComponent*)memory;
+		auto *component = (IComponent*)memory;
 
-		if (component->m_is_active)
+		if (component->m_is_active && component->m_is_enabled)
 		{
 			component->update(delta);
 		}

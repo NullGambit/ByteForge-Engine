@@ -24,6 +24,11 @@ public:
 		m_file = fopen(path.data(), "a");
 	}
 
+	static void set_time_fmt(std::string_view fmt)
+	{
+		m_time_fmt = fmt;
+	}
+
 	static void disable_file()
 	{
 		if (m_file == nullptr)
@@ -70,6 +75,7 @@ public:
 private:
 	inline static FILE *m_file;
 	inline static uint8_t m_flags;
+	inline static std::string_view m_time_fmt = "%x %X";
 
 	template<typename... A>
 	static void do_log(std::string_view level, FILE *file, std::string_view fmt, A&&... a)
@@ -115,7 +121,7 @@ private:
 
         info = localtime(&tt);
 
-        strftime(buff.data(), MAX_LEN, "%x %X", info);
+        strftime(buff.data(), MAX_LEN, m_time_fmt.data(), info);
 
         return buff;
     }

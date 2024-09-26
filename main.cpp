@@ -6,10 +6,10 @@
 #include "core/engine.hpp"
 #include "src/util/types.hpp"
 #include "core/logging.hpp"
-#include "GLFW/glfw3.h"
 #include "graphics/ogl_renderer/ogl_renderer.hpp"
+#include "GLFW/glfw3.h"
 
-class DebugRenderComponent : public forge::BaseComponent
+class DebugRenderComponent : public forge::IComponent
 {
 public:
 	void update(forge::DeltaTime delta) override

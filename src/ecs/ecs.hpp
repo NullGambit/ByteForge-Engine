@@ -47,7 +47,7 @@ namespace forge
         uint8_t *pointer;
     };
 
-    using OnComponentDestroy = forge::Signal<void()>;
+    using OnComponentDestroy = Signal<void()>;
 
     using FieldVar = std::variant<float*, double*, int*, std::string*>;
 
@@ -57,19 +57,29 @@ namespace forge
         FieldVar var;
     };
 
-    class BaseComponent
+    class IComponent
     {
     public:
-        virtual ~BaseComponent() = default;
+        virtual ~IComponent() = default;
 
         virtual void update(DeltaTime delta) {}
+
+        void set_enabled(bool value);
 
         virtual std::vector<ComponentField> export_fields() { return {}; }
 
     private:
         friend Nexus;
+        // if false this component has been freed
         bool m_is_active = true;
+        // if false this component should not be updated
+        bool m_is_enabled = true;
+
+    protected:
         Entity *m_owner;
+
+        virtual void on_enabled() {}
+        virtual void on_disabled() {}
     };
 
     class Entity final
@@ -145,9 +155,9 @@ namespace forge
             {
                 auto *mem = (T*)mem_pool.memory() + offset_to_free;
 
-                if (std::derived_from<T, BaseComponent>)
+                if (std::derived_from<T, IComponent>)
                 {
-                    auto *component = (BaseComponent*)mem;
+                    auto *component = (IComponent*)mem;
                     component->m_is_active = false;
                 }
 
@@ -191,7 +201,7 @@ namespace forge
                 return EcsResult::CouldNotAllocateComponentMemory;
             }
 
-            if (std::derived_from<T, BaseComponent> && should_update)
+            if (std::derived_from<T, IComponent> && should_update)
             {
 
                 m_update_table.emplace_back(type);
@@ -267,7 +277,7 @@ namespace forge
 
             auto [ptr, offset] = ct.mem_pool.emplace<T>();
 
-            if constexpr (std::derived_from<T, BaseComponent>)
+            if constexpr (std::derived_from<T, IComponent>)
             {
                 ptr->m_owner = entity;
             }

@@ -1,7 +1,6 @@
 #pragma once
 #include <cstdint>
 #include <functional>
-#include <vector>
 
 #include "ogl_shader.hpp"
 #include "ogl_texture.hpp"
@@ -36,6 +35,7 @@ namespace forge
 		uint32_t m_vao;
 		OglShader m_tri_shader;
 		OglTexture m_wall_texture;
+		OglTexture m_face_texture;
 		CommandBuffer<> m_command_buffer;
 
 		void handle_framebuffer_resize(int width, int height);

@@ -5,6 +5,7 @@
 
 namespace forge
 {
+	// TODO: make this into a resource
 	struct Image
 	{
 		int width;
@@ -13,10 +14,10 @@ namespace forge
 		uint8_t *data = nullptr;
 
 		Image() = default;
-		Image(std::string_view path);
+		Image(std::string_view path, bool load_flipped = false);
 		~Image();
 
-		bool load(std::string_view path);
+		bool load(std::string_view path, bool load_flipped = false);
 		void unload();
 	};
 }

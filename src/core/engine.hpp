@@ -23,6 +23,7 @@ namespace forge
 		int window_height;
 		uint8_t log_flags;
 		std::string_view log_file;
+		std::string_view log_time_fmt;
 	};
 
 	class Engine
