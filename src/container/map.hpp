@@ -17,6 +17,13 @@ namespace forge
 			  class Bucket = ankerl::unordered_dense::bucket_type::standard>
     using HashMap = ankerl::unordered_dense::map<Key, T, Hash, KeyEqual, AllocatorOrContainer, Bucket>;
 
+	template <class Key,
+			  class Hash = ankerl::unordered_dense::hash<Key>,
+			  class KeyEqual = std::equal_to<Key>,
+			  class AllocatorOrContainer = std::allocator<std::pair<Key, void>>,
+			  class Bucket = ankerl::unordered_dense::bucket_type::standard>
+    using HashSet = ankerl::unordered_dense::map<Key, void, Hash, KeyEqual, AllocatorOrContainer, Bucket>;
+
 	struct string_hash
     {
         using hash_type = Hash<std::string_view>;

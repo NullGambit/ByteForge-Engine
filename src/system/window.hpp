@@ -1,5 +1,6 @@
 #pragma once
 #include <string_view>
+#include <glm/vec2.hpp>
 
 #include "events/signal.hpp"
 
@@ -27,6 +28,9 @@ namespace forge
 		void set_context();
 
 		GLFWwindow* get_handle() const;
+
+		[[nodiscard]]
+		glm::ivec2 get_size() const;
 
 		Signal<void(int, int)> on_resize;
 

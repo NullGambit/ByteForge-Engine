@@ -11,6 +11,14 @@
 #include "graphics/ogl_renderer/ogl_renderer.hpp"
 #include "util/types.hpp"
 
+forge::Engine::Engine()
+{
+	window_sub_system = add_subsystem<WindowSubSystem>();
+	fs_monitor = add_subsystem<FsMonitor>();
+	renderer = add_subsystem<OglRenderer>();
+	nexus = add_subsystem<Nexus>();
+}
+
 void forge::Engine::quit()
 {
 	window.set_should_close(true);
@@ -32,12 +40,6 @@ bool forge::Engine::init(const EngineInitOptions &options)
 	}
 
 	log::set_flags(m_init_options.log_flags);
-
-	add_subsystem<WindowSubSystem>();
-
-	fs_monitor = add_subsystem<FsMonitor>();
-	renderer = add_subsystem<OglRenderer>();
-	nexus = add_subsystem<Nexus>();
 
 	for (const auto &subsystem : m_subsystems)
 	{
@@ -109,6 +111,11 @@ void forge::Engine::shutdown()
 		subsystem->shutdown();
 		subsystem.reset();
 	}
+}
+
+float forge::Engine::get_engine_runtime() const
+{
+	return window_sub_system->get_runtime();
 }
 
 void forge::Engine::start_subsystems()

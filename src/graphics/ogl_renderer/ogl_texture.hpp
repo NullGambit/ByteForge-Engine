@@ -27,14 +27,15 @@ namespace forge
 
 		void bind(int unit = 0);
 
-		uint32_t get_id() const
+		[[nodiscard]]
+		u32 get_id() const
 		{
 			return m_id;
 		}
 
 	private:
 		TextureOptions m_options;
-		uint32_t m_id;
+		u32 m_id;
 	};
 }
 

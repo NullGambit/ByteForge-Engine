@@ -9,9 +9,11 @@
 #include "../fmt/fmt.hpp"
 #include "../memory/defs.hpp"
 #include "../memory/mem_pool.hpp"
-#include "macro_warcrimes.hpp"
 #include "../events/signal.hpp"
 #include "core/isub_system.hpp"
+
+// should get included as a part of ecs.hpp. don't remove this.
+#include "macro_warcrimes.hpp"
 
 #define ECS_MAX_MAPPED_MEMORY GB(8)
 
@@ -330,23 +332,13 @@ namespace forge
             return EcsResult::Ok;
         }
 
-        void update() override
-        {
-            for (auto &type : m_update_table)
-            {
-                auto iter = m_component_table.find(type);
+        void update() override;
 
-                if (iter == m_component_table.end())
-                {
-                    continue;
-                }
-
-                iter->second.update(5.32);
-            }
-        }
 
     private:
         friend Entity;
+
+        float m_previous_time;
 
         HashMap<std::type_index, ComponentType> m_component_table;
         HashMap<std::string_view, Entity*> m_name_table;

@@ -10,5 +10,8 @@ namespace forge
 		void shutdown() override;
 		void update() override;
 		bool is_critical() override { return true; }
+
+		[[nodiscard]]
+		float get_runtime() const;
 	};
 }

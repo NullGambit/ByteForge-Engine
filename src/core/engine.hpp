@@ -8,6 +8,7 @@
 #include "ecs/ecs.hpp"
 #include "system/fs_monitor.hpp"
 #include "system/window.hpp"
+#include "system/window_sub_system.hpp"
 
 namespace forge
 {
@@ -30,7 +31,7 @@ namespace forge
 	{
 	public:
 
-		Engine() = default;
+		Engine();
 
 		Engine(const Engine&) = delete;
 		Engine& operator=(const Engine&) = delete;
@@ -49,6 +50,8 @@ namespace forge
 
 		void shutdown();
 
+		float get_engine_runtime() const;
+
 		const EngineInitOptions& get_init_options() const
 		{
 			return m_init_options;
@@ -60,6 +63,7 @@ namespace forge
 			return (T*)m_subsystems.emplace_back(std::make_unique<T>(args...)).get();
 		}
 
+		WindowSubSystem *window_sub_system;
 		OglRenderer *renderer;
 		Nexus *nexus;
 		FsMonitor *fs_monitor;

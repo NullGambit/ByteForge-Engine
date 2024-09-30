@@ -7,6 +7,7 @@
 #include <variant>
 
 #include "container/map.hpp"
+#include "core/type_def.hpp"
 #include "glm/glm.hpp"
 
 namespace forge
@@ -47,7 +48,7 @@ namespace forge
 
 	private:
 #ifdef SHADER_HOT_RELOAD
-		uint32_t m_wd;
+		u32 m_wd;
 		// a cache for uniforms used to set uniforms to their previous state when shaders reload
 		HashMap<std::string, UniformValue, ENABLE_TRANSPARENT_HASH> m_cache;
 #endif

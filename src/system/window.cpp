@@ -71,3 +71,12 @@ GLFWwindow* forge::Window::get_handle() const
 {
 	return m_handle;
 }
+
+glm::ivec2 forge::Window::get_size() const
+{
+	glm::ivec2 out;
+
+	glfwGetWindowSize(m_handle, &out.x, &out.y);
+
+	return out;
+}

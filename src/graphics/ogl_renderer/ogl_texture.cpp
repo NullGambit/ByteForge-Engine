@@ -1,5 +1,6 @@
 #include "ogl_texture.hpp"
 
+#include "core/logging.hpp"
 #include "fmt/fmt.hpp"
 #include "graphics/image/image.hpp"
 #include "glad/glad.h"

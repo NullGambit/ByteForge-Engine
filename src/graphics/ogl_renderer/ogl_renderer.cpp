@@ -1,10 +1,17 @@
 #include "ogl_renderer.hpp"
 
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/ext/matrix_transform.hpp>
+
 #include "ogl_shader.hpp"
 #include "fmt/fmt.hpp"
 #include "glad/glad.h"
 #include "GLFW/glfw3.h"
 #include "core/engine.hpp"
+#include "core/logging.hpp"
+#include "graphics/mesh_primitives.hpp"
+#include "util/macros.hpp"
+#include "util/random.hpp"
 
 #define SHADER_PATH "./assets/shaders/"
 
@@ -39,21 +46,6 @@ std::string forge::OglRenderer::init()
 #undef C
 
 
-	float vertices[] = {
-		// positions        // texture coords
-		0.5f,  0.5f, 0.0f,   2.0f, 2.0f,   // top right
-		0.5f, -0.5f, 0.0f,   2.0f, 0.0f,   // bottom right
-	   -0.5f, -0.5f, 0.0f,   0.0f, 0.0f,   // bottom left
-	   -0.5f,  0.5f, 0.0f,   0.0f, 2.0f    // top left
-   };
-
-	uint32_t indices[] =
-	{  // note that we start from 0!
-		0, 1, 3,   // first triangle
-		1, 2, 3    // second triangle
-	};
-
-
 	uint32_t vbo, ebo;
 
 	glGenVertexArrays(1, &m_vao);
@@ -63,11 +55,7 @@ std::string forge::OglRenderer::init()
 	glBindVertexArray(m_vao);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(CUBE_VERTS), CUBE_VERTS, GL_STATIC_DRAW);
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)0);
 	glEnableVertexAttribArray(0);
@@ -75,8 +63,19 @@ std::string forge::OglRenderer::init()
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(3 * sizeof(float)));
 	glEnableVertexAttribArray(1);
 
-	m_wall_texture.load("assets/textures/wall.jpg");
-	m_face_texture.load("assets/textures/awesomeface.png", {.flip_on_load = true, .wrap_mode = TextureWrap::Repeat});
+	m_cube_texture.load("assets/textures/smoking_rat.png");
+
+	glEnable(GL_MULTISAMPLE);
+	glEnable(GL_DEPTH_TEST);
+
+	m_camera.set_projection();
+
+	srand(time(0));
+
+	for (int i = 0; i < 25; i++)
+	{
+		m_cube_positions.emplace_back(util::rand_vec3(-5, 5), util::rand_vec3(0, 360));
+	}
 
 	return {};
 }
@@ -87,13 +86,28 @@ void forge::OglRenderer::update()
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	m_wall_texture.bind();
-	m_face_texture.bind(1);
+	m_cube_texture.bind();
+
 	m_tri_shader.use();
-	m_tri_shader.set("texture0", 0);
-	m_tri_shader.set("texture1", 1);
+
+	auto runtime = Engine::get_instance().get_engine_runtime();
+
 	glBindVertexArray(m_vao);
-	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+	for (auto i = 0; const auto &[positon, euler_angle] : m_cube_positions)
+	{
+		glm::mat4 model {1.0};
+
+		model = glm::translate(model, positon);
+		model = glm::scale(model, glm::vec3{0.5});
+
+		model = glm::rotate(model, runtime, euler_angle);
+
+		m_tri_shader.set("pvm", m_pv * model);
+
+		glDrawArrays(GL_TRIANGLES, 0, 36);
+	}
+
 	glBindVertexArray(0);
 }
 

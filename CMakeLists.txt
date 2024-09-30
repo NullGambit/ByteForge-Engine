@@ -44,7 +44,6 @@ add_executable(ByteForge_Engine main.cpp
         src/core/engine.hpp
         src/core/engine.cpp
         src/events/type_box.hpp
-        src/sync/atomic_scope_lock.hpp
         src/system/io.cpp
         src/system/io.hpp
         src/util/macros.hpp
@@ -62,6 +61,19 @@ add_executable(ByteForge_Engine main.cpp
         src/graphics/image/stb_image.hpp
         src/graphics/image/stb_image.cpp
         src/graphics/image/image.cpp
+        src/core/type_def.hpp
+        src/system/virtual_memory.hpp
+        src/system/linux/linux_virtual_memory.cpp
+        src/system/linux/linux_virtual_memory.hpp
+        src/container/string_id.cpp
+        src/container/string_id.hpp
+        src/graphics/mesh_primitives.hpp
+        src/util/random.hpp
+        src/graphics/camera.cpp
+        src/graphics/camera.hpp
+        src/graphics/camera.cpp
 )
+
+target_compile_options(ByteForge_Engine PRIVATE -include ${CMAKE_SOURCE_DIR}/src/core/type_def.hpp)
 
 target_link_libraries(ByteForge_Engine glfw ${OPENGL_LIBRARIES})

@@ -2,6 +2,8 @@
 
 #include <sys/mman.h>
 
+#include "core/engine.hpp"
+
 void forge::IComponent::set_enabled(bool value)
 {
 	m_is_enabled = value;
@@ -147,4 +149,25 @@ void forge::Nexus::delete_entity(Entity* entity)
 	entity->m_components.clear();
 
 	m_entities.free(entity->m_offset);
+}
+
+void forge::Nexus::update()
+{
+	auto current_time = Engine::get_instance().get_engine_runtime();
+
+	auto delta = current_time - m_previous_time;
+
+	m_previous_time = current_time;
+
+	for (auto &type : m_update_table)
+	{
+		auto iter = m_component_table.find(type);
+
+		if (iter == m_component_table.end())
+		{
+			continue;
+		}
+
+		iter->second.update(delta);
+	}
 }

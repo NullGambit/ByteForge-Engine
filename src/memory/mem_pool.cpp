@@ -3,12 +3,13 @@
 #include <sys/mman.h>
 
 #include "../fmt/fmt.hpp"
+#include "system/virtual_memory.hpp"
 
 bool forge::MemPool::init(size_t element_size, size_t map_size)
 {
 	m_map_size = map_size;
 
-	m_memory = (uint8_t*)mmap(nullptr, map_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	m_memory = virtual_alloc(map_size);
 
 	if (m_memory == MAP_FAILED)
 	{
@@ -31,7 +32,7 @@ void forge::MemPool::destroy()
 {
 	if (m_memory)
 	{
-		munmap(m_memory, m_map_size);
+		virtual_free(m_memory);
 	}
 }
 
