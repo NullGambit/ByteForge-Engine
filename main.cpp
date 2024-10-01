@@ -1,14 +1,8 @@
 #include "glm/glm.hpp"
-#include <condition_variable>
-#include <iostream>
-#include <thread>
-
 #include "core/engine.hpp"
+#include "framework/input.hpp"
 #include "src/util/types.hpp"
-#include "core/logging.hpp"
-#include "core/type_def.hpp"
 #include "graphics/ogl_renderer/ogl_renderer.hpp"
-#include "GLFW/glfw3.h"
 
 class DebugRenderComponent : public forge::IComponent
 {
@@ -17,7 +11,7 @@ public:
 	{
 		auto &engine = forge::Engine::get_instance();
 
-		if (glfwGetKey(engine.window.get_handle(), GLFW_KEY_R))
+		if (forge::is_key_pressed(forge::Key::R))
 		{
 			engine.renderer->toggle_wireframe();
 		}
@@ -60,14 +54,14 @@ int main()
 		.window_height = 480,
 	});
 
-	auto *entity = engine.nexus->create_entity();
-
-	entity->add_components<DebugRenderComponent, CameraComponent>(true);
-
 	if (!ok)
 	{
 		return -1;
 	}
+
+	auto *entity = engine.nexus->create_entity();
+
+	entity->add_components<DebugRenderComponent, CameraComponent>(true);
 
 	engine.run();
 

@@ -11,9 +11,9 @@ namespace forge
 	{
 		// will run on the main thread
 		MainThread,
-		// will be updated on a different thread but will wait until all other main and offload threads are done updating to start the next frame
+		// will be updated on a different thread but will wait until the main and all other offload threads are done updating to start the next frame
 		OffloadThread,
-		// will run on its own thread and won't wait for other subsystems to finish updating
+		// will run on its own thread as often as it can
 		SeparateThread,
 	};
 
@@ -35,9 +35,11 @@ namespace forge
 		}
 
 		// will set the thread mode at the beginning of the run loop
-		virtual SubSystemThreadMode get_thread_mode() { return SubSystemThreadMode::MainThread; }
+		[[nodiscard]]
+		virtual inline SubSystemThreadMode get_thread_mode() { return SubSystemThreadMode::MainThread; }
 
 		// if true the system init call must succeed or else the engine will fail to init
+		[[nodiscard]]
 		virtual bool is_critical() { return false; }
 
 		// will be called if the thread mode is set to SeparateThread

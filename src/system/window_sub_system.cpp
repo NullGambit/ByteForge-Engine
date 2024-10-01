@@ -37,6 +37,11 @@ void forge::WindowSubSystem::shutdown()
 
 void forge::WindowSubSystem::update()
 {
+	poll_events();
+}
+
+void forge::WindowSubSystem::poll_events()
+{
 	glfwPollEvents();
 }
 

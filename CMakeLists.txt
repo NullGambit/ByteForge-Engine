@@ -72,6 +72,9 @@ add_executable(ByteForge_Engine main.cpp
         src/graphics/camera.cpp
         src/graphics/camera.hpp
         src/graphics/camera.cpp
+        src/system/input_keys.hpp
+        src/framework/input.cpp
+        src/framework/input.hpp
 )
 
 target_compile_options(ByteForge_Engine PRIVATE -include ${CMAKE_SOURCE_DIR}/src/core/type_def.hpp)

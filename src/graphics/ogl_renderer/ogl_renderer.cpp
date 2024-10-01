@@ -1,5 +1,6 @@
 #include "ogl_renderer.hpp"
 
+#include <set>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 
@@ -14,6 +15,7 @@
 #include "util/random.hpp"
 
 #define SHADER_PATH "./assets/shaders/"
+
 
 std::string forge::OglRenderer::init()
 {
@@ -68,14 +70,39 @@ std::string forge::OglRenderer::init()
 	glEnable(GL_MULTISAMPLE);
 	glEnable(GL_DEPTH_TEST);
 
-	m_camera.set_projection();
-
 	srand(time(0));
 
-	for (int i = 0; i < 25; i++)
+	std::set<int> pos_set;
+	constexpr auto MAX_ATTEMPTS = 10;
+
+	for (int i = 0; i < 26; i++)
 	{
-		m_cube_positions.emplace_back(util::rand_vec3(-5, 5), util::rand_vec3(0, 360));
+		auto rand_position = util::rand_vec3(-5, 5);
+		auto length = glm::length(rand_position) * 2;
+
+		auto attempts = 0;
+
+		while (!pos_set.emplace(length).second && attempts <= MAX_ATTEMPTS)
+		{
+			rand_position = util::rand_vec3(-5, 5);
+			length = glm::length(rand_position) * 2;
+			attempts++;
+		}
+
+		if (attempts == MAX_ATTEMPTS)
+		{
+			continue;
+		}
+
+		m_cube_positions.emplace_back(rand_position, util::rand_vec3(0, 360));
 	}
+
+	auto &window = Engine::get_instance().window;
+
+	auto win_size = window.get_size();
+
+	// set default projection view matrix
+	m_pv = glm::perspective(glm::radians(65.0f), (float)win_size.x / win_size.y, 0.1f, 1000.0f);
 
 	return {};
 }
@@ -94,7 +121,7 @@ void forge::OglRenderer::update()
 
 	glBindVertexArray(m_vao);
 
-	for (auto i = 0; const auto &[positon, euler_angle] : m_cube_positions)
+	for (const auto &[positon, euler_angle] : m_cube_positions)
 	{
 		glm::mat4 model {1.0};
 
@@ -126,5 +153,8 @@ void forge::OglRenderer::toggle_wireframe()
 
 void forge::OglRenderer::handle_framebuffer_resize(int width, int height)
 {
-	glViewport(0, 0, width, height);
+	m_command_buffer.emplace([width, height]
+	{
+		glViewport(0, 0, width, height);
+	});
 }

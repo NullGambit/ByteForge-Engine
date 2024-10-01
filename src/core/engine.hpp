@@ -89,7 +89,6 @@ namespace forge
 
 		void start_subsystems();
 		void stop_threaded_subsystems();
-
 		void start_offload_threads();
 	};
 }

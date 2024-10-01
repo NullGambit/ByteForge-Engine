@@ -11,6 +11,8 @@ namespace forge
 		void update() override;
 		bool is_critical() override { return true; }
 
+		void poll_events();
+
 		[[nodiscard]]
 		float get_runtime() const;
 	};

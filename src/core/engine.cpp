@@ -9,6 +9,7 @@
 #include "system/window_sub_system.hpp"
 #include "system/window.hpp"
 #include "graphics/ogl_renderer/ogl_renderer.hpp"
+#include "GLFW/glfw3.h"
 #include "util/types.hpp"
 
 forge::Engine::Engine()
@@ -77,6 +78,7 @@ void forge::Engine::run()
 
 	while (window.should_stay_open())
 	{
+
 		// start offload threads update function
 		start_offload_threads();
 
@@ -89,12 +91,14 @@ void forge::Engine::run()
 			}
 		}
 
-		// TODO: this should swap all window buffers
-		window.swap_buffers();
-
 		// waits till all offload threads are done
 		std::unique_lock lock { m_offload_mutex };
 		m_cv_done.wait(lock, [&offload_counter = m_offload_counter]{ return offload_counter <= 0; });
+
+		// TODO: this should swap all window buffers
+		window.swap_buffers();
+		window.reset_input();
+		window_sub_system->poll_events();
 	}
 
 	// start one last time so the offload threads won't get stuck waiting
@@ -111,6 +115,8 @@ void forge::Engine::shutdown()
 		subsystem->shutdown();
 		subsystem.reset();
 	}
+
+	log::info("Engine shutdown successfully");
 }
 
 float forge::Engine::get_engine_runtime() const
