@@ -89,6 +89,17 @@ void forge::Entity::foreach_child(std::function<void(Entity*)> callback, bool re
 		}
 	}
 }
+
+void forge::Entity::on_editor_enter()
+{
+	for (auto &[_, view] : m_components)
+	{
+		auto *component = (IComponent*)view.pointer;
+
+		component->on_editor_enter();
+	}
+}
+
 void forge::Nexus::ComponentType::update(DeltaTime delta) const
 {
 	auto *memory = mem_pool.memory();

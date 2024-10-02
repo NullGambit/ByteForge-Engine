@@ -25,7 +25,7 @@ namespace forge
 		// 	return SubSystemThreadMode::OffloadThread;
 		// }
 
-		void toggle_wireframe();
+		void set_wireframe(bool enable);
 
 		// allows for manually adding a command that will be run the next frame
 		void add_command(CommandBuffer<>::Callback &&command)

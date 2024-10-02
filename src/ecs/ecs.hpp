@@ -70,6 +70,8 @@ namespace forge
 
         virtual std::vector<ComponentField> export_fields() { return {}; }
 
+        virtual void on_editor_enter() {}
+
     private:
         friend Nexus;
         // if false this component has been freed
@@ -129,6 +131,7 @@ namespace forge
         template<class T>
         EcsResult remove_component();
 
+        void on_editor_enter();
 
     private:
         friend Nexus;
@@ -333,7 +336,6 @@ namespace forge
         }
 
         void update() override;
-
 
     private:
         friend Entity;

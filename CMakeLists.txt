@@ -79,6 +79,8 @@ add_executable(ByteForge_Engine main.cpp
         src/framework/input.hpp
         src/gui/imgui_subsystem.cpp
         src/gui/imgui_subsystem.hpp
+        src/editor/editor_subsystem.cpp
+        src/editor/editor_subsystem.hpp
 )
 
 target_compile_options(ByteForge_Engine PRIVATE -include ${CMAKE_SOURCE_DIR}/src/core/type_def.hpp)

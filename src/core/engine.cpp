@@ -6,6 +6,7 @@
 #include <thread>
 
 #include "logging.hpp"
+#include "editor/editor_subsystem.hpp"
 #include "fmt/fmt.hpp"
 #include "system/window_sub_system.hpp"
 #include "system/window.hpp"
@@ -21,6 +22,7 @@ forge::Engine::Engine()
 	renderer = add_subsystem<OglRenderer>();
 	nexus = add_subsystem<Nexus>();
 	add_subsystem<ImGuiSubsystem>();
+	add_subsystem<EditorSubsystem>();
 }
 
 void forge::Engine::quit()
@@ -49,6 +51,8 @@ bool forge::Engine::init(const EngineInitOptions &options)
 		auto &subsystem_type = typeid(*subsystem);
 		auto name = util::type_name(subsystem_type);
 
+		auto skip = false;
+
 		for (auto index : subsystem->get_dependencies())
 		{
 			if (!initialized_dependencies.contains(index))
@@ -62,7 +66,14 @@ bool forge::Engine::init(const EngineInitOptions &options)
 				{
 					return false;
 				}
+
+				skip = true;
 			}
+		}
+
+		if (skip)
+		{
+			continue;
 		}
 
 		auto result = subsystem->init();

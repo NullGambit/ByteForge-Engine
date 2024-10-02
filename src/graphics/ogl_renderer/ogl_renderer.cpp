@@ -142,12 +142,11 @@ void forge::OglRenderer::shutdown()
 {
 }
 
-void forge::OglRenderer::toggle_wireframe()
+void forge::OglRenderer::set_wireframe(bool enable)
 {
-	m_command_buffer.emplace([&draw_wireframe = m_draw_wireframe]
+	m_command_buffer.emplace([enable]
 	{
-		draw_wireframe = !draw_wireframe;
-		glPolygonMode(GL_FRONT_AND_BACK, draw_wireframe ? GL_LINE: GL_FILL);
+		glPolygonMode(GL_FRONT_AND_BACK, enable ? GL_LINE : GL_FILL);
 	});
 }
 

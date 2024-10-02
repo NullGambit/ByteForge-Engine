@@ -1,0 +1,20 @@
+#pragma once
+
+#include "core/isub_system.hpp"
+#include "ecs/ecs.hpp"
+
+namespace forge
+{
+	class EditorSubsystem final : public ISubSystem
+	{
+	public:
+		std::string init() override;
+		void shutdown() override;
+		void update() override;
+
+		std::vector<std::type_index> get_dependencies() override;
+
+	private:
+		Nexus m_nexus {};
+	};
+}
