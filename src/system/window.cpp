@@ -1,5 +1,6 @@
 #include "window.hpp"
 
+#include <imgui.h>
 #include <GLFW/glfw3.h>
 
 #include "core/engine.hpp"
@@ -14,14 +15,14 @@ void on_framebuffer_resize_callback(GLFWwindow *window, int width, int height)
 
 void on_mouse_callback(GLFWwindow *window, double xpos, double ypos)
 {
-    // auto &io = ImGui::GetIO();
-    //
-    // io.AddMousePosEvent(xpos, ypos);
+    auto &io = ImGui::GetIO();
 
-    // if (io.WantCaptureMouse)
-    // {
-    //     return;
-    // }
+    io.AddMousePosEvent(xpos, ypos);
+
+    if (io.WantCaptureMouse)
+    {
+        return;
+    }
 
 	auto *windowPtr = (forge::Window*)glfwGetWindowUserPointer(window);
 
@@ -55,12 +56,12 @@ uint32_t translate_glfw_key(int key);
 
 void on_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-	// auto &io = ImGui::GetIO();
-	//
-	// if (io.WantCaptureKeyboard)
-	// {
-	// 	return;
-	// }
+	auto &io = ImGui::GetIO();
+
+	if (io.WantCaptureKeyboard)
+	{
+		return;
+	}
 
 	auto *windowPtr = (forge::Window*)glfwGetWindowUserPointer(window);
 
@@ -150,6 +151,7 @@ bool forge::Window::open(std::string_view name, int width, int height)
 	glfwSetKeyCallback(m_handle, on_key_callback);
 	glfwSetCursorPosCallback(m_handle, on_mouse_callback);
 	glfwSetScrollCallback(m_handle, on_scroll_callback);
+	glfwSwapInterval(0);
 
 	return true;
 }

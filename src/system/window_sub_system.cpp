@@ -1,5 +1,4 @@
 #include "window_sub_system.hpp"
-
 #include "core/engine.hpp"
 #include "GLFW/glfw3.h"
 
@@ -40,9 +39,14 @@ void forge::WindowSubSystem::update()
 	poll_events();
 }
 
-void forge::WindowSubSystem::poll_events()
+void forge::WindowSubSystem::end_tick()
 {
 	glfwPollEvents();
+}
+
+void forge::WindowSubSystem::poll_events()
+{
+
 }
 
 float forge::WindowSubSystem::get_runtime() const

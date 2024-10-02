@@ -2,6 +2,7 @@
 
 #include <condition_variable>
 #include <ranges>
+#include <set>
 #include <thread>
 
 #include "logging.hpp"
@@ -10,6 +11,7 @@
 #include "system/window.hpp"
 #include "graphics/ogl_renderer/ogl_renderer.hpp"
 #include "GLFW/glfw3.h"
+#include "gui/imgui_subsystem.hpp"
 #include "util/types.hpp"
 
 forge::Engine::Engine()
@@ -18,6 +20,7 @@ forge::Engine::Engine()
 	fs_monitor = add_subsystem<FsMonitor>();
 	renderer = add_subsystem<OglRenderer>();
 	nexus = add_subsystem<Nexus>();
+	add_subsystem<ImGuiSubsystem>();
 }
 
 void forge::Engine::quit()
@@ -31,16 +34,9 @@ bool forge::Engine::init(const EngineInitOptions &options)
 {
 	m_init_options = options;
 
-	if (!m_init_options.log_file.empty())
-	{
-		log::set_outfile(m_init_options.log_file);
-	}
-	if (!m_init_options.log_time_fmt.empty())
-	{
-		log::set_time_fmt(m_init_options.log_time_fmt);
-	}
+	init_logger();
 
-	log::set_flags(m_init_options.log_flags);
+	std::set<std::type_index> initialized_dependencies;
 
 	for (const auto &subsystem : m_subsystems)
 	{
@@ -50,9 +46,26 @@ bool forge::Engine::init(const EngineInitOptions &options)
 			return false;
 		}
 
-		auto result = subsystem->init();
+		auto &subsystem_type = typeid(*subsystem);
+		auto name = util::type_name(subsystem_type);
 
-		auto name = util::type_name(typeid(*subsystem));
+		for (auto index : subsystem->get_dependencies())
+		{
+			if (!initialized_dependencies.contains(index))
+			{
+				auto dep_name = util::type_name(index);
+
+				log::warn("could not initialize subsystem {} because it depends on subsystem {} which did not initialize",
+					name, dep_name);
+
+				if (subsystem->is_critical())
+				{
+					return false;
+				}
+			}
+		}
+
+		auto result = subsystem->init();
 
 		if (!result.empty())
 		{
@@ -66,6 +79,7 @@ bool forge::Engine::init(const EngineInitOptions &options)
 		else
 		{
 			log::info("Initialized subsystem {}", name);
+			initialized_dependencies.emplace(subsystem_type);
 		}
 	}
 
@@ -78,6 +92,16 @@ void forge::Engine::run()
 
 	while (window.should_stay_open())
 	{
+		auto current_time = get_engine_runtime();
+
+		m_delta_time = current_time - m_previous_time;
+		m_previous_time = current_time;
+		m_fps = 1 / m_delta_time;
+
+		for (const auto &subsystem : m_subsystems)
+		{
+			subsystem->start_tick();
+		}
 
 		// start offload threads update function
 		start_offload_threads();
@@ -95,10 +119,15 @@ void forge::Engine::run()
 		std::unique_lock lock { m_offload_mutex };
 		m_cv_done.wait(lock, [&offload_counter = m_offload_counter]{ return offload_counter <= 0; });
 
+		window.reset_input();
+
+		for (const auto &subsystem : m_subsystems)
+		{
+			subsystem->end_tick();
+		}
+
 		// TODO: this should swap all window buffers
 		window.swap_buffers();
-		window.reset_input();
-		window_sub_system->poll_events();
 	}
 
 	// start one last time so the offload threads won't get stuck waiting
@@ -122,6 +151,20 @@ void forge::Engine::shutdown()
 float forge::Engine::get_engine_runtime() const
 {
 	return window_sub_system->get_runtime();
+}
+
+void forge::Engine::init_logger()
+{
+	if (!m_init_options.log_file.empty())
+	{
+		log::set_outfile(m_init_options.log_file);
+	}
+	if (!m_init_options.log_time_fmt.empty())
+	{
+		log::set_time_fmt(m_init_options.log_time_fmt);
+	}
+
+	log::set_flags(m_init_options.log_flags);
 }
 
 void forge::Engine::start_subsystems()

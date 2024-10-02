@@ -338,8 +338,6 @@ namespace forge
     private:
         friend Entity;
 
-        float m_previous_time;
-
         HashMap<std::type_index, ComponentType> m_component_table;
         HashMap<std::string_view, Entity*> m_name_table;
         std::vector<std::type_index> m_update_table;

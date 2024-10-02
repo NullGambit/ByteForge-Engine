@@ -5,7 +5,7 @@ void forge::ISubSystem::threaded_update()
 {
 	while (m_threaded_should_run)
 	{
-		if (should_update())
+		if (should_update() && m_threaded_should_run)
 		{
 			update();
 		}
@@ -21,7 +21,7 @@ void forge::ISubSystem::offload_update(std::atomic_bool& should_start, std::atom
 
 		cv_start.wait(lock, [&should_start] { return should_start.load(); });
 
-		if (should_update())
+		if (should_update() && m_threaded_should_run)
 		{
 			update();
 		}

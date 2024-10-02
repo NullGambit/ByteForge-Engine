@@ -1,5 +1,9 @@
+#include <imgui.h>
+#include <numeric>
+
 #include "glm/glm.hpp"
 #include "core/engine.hpp"
+#include "core/logging.hpp"
 #include "framework/input.hpp"
 #include "src/util/types.hpp"
 #include "graphics/ogl_renderer/ogl_renderer.hpp"
@@ -7,14 +11,38 @@
 class DebugRenderComponent : public forge::IComponent
 {
 public:
+	float last_frame {};
+	float last_engine_delta {};
+	float last_delta {};
+	forge::DeltaTime elapsed_time {};
+
 	void update(forge::DeltaTime delta) override
 	{
+		elapsed_time += delta;
+
 		auto &engine = forge::Engine::get_instance();
+
+		if (elapsed_time >= 0.3)
+		{
+			last_frame = engine.get_fps();
+			last_engine_delta = engine.get_delta();
+			last_delta = delta;
+
+			elapsed_time = 0;
+		}
+
+		ImGui::Begin("debug window");
 
 		if (forge::is_key_pressed(forge::Key::R))
 		{
 			engine.renderer->toggle_wireframe();
 		}
+
+		ImGui::Text("FPS: %d", (int)last_frame);
+		ImGui::Text("Tick: %f", last_engine_delta);
+		ImGui::Text("ECS: %f", last_delta);
+
+		ImGui::End();
 	}
 };
 

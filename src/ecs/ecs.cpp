@@ -153,11 +153,9 @@ void forge::Nexus::delete_entity(Entity* entity)
 
 void forge::Nexus::update()
 {
-	auto current_time = Engine::get_instance().get_engine_runtime();
+	auto &engine = Engine::get_instance();
 
-	auto delta = current_time - m_previous_time;
-
-	m_previous_time = current_time;
+	auto delta = engine.get_delta();
 
 	for (auto &type : m_update_table)
 	{

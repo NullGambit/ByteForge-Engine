@@ -14,7 +14,9 @@ include_directories(
         dep/glad/include/
         dep)
 
-add_subdirectory(dep/glfw-3.3-stable/ dep/glm)
+add_subdirectory(dep/glfw-3.3-stable/)
+add_subdirectory(dep/imgui)
+add_subdirectory(dep/glm)
 
 add_executable(ByteForge_Engine main.cpp
         dep/glad/include/glad/glad.h
@@ -75,8 +77,10 @@ add_executable(ByteForge_Engine main.cpp
         src/system/input_keys.hpp
         src/framework/input.cpp
         src/framework/input.hpp
+        src/gui/imgui_subsystem.cpp
+        src/gui/imgui_subsystem.hpp
 )
 
 target_compile_options(ByteForge_Engine PRIVATE -include ${CMAKE_SOURCE_DIR}/src/core/type_def.hpp)
 
-target_link_libraries(ByteForge_Engine glfw ${OPENGL_LIBRARIES})
+target_link_libraries(ByteForge_Engine glfw ${OPENGL_LIBRARIES} IMGUI glm)

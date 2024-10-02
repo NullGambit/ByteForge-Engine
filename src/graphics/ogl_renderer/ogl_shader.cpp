@@ -1,5 +1,3 @@
-#pragma once
-
 #include "ogl_shader.hpp"
 
 #include "ogl_renderer.hpp"

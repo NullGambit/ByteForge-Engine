@@ -2,6 +2,8 @@
 #include <atomic>
 #include <condition_variable>
 #include <string_view>
+#include <typeindex>
+#include <vector>
 
 #include "fmt/fmt.hpp"
 
@@ -26,6 +28,14 @@ namespace forge
 		virtual std::string init() = 0;
 		virtual void shutdown() = 0;
 		virtual void update() = 0;
+
+		// dependencies must be initialized otherwise this subsystem won't get initialized
+		virtual std::vector<std::type_index> get_dependencies() { return {}; }
+
+		// will be called at the start of the engine loop
+		virtual void start_tick() {}
+		// will be called at the end of the engine loop
+		virtual void end_tick() {}
 
 		virtual bool should_update() { return true; }
 

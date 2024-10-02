@@ -12,7 +12,7 @@ class GLFWwindow;
 
 namespace forge
 {
-	class OglRenderer : public ISubSystem
+	class OglRenderer final : public ISubSystem
 	{
 	public:
 		std::string init() override;

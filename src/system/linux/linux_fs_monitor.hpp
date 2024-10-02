@@ -21,7 +21,7 @@ namespace forge
 		LINUX_FSE_FILE_DELETE = IN_DELETE,
 	};
 
-	class LinuxFsMonitor : public ISubSystem
+	class LinuxFsMonitor final : public ISubSystem
 	{
 	public:
 		using Callback = std::function<void(uint32_t, std::string_view path)>;

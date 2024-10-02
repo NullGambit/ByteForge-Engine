@@ -50,7 +50,20 @@ namespace forge
 
 		void shutdown();
 
+		[[nodiscard]]
 		float get_engine_runtime() const;
+
+		[[nodiscard]]
+		inline float get_fps() const
+		{
+			return m_fps;
+		}
+
+		[[nodiscard]]
+		inline float get_delta() const
+		{
+			return m_delta_time;
+		}
 
 		const EngineInitOptions& get_init_options() const
 		{
@@ -86,6 +99,12 @@ namespace forge
 		std::atomic_bool m_should_start = false;
 
 		// ==============================================
+
+		float m_delta_time;
+		float m_previous_time;
+		float m_fps;
+
+		void init_logger();
 
 		void start_subsystems();
 		void stop_threaded_subsystems();
