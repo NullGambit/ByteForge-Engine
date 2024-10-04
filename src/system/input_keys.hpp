@@ -125,7 +125,20 @@ namespace forge
         RightSuper = 347,
         Menu = 348,
     };
-    enum class Modifier
+
+    enum class MouseButton : u8
+    {
+        Left,
+        Right,
+        Middle,
+        B4,
+        B5,
+        B6,
+        B7,
+        B8,
+    };
+
+    enum class Modifier : i8
     {
         None = 0,
         Shift = 0x0001,

@@ -3,6 +3,7 @@
 #include <set>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "ogl_shader.hpp"
 #include "fmt/fmt.hpp"
@@ -75,16 +76,16 @@ std::string forge::OglRenderer::init()
 	std::set<int> pos_set;
 	constexpr auto MAX_ATTEMPTS = 10;
 
-	for (int i = 0; i < 26; i++)
+	for (int i = 0; i < 1200; i++)
 	{
-		auto rand_position = util::rand_vec3(-5, 5);
+		auto rand_position = util::rand_vec3(-20, 20);
 		auto length = glm::length(rand_position) * 2;
 
 		auto attempts = 0;
 
 		while (!pos_set.emplace(length).second && attempts <= MAX_ATTEMPTS)
 		{
-			rand_position = util::rand_vec3(-5, 5);
+			rand_position = util::rand_vec3(-20, 20);
 			length = glm::length(rand_position) * 2;
 			attempts++;
 		}
@@ -94,7 +95,7 @@ std::string forge::OglRenderer::init()
 			continue;
 		}
 
-		m_cube_positions.emplace_back(rand_position, util::rand_vec3(0, 360));
+		m_cube_positions.emplace_back(rand_position, util::rand_vec3(-1, 1));
 	}
 
 	auto &window = Engine::get_instance().window;
@@ -121,11 +122,11 @@ void forge::OglRenderer::update()
 
 	glBindVertexArray(m_vao);
 
-	for (const auto &[positon, euler_angle] : m_cube_positions)
+	for (const auto &[position, euler_angle] : m_cube_positions)
 	{
 		glm::mat4 model {1.0};
 
-		model = glm::translate(model, positon);
+		model = glm::translate(model, position);
 		model = glm::scale(model, glm::vec3{0.5});
 
 		model = glm::rotate(model, runtime, euler_angle);
@@ -148,6 +149,21 @@ void forge::OglRenderer::set_wireframe(bool enable)
 	{
 		glPolygonMode(GL_FRONT_AND_BACK, enable ? GL_LINE : GL_FILL);
 	});
+}
+
+void forge::OglRenderer::set_clear_color(glm::vec3 color)
+{
+	m_command_buffer.emplace([color]
+	{
+		glClearColor(EXPAND_VEC3(color), 255);
+	});
+}
+
+glm::vec3 forge::OglRenderer::get_clear_color()
+{
+	glm::vec3 out;
+	glGetFloatv(GL_COLOR_CLEAR_VALUE, glm::value_ptr(out));
+	return out;
 }
 
 void forge::OglRenderer::handle_framebuffer_resize(int width, int height)

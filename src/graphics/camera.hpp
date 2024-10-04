@@ -3,6 +3,7 @@
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/quaternion_geometric.hpp>
+#include <type_traits>
 
 namespace forge
 {
@@ -12,11 +13,15 @@ namespace forge
 		Orthographic,
 	};
 
+	// TODO: the api of the camera class is currently very place holder most of it will likely be replaced in the future
 	class Camera
 	{
 	public:
 
 		glm::vec3 up_dir {0, 1, 0};
+		glm::vec3 front_dir {0, 0, -1};
+		float yaw;
+		float pitch;
 
 		Camera(CameraProjectionMode mode, float fov = 65, float near = 0.1, float far = 1000);
 
@@ -30,21 +35,23 @@ namespace forge
 
 		inline void set_position(const glm::vec3 position)
 		{
-			m_view[3] = glm::vec4{position, 1};
-			m_view = glm::translate(m_view, position);
+			m_position = position;
+			// m_view = glm::translate(m_view, position);
 		}
 
 		[[nodiscard]]
 		inline glm::vec3 get_position() const
 		{
-			return m_view[3];
+			return m_position;
 		}
 
-		inline void set_direction(const float yaw, const float pitch)
+		inline void set_direction()
 		{
 			m_direction.x = glm::cos(glm::radians(yaw)) * glm::cos(glm::radians(pitch));
 			m_direction.y = glm::sin(glm::radians(pitch));
 			m_direction.z = glm::sin(glm::radians(yaw)) * glm::cos(glm::radians(pitch));
+
+			front_dir = glm::normalize(m_direction);
 		}
 
 		[[nodiscard]]
@@ -59,9 +66,15 @@ namespace forge
 		}
 
 		[[nodiscard]]
+		inline auto get_front() const
+		{
+			return glm::normalize(m_direction);
+		}
+
+		[[nodiscard]]
 		inline auto get_right() const
 		{
-			return glm::normalize(glm::cross(up_dir, m_direction));
+			return glm::normalize(glm::cross(front_dir, up_dir));
 		}
 
 		[[nodiscard]]
@@ -92,6 +105,11 @@ namespace forge
 			return m_view;
 		}
 
+		glm::mat4& get_projection()
+		{
+			return m_projection;
+		}
+
 		[[nodiscard]]
 		inline glm::mat4 pv() const
 		{
@@ -110,6 +128,8 @@ namespace forge
 		glm::mat4 m_view {};
 		glm::mat4 m_projection {};
 		glm::vec3 m_direction {};
+		glm::vec3 m_position;
+
 		float m_fov = 65;
 		float m_near = 0.1;
 		float m_far = 1000;

@@ -27,6 +27,10 @@ namespace forge
 
 		void set_wireframe(bool enable);
 
+		void set_clear_color(glm::vec3 color);
+
+		glm::vec3 get_clear_color();
+
 		// allows for manually adding a command that will be run the next frame
 		void add_command(CommandBuffer<>::Callback &&command)
 		{

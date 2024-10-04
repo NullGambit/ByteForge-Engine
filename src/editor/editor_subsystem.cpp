@@ -1,6 +1,7 @@
 #include "editor_subsystem.hpp"
 
 #include <imgui.h>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "core/engine.hpp"
 #include "core/logging.hpp"
@@ -44,26 +45,11 @@ protected:
 	virtual void on_register_window() {}
 };
 
-class TestWindow final : public IEditorWindow
-{
-public:
-	TestWindow() : IEditorWindow("Test window")
-	{}
-
-protected:
-
-	void on_window() override
-	{
-		ImGui::Text("hello test window");
-	}
-};
-
 class StatisticsEditorWindow final : public IEditorWindow
 {
 public:
 	float last_frame {};
 	float last_engine_delta {};
-	float last_delta {};
 	forge::DeltaTime elapsed_time {};
 
 	StatisticsEditorWindow() : IEditorWindow("Statistics") {}
@@ -80,7 +66,6 @@ public:
 		{
 			last_frame = engine.get_fps();
 			last_engine_delta = engine.get_delta();
-			last_delta = delta;
 
 			elapsed_time = 0;
 		}
@@ -91,7 +76,6 @@ protected:
 	{
 		ImGui::Text("FPS: %d", (int)last_frame);
 		ImGui::Text("Tick: %f", last_engine_delta);
-		ImGui::Text("ECS: %f", last_delta);
 	}
 };
 
@@ -117,6 +101,13 @@ protected:
 					engine.renderer->set_wireframe(toggle_wireframe);
 				}
 
+				auto clear_color = engine.renderer->get_clear_color();
+
+				if (ImGui::ColorEdit3("Clear color", glm::value_ptr(clear_color)))
+				{
+					engine.renderer->set_clear_color(clear_color);
+				}
+
 				ImGui::EndTabItem();
 			}
 
@@ -125,6 +116,21 @@ protected:
 	}
 };
 
+class SceneOutlineEditorWindow final : public IEditorWindow
+{
+public:
+	bool toggle_wireframe = false;
+
+	SceneOutlineEditorWindow() : IEditorWindow("Scene Outline") {}
+
+protected:
+
+	void on_window() override
+	{
+		auto &engine = forge::Engine::get_instance();
+
+	}
+};
 
 class TopBarEditorComponent final : public forge::IComponent
 {

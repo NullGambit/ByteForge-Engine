@@ -75,6 +75,26 @@ void on_key_callback(GLFWwindow* window, int key, int scancode, int action, int 
 	key_event.mods = mods;
 }
 
+void on_mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+	auto &io = ImGui::GetIO();
+
+	if (io.WantCaptureKeyboard)
+	{
+		return;
+	}
+
+	auto *windowPtr = (forge::Window*)glfwGetWindowUserPointer(window);
+
+	auto &data = windowPtr->get_input_event_data();
+
+	auto &key_event = data.mouse_button_cache[button];
+
+	key_event.called = true;
+	key_event.action = action;
+	key_event.mods = mods;
+}
+
 uint32_t translate_glfw_key(int key)
 {
     // keys that dont follow a range of more than 3
@@ -181,17 +201,47 @@ void forge::Window::set_context()
 	glfwMakeContextCurrent(m_handle);
 }
 
-bool forge::Window::is_key_pressed(Key key, Modifier mod)
+void forge::Window::set_cursor_mode(CursorMode mode) const
+{
+	glfwSetInputMode(m_handle, GLFW_CURSOR, (int)mode);
+}
+
+forge::CursorMode forge::Window::get_cursor_mode() const
+{
+	return (CursorMode)glfwGetInputMode(m_handle, GLFW_CURSOR);
+}
+
+bool forge::Window::is_key_pressed(Key key, Modifier mod) const
 {
 	return get_key(int(key), GLFW_PRESS, int(mod));
 }
 
-bool forge::Window::is_key_held(Key key)
+bool forge::Window::is_key_held(Key key) const
 {
 	return glfwGetKey(m_handle, (int)key);
 }
 
-bool forge::Window::is_key_released(Key key, Modifier mod)
+bool forge::Window::is_mouse_button_pressed(MouseButton key, Modifier mod) const
+{
+	return get_mouse_button((int)key, (int)mod, GLFW_PRESS);
+}
+
+bool forge::Window::is_mouse_button_released(MouseButton key, Modifier mod) const
+{
+	return get_mouse_button((int)key, (int)mod, GLFW_RELEASE);
+}
+
+bool forge::Window::is_mouse_button_held(MouseButton key) const
+{
+	return glfwGetMouseButton(m_handle, (int)key);
+}
+
+glm::vec2 forge::Window::get_mouse_coords() const
+{
+	return m_input_event_data.mouse_cords;
+}
+
+bool forge::Window::is_key_released(Key key, Modifier mod) const
 {
 	return get_key(int(key), GLFW_RELEASE, int(mod));
 }
@@ -204,6 +254,11 @@ void forge::Window::reset_input()
 	for (auto &key : m_input_event_data.key_cache)
 	{
 		key.called = false;
+	}
+
+	for (auto &button : m_input_event_data.mouse_button_cache)
+	{
+		button.called = false;
 	}
 }
 
@@ -221,16 +276,28 @@ glm::ivec2 forge::Window::get_size() const
 	return out;
 }
 
-bool forge::Window::get_key(int key, int action, int mod)
+bool was_key_called(forge::WindowKeyEventData key_event, int action, int mod)
 {
-	auto index = translate_glfw_key(key);
-	auto &key_event = m_input_event_data.key_cache[index];
-
 	if (key_event.called && key_event.action == action && key_event.mods == mod)
 	{
 		return true;
 	}
 
 	return false;
+}
+
+bool forge::Window::get_mouse_button(int button, int action, int mod) const
+{
+	auto &key_event = m_input_event_data.mouse_button_cache[button];
+
+	return was_key_called(key_event, action, mod);
+}
+
+bool forge::Window::get_key(int key, int action, int mod) const
+{
+	auto index = translate_glfw_key(key);
+	auto &key_event = m_input_event_data.key_cache[index];
+
+	return was_key_called(key_event, action, mod);
 }
 

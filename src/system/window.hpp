@@ -12,8 +12,8 @@ namespace forge
 	struct WindowKeyEventData
 	{
 		bool called;
-		int action;
-		int mods;
+		u8 action;
+		u8 mods;
 	};
 
 	struct WindowInputEventData
@@ -24,6 +24,7 @@ namespace forge
 		bool		scroll_called;
 
 		std::array<WindowKeyEventData, 119> key_cache;
+		std::array<WindowKeyEventData, 8> mouse_button_cache;
 	};
 
 	class Window
@@ -53,9 +54,16 @@ namespace forge
 
 		void set_context();
 
-		bool is_key_pressed(Key key, Modifier mod = Modifier::None);
-		bool is_key_released(Key key, Modifier mod = Modifier::None);
-		bool is_key_held(Key key);
+		void set_cursor_mode(CursorMode mode) const;
+		CursorMode get_cursor_mode() const;
+
+		bool is_key_pressed(Key key, Modifier mod = Modifier::None) const;
+		bool is_key_released(Key key, Modifier mod = Modifier::None) const;
+		bool is_key_held(Key key) const;
+		bool is_mouse_button_pressed(MouseButton key, Modifier mod = Modifier::None) const;
+		bool is_mouse_button_released(MouseButton key, Modifier mod = Modifier::None) const;
+		bool is_mouse_button_held(MouseButton key) const;
+		glm::vec2 get_mouse_coords() const;
 
 		// gets a reference to a struct that stores data related to input events
 		// should not be used unless you know what you're doing.
@@ -77,7 +85,8 @@ namespace forge
 		GLFWwindow *m_handle = nullptr;
 		WindowInputEventData m_input_event_data;
 
-		bool get_key(int key, int action, int mod);
+		bool get_mouse_button(int button, int action, int mod) const;
+		bool get_key(int key, int action, int mod) const;
 	};
 
 }
