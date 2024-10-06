@@ -1,5 +1,6 @@
 #include "mem_pool.hpp"
 
+#include <cassert>
 #include <sys/mman.h>
 
 #include "../fmt/fmt.hpp"
@@ -33,6 +34,7 @@ void forge::MemPool::destroy()
 	if (m_memory)
 	{
 		virtual_free(m_memory);
+		m_memory = nullptr;
 	}
 }
 
@@ -61,7 +63,7 @@ void forge::MemPool::free(size_t offset_to_free)
 
 void forge::MemPool::reset(bool destroy)
 {
-	if (destroy)
+	if (destroy && m_destroy_func)
 	{
 		for (size_t i = 0; i < m_length; i++)
 		{

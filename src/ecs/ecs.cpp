@@ -18,78 +18,6 @@ void forge::IComponent::set_enabled(bool value)
 	}
 }
 
-void forge::Entity::remove_child(Entity *child)
-{
-	auto *node = m_children;
-
-	while (node->m_siblings != child)
-	{
-		node = node->m_siblings;
-	}
-
-	if (node != nullptr && node->m_siblings != nullptr)
-	{
-		node->m_siblings = node->m_siblings->m_siblings;
-	}
-}
-
-void forge::Entity::add_child(Entity *child)
-{
-	if (child->m_parent != nullptr)
-	{
-		child->m_parent->remove_child(child);
-	}
-
-	child->m_parent = this;
-
-	if (m_children == nullptr)
-	{
-		m_children = child;
-		return;
-	}
-
-	auto *node = m_children->m_siblings;
-
-	if (node == nullptr)
-	{
-		m_children->m_siblings = child;
-		return;
-	}
-
-	while (node->m_siblings != nullptr)
-	{
-		node = node->m_siblings;
-	}
-
-	node->m_siblings = child;
-}
-
-void forge::Entity::foreach_child(std::function<void(Entity*)> callback, bool recursive, Entity *root)
-{
-	Entity *node;
-
-	if (root == nullptr)
-	{
-		node = m_children;
-	}
-	else
-	{
-		node = root->m_children;
-	}
-
-	while (node != nullptr)
-	{
-		callback(node);
-
-		node = node->get_sibling();
-
-		if (node != nullptr && recursive)
-		{
-			foreach_child(callback, recursive, node);
-		}
-	}
-}
-
 void forge::Entity::on_editor_enter()
 {
 	for (auto &[_, view] : m_components)
@@ -97,6 +25,23 @@ void forge::Entity::on_editor_enter()
 		auto *component = (IComponent*)view.pointer;
 
 		component->on_editor_enter();
+	}
+}
+
+void forge::Entity::update_hierarchy()
+{
+	if (m_parent)
+	{
+		m_transform.model = m_parent->m_transform.model * m_transform.get_local_transform();
+	}
+	else
+	{
+		m_transform.model = m_transform.get_local_transform();
+	}
+
+	for (auto &child : m_children)
+	{
+		child.update_hierarchy();
 	}
 }
 
@@ -119,15 +64,11 @@ void forge::Nexus::ComponentType::update(DeltaTime delta) const
 
 std::string forge::Nexus::init()
 {
-	m_entities.init(sizeof(Entity), ECS_MAX_MAPPED_MEMORY);
-
 	return {};
 }
 
-// TODO: handle shutdown
 void forge::Nexus::shutdown()
 {
-
 }
 
 forge::Entity* forge::Nexus::get_entity(const std::string_view name)
@@ -151,15 +92,12 @@ void forge::Nexus::delete_entity(Entity* entity)
 
 	entity->m_state = EntityState::Invalid;
 
-	// TODO: make sure constructor is called
 	for (auto &[index, cv] : entity->m_components)
 	{
 		m_component_table[index].mem_pool.free(cv.offset);
 	}
 
 	entity->m_components.clear();
-
-	m_entities.free(entity->m_offset);
 }
 
 void forge::Nexus::update()
@@ -178,5 +116,10 @@ void forge::Nexus::update()
 		}
 
 		iter->second.update(delta);
+	}
+
+	for (auto &entity : m_entities)
+	{
+		entity.update_hierarchy();
 	}
 }

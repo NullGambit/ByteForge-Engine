@@ -7,6 +7,7 @@
 #include "core/logging.hpp"
 #include "framework/input.hpp"
 #include "gui/imgui_subsystem.hpp"
+#include "util/types.hpp"
 
 class IEditorWindow;
 
@@ -129,6 +130,51 @@ protected:
 	{
 		auto &engine = forge::Engine::get_instance();
 
+		auto empty_counter = 1;
+
+		for (auto &entity : engine.nexus->get_entities())
+		{
+			auto name = std::string{entity.get_name()};
+
+			if (name.empty())
+			{
+				name += "Entity_" + std::to_string(empty_counter++);
+			}
+
+			if (ImGui::TreeNode(name.c_str()))
+			{
+				for (auto &[index, view] : entity.get_components())
+				{
+					if (ImGui::TreeNode(util::type_name(index).data()))
+					{
+						auto *component = (IComponent*)view.pointer;
+
+						for (auto &[name, value] : component->export_fields())
+						{
+							auto formatted = std::string{name};
+
+							if (formatted.starts_with("m_"))
+							{
+								formatted.erase(formatted.begin(), formatted.begin()+2);
+							}
+
+							std::replace(formatted.begin(), formatted.end(), '_', ' ');
+
+							if (value.index() == 0)
+							{
+								auto *f_value = std::get<0>(value);
+
+								ImGui::InputFloat(formatted.data(), f_value);
+							}
+						}
+
+						ImGui::TreePop();
+					}
+				}
+
+				ImGui::TreePop();
+			}
+		}
 	}
 };
 
@@ -178,7 +224,7 @@ std::string forge::EditorSubsystem::init()
 	// entity for all editor windows
 	auto *windows_entity = m_nexus.create_entity("windows");
 
-	windows_entity->add_components<StatisticsEditorWindow, SettingsEditorWindow>(true);
+	windows_entity->add_components<StatisticsEditorWindow, SettingsEditorWindow, SceneOutlineEditorWindow>(true);
 
 	windows_entity->on_editor_enter();
 

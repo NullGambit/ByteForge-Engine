@@ -81,6 +81,7 @@ add_executable(ByteForge_Engine main.cpp
         src/gui/imgui_subsystem.hpp
         src/editor/editor_subsystem.cpp
         src/editor/editor_subsystem.hpp
+        src/ecs/transform.hpp
 )
 
 target_compile_options(ByteForge_Engine PRIVATE -include ${CMAKE_SOURCE_DIR}/src/core/type_def.hpp)

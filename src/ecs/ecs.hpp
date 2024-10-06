@@ -14,6 +14,7 @@
 
 // should get included as a part of ecs.hpp. don't remove this.
 #include "macro_warcrimes.hpp"
+#include "transform.hpp"
 
 #define ECS_MAX_MAPPED_MEMORY GB(8)
 
@@ -107,14 +108,9 @@ namespace forge
         template<class T>
         T* get_component(std::optional<void(*)()> on_destroy = std::nullopt);
 
-        inline Entity *get_children()
+        inline const std::vector<Entity>& get_children() const
         {
             return m_children;
-        }
-
-        inline Entity *get_sibling()
-        {
-            return m_siblings;
         }
 
         inline std::string_view get_name() const
@@ -122,9 +118,15 @@ namespace forge
             return m_name;
         }
 
-        void remove_child(Entity *child);
+        inline const HashMap<std::type_index, ComponentView>& get_components() const
+        {
+            return m_components;
+        }
 
-        void add_child(Entity *child);
+        Entity& emplace_child()
+        {
+            return m_children.emplace_back();
+        }
 
         void foreach_child(std::function<void(Entity*)> callback, bool recursive = false, Entity *root = nullptr);
 
@@ -133,19 +135,20 @@ namespace forge
 
         void on_editor_enter();
 
+        void update_hierarchy();
+
     private:
         friend Nexus;
 
+        Transform m_transform;
+
         std::string m_name;
         EntityState m_state;
-        // byte offset inside the memory pool for freeing
-        size_t m_offset;
         HashMap<std::type_index, ComponentView> m_components;
 
         Nexus  *m_nexus;
         Entity *m_parent = nullptr;
-        Entity *m_children = nullptr;
-        Entity *m_siblings = nullptr;
+        std::vector<Entity> m_children;
     };
 
     class Nexus final : public ISubSystem
@@ -245,20 +248,20 @@ namespace forge
         template<class ...Args>
         Entity* create_entity(std::optional<std::string_view> name = std::nullopt)
         {
-            auto [entity, _] = m_entities.emplace<Entity>();
+            auto &entity = m_entities.emplace_back();
 
-            entity->m_nexus = this;
+            entity.m_nexus = this;
 
             // TODO: resolve name collisions
             if (name.has_value())
             {
-                entity->m_name = name.value();
-                m_name_table.emplace(entity->m_name, entity);
+                entity.m_name = name.value();
+                m_name_table.emplace(entity.m_name, &entity);
             }
 
             (add_components<Args>(entity), ...);
 
-            return entity;
+            return &entity;
         }
 
         Entity* get_entity(std::string_view name);
@@ -337,13 +340,18 @@ namespace forge
 
         void update() override;
 
+        std::vector<Entity> get_entities()
+        {
+            return m_entities;
+        }
+
     private:
         friend Entity;
 
         HashMap<std::type_index, ComponentType> m_component_table;
         HashMap<std::string_view, Entity*> m_name_table;
         std::vector<std::type_index> m_update_table;
-        MemPool m_entities;
+        std::vector<Entity> m_entities;
         std::vector<std::pair<std::type_index, size_t>> m_remove_queue;
     };
 
