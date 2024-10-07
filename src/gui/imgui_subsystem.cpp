@@ -16,7 +16,7 @@ std::string forge::ImGuiSubsystem::init()
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-	io.IniFilename = "pge_imgui.ini";
+	io.IniFilename = "editor_config.ini";
 
 	auto &window = Engine::get_instance().window;
 

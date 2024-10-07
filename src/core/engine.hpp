@@ -31,8 +31,6 @@ namespace forge
 	{
 	public:
 
-		Engine();
-
 		Engine(const Engine&) = delete;
 		Engine& operator=(const Engine&) = delete;
 
@@ -104,10 +102,13 @@ namespace forge
 		float m_previous_time;
 		float m_fps;
 
+		Engine();
+
 		void init_logger();
 
 		void start_subsystems();
 		void stop_threaded_subsystems();
 		void start_offload_threads();
+
 	};
 }

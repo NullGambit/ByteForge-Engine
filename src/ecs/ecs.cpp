@@ -18,6 +18,48 @@ void forge::IComponent::set_enabled(bool value)
 	}
 }
 
+u8* forge::Entity::add_component(std::type_index index)
+{
+	return m_nexus->add_component(this, index);
+}
+
+void forge::Entity::set_name(std::string_view new_name)
+{
+	if (!m_name.empty())
+	{
+		m_nexus->m_name_table.erase(m_name);
+	}
+
+	m_name = new_name;
+
+	auto *table = get_entity_table();
+
+	m_nexus->m_name_table[m_name] = EntityView{m_index, table};
+}
+
+forge::Entity& forge::Entity::emplace_child(std::optional<std::string_view> name)
+{
+	auto index = m_children.size();
+	auto &entity = m_children.emplace_back();
+
+	entity.m_nexus = m_nexus;
+	entity.m_parent = this;
+	entity.m_index = index;
+
+	if (name)
+	{
+		entity.m_name = name.value();
+		m_nexus->m_name_table[entity.m_name] = EntityView{(u32)index, &m_children};
+	}
+
+	return entity;
+}
+
+forge::EcsResult forge::Entity::remove_component(std::type_index index)
+{
+	return m_nexus->remove_component(this, index);
+}
+
 void forge::Entity::on_editor_enter()
 {
 	for (auto &[_, view] : m_components)
@@ -45,11 +87,16 @@ void forge::Entity::update_hierarchy()
 	}
 }
 
+std::vector<forge::Entity>* forge::Entity::get_entity_table()
+{
+	return m_parent == nullptr ? &m_nexus->m_entities : &m_parent->m_children;
+}
+
 void forge::Nexus::ComponentType::update(DeltaTime delta) const
 {
-	auto *memory = mem_pool.memory();
+	auto *memory = mem_pool.get_memory();
 
-	for (int i = 0; i < mem_pool.length(); i++)
+	for (int i = 0; i < mem_pool.get_length(); i++)
 	{
 		auto *component = (IComponent*)memory;
 
@@ -58,7 +105,7 @@ void forge::Nexus::ComponentType::update(DeltaTime delta) const
 			component->update(delta);
 		}
 
-		memory += mem_pool.element_size();
+		memory += mem_pool.get_element_size();
 	}
 }
 
@@ -80,7 +127,7 @@ forge::Entity* forge::Nexus::get_entity(const std::string_view name)
 		return nullptr;
 	}
 
-	return it->second;
+	return &it->second.get();
 }
 
 void forge::Nexus::delete_entity(Entity* entity)
@@ -98,6 +145,34 @@ void forge::Nexus::delete_entity(Entity* entity)
 	}
 
 	entity->m_components.clear();
+}
+
+u8* forge::Nexus::add_component(Entity* entity, std::type_index index)
+{
+	if (!is_entity_valid(entity))
+	{
+		return nullptr;
+	}
+
+	auto &ct = m_component_table[index];
+
+	auto [ptr, offset] = ct.mem_pool.allocate(true);
+
+	if (ct.is_component)
+	{
+		auto *component = (IComponent*)ptr;
+		component->m_owner = entity;
+		component->m_is_active = true;
+		component->m_is_enabled = true;
+	}
+
+	entity->m_components[index] =
+	{
+		.offset =  offset,
+		.pointer = ptr
+	};
+
+	return ptr;
 }
 
 void forge::Nexus::update()

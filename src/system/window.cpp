@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 
 #include "core/engine.hpp"
+#include "core/logging.hpp"
 #include "fmt/fmt.hpp"
 
 void on_framebuffer_resize_callback(GLFWwindow *window, int width, int height)
@@ -218,7 +219,9 @@ bool forge::Window::is_key_pressed(Key key, Modifier mod) const
 
 bool forge::Window::is_key_held(Key key) const
 {
-	return glfwGetKey(m_handle, (int)key);
+	auto &io = ImGui::GetIO();
+
+	return !io.WantCaptureKeyboard && glfwGetKey(m_handle, (int)key);
 }
 
 bool forge::Window::is_mouse_button_pressed(MouseButton key, Modifier mod) const

@@ -30,7 +30,7 @@ namespace forge
 
 		inline size_t size() const
 		{
-			return m_data.mem_pool.length();
+			return m_data.mem_pool.get_length();
 		}
 
 		auto obtain_lock() const
@@ -40,12 +40,12 @@ namespace forge
 
 		T* next()
 		{
-			if (m_offset >= m_data.mem_pool.offset())
+			if (m_offset >= m_data.mem_pool.get_offset())
 			{
 				return nullptr;
 			}
 
-			auto *ptr = m_data.mem_pool.memory() + m_offset;
+			auto *ptr = m_data.mem_pool.get_memory() + m_offset;
 
 			m_offset += sizeof(T);
 

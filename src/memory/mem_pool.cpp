@@ -38,7 +38,7 @@ void forge::MemPool::destroy()
 	}
 }
 
-forge::MemPoolObject forge::MemPool::allocate()
+forge::MemPoolObject forge::MemPool::allocate(bool construct)
 {
 	if (!m_free_list.empty())
 	{
@@ -53,11 +53,21 @@ forge::MemPoolObject forge::MemPool::allocate()
 	++m_length;
 	m_offset += m_element_size;
 
+	if (construct && m_construct_func)
+	{
+		m_construct_func(out_mem);
+	}
+
 	return {out_mem, mem_offset};
 }
 
-void forge::MemPool::free(size_t offset_to_free)
+void forge::MemPool::free(size_t offset_to_free, bool destroy)
 {
+	if (destroy && m_destroy_func)
+	{
+		m_destroy_func(m_memory + offset_to_free);
+	}
+
 	m_free_list.push_back(offset_to_free);
 }
 

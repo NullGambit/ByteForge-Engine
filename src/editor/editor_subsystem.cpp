@@ -1,6 +1,7 @@
 #include "editor_subsystem.hpp"
 
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <glm/gtc/type_ptr.hpp>
 
 #include "core/engine.hpp"
@@ -120,62 +121,146 @@ protected:
 class SceneOutlineEditorWindow final : public IEditorWindow
 {
 public:
-	bool toggle_wireframe = false;
 
 	SceneOutlineEditorWindow() : IEditorWindow("Scene Outline") {}
 
-protected:
-
-	void on_window() override
+	void update(forge::DeltaTime delta) override
 	{
-		auto &engine = forge::Engine::get_instance();
+		IEditorWindow::update(delta);
 
-		auto empty_counter = 1;
+		m_show_components_window = show_window;
 
-		for (auto &entity : engine.nexus->get_entities())
+		if (m_show_components_window && m_selected_entity != -1)
+		{
+			ImGui::Begin("Components", &m_show_components_window);
+
+			auto &entity = (*m_entity_table)[m_selected_entity];
+
+			char name_buffer[256];
+
+			auto name = entity.get_name();
+
+			if (!name.empty())
+			{
+				strncpy(name_buffer, name.data(), name.size());
+			}
+
+			if (ImGui::InputText("##", name_buffer, sizeof(name_buffer)))
+			{
+				entity.set_name(name_buffer);
+			}
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("+"))
+			{
+				ImGui::OpenPopup("Add component");
+			}
+
+			if (ImGui::BeginPopup("Add component"))
+			{
+				auto &engine = forge::Engine::get_instance();
+
+				for (auto &[index, ct] : engine.nexus->get_component_table())
+				{
+					if (ImGui::Selectable(util::type_name(index).data()))
+					{
+						entity.add_component(index);
+					}
+				}
+
+				ImGui::EndPopup();
+			}
+
+			for (auto &[index, view] : entity.get_components())
+			{
+				if (ImGui::TreeNode(util::type_name(index).data()))
+				{
+					auto should_delete = ImGui::Button("Delete");
+
+					auto *component = (IComponent*)view.pointer;
+
+					for (auto &[name, value] : component->export_fields())
+					{
+						auto formatted = std::string{name};
+
+						if (formatted.starts_with("m_"))
+						{
+							formatted.erase(formatted.begin(), formatted.begin()+2);
+						}
+
+						std::replace(formatted.begin(), formatted.end(), '_', ' ');
+
+						if (value.index() == 0)
+						{
+							auto *f_value = std::get<0>(value);
+
+							ImGui::DragFloat(formatted.data(), f_value);
+						}
+					}
+
+					ImGui::TreePop();
+
+					if (should_delete)
+					{
+						entity.remove_component(index);
+					}
+				}
+			}
+
+			ImGui::End();
+		}
+	}
+
+protected:
+	std::vector<forge::Entity> *m_entity_table;
+	bool m_show_components_window = false;
+
+	void show_entities(std::vector<forge::Entity> &entities)
+	{
+		for (auto index = 0; auto &entity : entities)
 		{
 			auto name = std::string{entity.get_name()};
 
 			if (name.empty())
 			{
-				name += "Entity_" + std::to_string(empty_counter++);
+				name += "Entity_" + std::to_string(index);
 			}
 
-			if (ImGui::TreeNode(name.c_str()))
+			auto flags = 0;
+
+			if (m_selected_entity == index)
 			{
-				for (auto &[index, view] : entity.get_components())
-				{
-					if (ImGui::TreeNode(util::type_name(index).data()))
-					{
-						auto *component = (IComponent*)view.pointer;
+				flags |= ImGuiTreeNodeFlags_Selected;
+			}
 
-						for (auto &[name, value] : component->export_fields())
-						{
-							auto formatted = std::string{name};
+			auto node_enabled = ImGui::TreeNodeEx(name.c_str(), flags);
 
-							if (formatted.starts_with("m_"))
-							{
-								formatted.erase(formatted.begin(), formatted.begin()+2);
-							}
+			if (ImGui::IsItemClicked())
+			{
+				m_selected_entity = index;
+				m_entity_table = &entities;
+			}
 
-							std::replace(formatted.begin(), formatted.end(), '_', ' ');
-
-							if (value.index() == 0)
-							{
-								auto *f_value = std::get<0>(value);
-
-								ImGui::InputFloat(formatted.data(), f_value);
-							}
-						}
-
-						ImGui::TreePop();
-					}
-				}
-
+			if (node_enabled)
+			{
+				show_entities(entity.get_children());
 				ImGui::TreePop();
 			}
+
+			index++;
 		}
 	}
+
+	void on_window() override
+	{
+		auto &engine = forge::Engine::get_instance();
+
+		show_entities(engine.nexus->get_entities());
+	}
+
+private:
+	i32 m_selected_entity = -1;
 };
 
 class TopBarEditorComponent final : public forge::IComponent

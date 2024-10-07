@@ -1,19 +1,23 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <vector>
+
+#include "core/logging.hpp"
 
 namespace forge
 {
 	struct MemPoolObject
 	{
-		uint8_t *pointer;
+		u8 *pointer;
 		size_t byte_offset;
 	};
 
 	class MemPool
 	{
-		typedef void(*DestroyTypeFunc)(uint8_t*);
+		typedef void(*DestroyFunc)(u8*);
+		typedef void(*ConstructFunc)(u8*);
 
 	public:
 		MemPool() = default;
@@ -25,6 +29,7 @@ namespace forge
 		bool init(size_t map_size)
 		{
 			set_destructor<T>();
+			set_constructor<T>();
 			return init(sizeof(T), map_size);
 		}
 
@@ -86,15 +91,24 @@ namespace forge
 			return *this;
 		}
 
-		MemPoolObject allocate();
+		MemPoolObject allocate(bool construct = false);
 
 		template<class T>
 		void set_destructor()
 		{
-			m_destroy_func = [](uint8_t *ptr)
+			m_destroy_func = [](u8 *ptr)
 			{
 				auto *data = (T*)ptr;
 				data->~T();
+			};
+		}
+
+		template<class T>
+		void set_constructor()
+		{
+			m_construct_func = [](u8 *mem)
+			{
+				new (mem) T();
 			};
 		}
 
@@ -114,47 +128,38 @@ namespace forge
 			return {new (mem) T(std::forward<T>(data)), offset};
 		}
 
-		void free(size_t offset_to_free);
-
-		template<class T>
-		void free(size_t offset_to_free)
-		{
-			auto *mem = (T*)m_memory + offset_to_free;
-
-			mem->~T();
-
-			free(offset_to_free);
-		}
+		void free(size_t offset_to_free, bool destroy = true);
 
 		void reset(bool destroy = true);
 
-		inline size_t length() const
+		inline size_t get_length() const
 		{
 			return m_length;
 		}
 
-		inline size_t offset() const
+		inline size_t get_offset() const
 		{
 			return m_offset;
 		}
 
-		inline size_t element_size() const
+		inline size_t get_element_size() const
 		{
 			return m_element_size;
 		}
 
-		inline uint8_t* memory() const
+		inline u8* get_memory() const
 		{
 			return m_memory;
 		}
 
 	private:
-		uint8_t *m_memory;
+		u8 *m_memory;
 		size_t m_offset;
 		size_t m_length;
 		size_t m_element_size;
 		size_t m_map_size;
 		std::vector<size_t> m_free_list;
-		DestroyTypeFunc m_destroy_func;
+		DestroyFunc m_destroy_func = nullptr;
+		ConstructFunc m_construct_func = nullptr;
 	};
 }

@@ -140,6 +140,15 @@ private:
 	glm::vec2 m_last_mouse_coords = forge::get_mouse_coords();
 };
 
+class Test : public forge::IComponent
+{
+public:
+	float x = 10;
+	float y = 20;
+
+	EXPORT_FIELDS(x, y);
+};
+
 int main()
 {
 	auto &engine = forge::Engine::get_instance();
@@ -156,9 +165,14 @@ int main()
 		return -1;
 	}
 
-	auto *entity = engine.nexus->create_entity();
+	engine.nexus->register_component<SpinCamera>(true);
 
+	auto *entity = engine.nexus->create_entity("Player");
 	entity->add_components<FlyCamera>(true);
+
+	auto &entity2 = entity->emplace_child();
+
+	entity2.add_component<Test>();
 
 	engine.run();
 
