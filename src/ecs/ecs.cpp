@@ -132,11 +132,6 @@ forge::Entity* forge::Nexus::get_entity(const std::string_view name)
 
 void forge::Nexus::delete_entity(Entity* entity)
 {
-	if (!is_entity_valid(entity))
-	{
-		return;
-	}
-
 	entity->m_state = EntityState::Invalid;
 
 	for (auto &[index, cv] : entity->m_components)
@@ -149,11 +144,6 @@ void forge::Nexus::delete_entity(Entity* entity)
 
 u8* forge::Nexus::add_component(Entity* entity, std::type_index index)
 {
-	if (!is_entity_valid(entity))
-	{
-		return nullptr;
-	}
-
 	auto &ct = m_component_table[index];
 
 	auto [ptr, offset] = ct.mem_pool.allocate(true);
@@ -161,7 +151,7 @@ u8* forge::Nexus::add_component(Entity* entity, std::type_index index)
 	if (ct.is_component)
 	{
 		auto *component = (IComponent*)ptr;
-		component->m_owner = entity;
+		component->m_owner = entity->get_view();
 		component->m_is_active = true;
 		component->m_is_enabled = true;
 	}

@@ -93,7 +93,7 @@ namespace forge
         bool m_is_enabled = true;
 
     protected:
-        Entity *m_owner;
+        EntityView m_owner;
 
         virtual void on_enabled() {}
         virtual void on_disabled() {}
@@ -150,13 +150,18 @@ namespace forge
 
         void update_hierarchy();
 
+        inline EntityView get_view()
+        {
+            return {m_index, get_entity_table()};
+        }
+
     private:
         friend Nexus;
 
         Transform m_transform;
 
         std::string m_name;
-        EntityState m_state;
+        EntityState m_state = EntityState::Enabled;
         HashMap<std::type_index, ComponentView> m_components;
 
         Nexus  *m_nexus;
@@ -174,9 +179,9 @@ namespace forge
     {
         struct ComponentType
         {
-            bool is_component = false;
             MemPool mem_pool;
             HashMap<size_t, OnComponentDestroy> destroy_signals;
+            bool is_component = false;
 
             void free(size_t offset_to_free)
             {
@@ -218,7 +223,9 @@ namespace forge
             }
 
             auto emplaced = m_component_table.emplace(type, ComponentType{});
+
             auto &ct = emplaced.first->second;
+
             auto result = ct.mem_pool.init<T>(ECS_MAX_MAPPED_MEMORY);
 
             if (!result)
@@ -266,11 +273,6 @@ namespace forge
             return m_component_table.contains(index);
         }
 
-        inline bool is_entity_valid(Entity *entity) const
-        {
-            return entity == nullptr || entity->m_state != EntityState::Invalid;
-        }
-
         template<class ...Args>
         Entity* create_entity(std::optional<std::string_view> name = std::nullopt)
         {
@@ -284,7 +286,7 @@ namespace forge
             if (name.has_value())
             {
                 entity.m_name = name.value();
-                m_name_table.emplace(entity.m_name, index);
+                m_name_table.emplace(entity.m_name, EntityView{(u32)index, &m_entities});
             }
 
             (add_components<Args>(&entity), ...);
@@ -299,11 +301,6 @@ namespace forge
         template<class T>
         inline T* add_component(Entity *entity, bool should_update = false)
         {
-            if (!is_entity_valid(entity))
-            {
-                return nullptr;
-            }
-
             if (!is_component_registered<T>())
             {
                 register_component<T>(should_update);
@@ -328,11 +325,6 @@ namespace forge
 
         EcsResult remove_component(Entity *entity, std::type_index index)
         {
-            if (!is_entity_valid(entity))
-            {
-                return EcsResult::EntityDoesNotExist;
-            }
-
             auto iter = entity->m_components.find(index);
 
             if (iter == entity->m_components.end())
@@ -341,15 +333,6 @@ namespace forge
             }
 
             auto &ct = m_component_table[index];
-
-            // auto destroy_iter = ct.destroy_signals.find(iter->second.offset);
-            //
-            // if (destroy_iter != ct.destroy_signals.end())
-            // {
-            //     auto &signal = destroy_iter->second;
-            //     signal();
-            //     ct.destroy_signals.erase(destroy_iter);
-            // }
 
             ct.free(iter->second.offset);
 

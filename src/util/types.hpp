@@ -1,7 +1,7 @@
 #pragma once 
 
-#include <typeinfo>
 #include <string_view>
+#include <typeindex>
 
 #ifdef __has_include
 #  if __has_include(<cxxabi.h>)

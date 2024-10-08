@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "core/logging.hpp"
+#include "util/types.hpp"
 
 namespace forge
 {
@@ -34,62 +35,6 @@ namespace forge
 		}
 
 		void destroy();
-
-		MemPool(const MemPool& other) :
-			  m_memory{other.m_memory},
-			  m_offset{other.m_offset},
-			  m_length{other.m_length},
-			  m_element_size{other.m_element_size},
-			  m_map_size{other.m_map_size},
-			  m_free_list{other.m_free_list}
-		{}
-
-		MemPool(MemPool&& other) noexcept :
-			  m_memory{other.m_memory},
-			  m_offset{other.m_offset},
-			  m_length{other.m_length},
-			  m_element_size{other.m_element_size},
-			  m_map_size{other.m_map_size},
-			  m_free_list{std::move(other.m_free_list)}
-		{
-			other.m_memory = nullptr;
-			other.m_offset = 0;
-			other.m_length = 0;
-		}
-
-		MemPool& operator=(const MemPool& other)
-		{
-			if (this == &other)
-			{
-				return *this;
-			}
-
-			m_memory       = other.m_memory;
-			m_offset       = other.m_offset;
-			m_length       = other.m_length;
-			m_element_size = other.m_element_size;
-			m_map_size     = other.m_map_size;
-			m_free_list    = other.m_free_list;
-
-			return *this;
-		}
-
-		MemPool& operator=(MemPool&& other) noexcept
-		{
-			if (this == &other)
-			{
-				return *this;
-			}
-
-			m_memory       = other.m_memory;
-			m_offset       = other.m_offset;
-			m_length       = other.m_length;
-			m_element_size = other.m_element_size;
-			m_map_size     = other.m_map_size;
-			m_free_list    = std::move(other.m_free_list);
-
-			return *this;
-		}
 
 		MemPoolObject allocate(bool construct = false);
 

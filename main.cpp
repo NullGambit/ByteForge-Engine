@@ -165,9 +165,11 @@ int main()
 		return -1;
 	}
 
-	engine.nexus->register_component<SpinCamera>(true);
+	engine.nexus->register_component<FlyCamera>(true);
+	engine.nexus->register_component<Test>(true);
 
 	auto *entity = engine.nexus->create_entity("Player");
+
 	entity->add_components<FlyCamera>(true);
 
 	auto &entity2 = entity->emplace_child();
