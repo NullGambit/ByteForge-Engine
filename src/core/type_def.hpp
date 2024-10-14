@@ -16,3 +16,9 @@ typedef unsigned long int u64;
 __extension__ typedef signed long long int i64;
 __extension__ typedef unsigned long long int u64;
 #endif
+
+// the following are macro definitions for the reflection system that i will implement soon and will be used by the header parser tool
+#define CLASS(...)
+#define ENUM(...)
+#define PROPERTY(...)
+#define FUNCTION(...)

@@ -6,6 +6,7 @@
 #include "../fmt/fmt.hpp"
 #include "system/virtual_memory.hpp"
 
+
 bool forge::MemPool::init(size_t element_size, size_t map_size)
 {
 	m_map_size = map_size;
@@ -40,15 +41,16 @@ void forge::MemPool::destroy()
 
 forge::MemPoolObject forge::MemPool::allocate(bool construct)
 {
+	auto offset = m_offset;
+
 	if (!m_free_list.empty())
 	{
-		auto free_offset = m_free_list.back();
+		offset = m_free_list.back();
 		m_free_list.pop_back();
-		return {m_memory + free_offset, free_offset};
 	}
 
-	auto *out_mem = m_memory + m_offset;
-	auto mem_offset = m_offset;
+	auto *out_mem = m_memory + offset;
+	auto mem_offset = offset;
 
 	++m_length;
 	m_offset += m_element_size;

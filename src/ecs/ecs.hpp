@@ -33,13 +33,6 @@ namespace forge
         EntityDoesNotExist,
     };
 
-    enum class EntityState
-    {
-        Invalid,
-        Enabled,
-        Disabled,
-    };
-
     using DeltaTime = float;
 
     class Nexus;
@@ -53,12 +46,17 @@ namespace forge
 
     struct EntityView
     {
-        u32 index;
-        std::vector<Entity> *entities;
+        static constexpr auto NO_INDEX = std::numeric_limits<u32>::max();
 
-        Entity& get()
+        Nexus *nexus;
+        u32 index = NO_INDEX;
+        u32 table;
+
+        Entity& get();
+
+        inline bool has_value() const
         {
-            return (*entities)[index];
+            return index != NO_INDEX;
         }
     };
 
@@ -81,6 +79,11 @@ namespace forge
 
         void set_enabled(bool value);
 
+        inline bool is_enabled() const
+        {
+            return m_is_enabled;
+        }
+
         virtual std::vector<ComponentField> export_fields() { return {}; }
 
         virtual void on_editor_enter() {}
@@ -102,14 +105,6 @@ namespace forge
     class Entity final
     {
     public:
-        Entity() :
-            m_state(EntityState::Enabled)
-        {}
-
-        inline EntityState get_state() const
-        {
-            return m_state;
-        }
 
         template<class T>
         T* add_component(bool should_update = false);
@@ -122,9 +117,12 @@ namespace forge
         template<class T>
         T* get_component(std::optional<void(*)()> on_destroy = std::nullopt);
 
-        inline std::vector<Entity>& get_children()
+        std::vector<Entity>& get_children();
+
+        [[nodiscard]]
+        inline u32 get_children_index() const
         {
-            return m_children;
+            return m_children_index;
         }
 
         inline std::string_view get_name() const
@@ -152,27 +150,27 @@ namespace forge
 
         inline EntityView get_view()
         {
-            return {m_index, get_entity_table()};
+            return {m_nexus, m_index, get_entity_table()};
         }
+
+        void destroy();
 
     private:
         friend Nexus;
+        friend EntityView;
 
         Transform m_transform;
 
         std::string m_name;
-        EntityState m_state = EntityState::Enabled;
         HashMap<std::type_index, ComponentView> m_components;
 
-        Nexus  *m_nexus;
-        Entity *m_parent = nullptr;
-        std::vector<Entity> m_children;
-
-        // the index inside whichever entity table it belongs to (either from the nexus (top level) or a child of another entity (nested))
+        Nexus  *m_nexus = nullptr;
+        EntityView m_parent {};
+        u32 m_children_index = 0;
         u32 m_index;
 
         // gets the table this entity belongs to (see m_index for more info)
-        std::vector<Entity>* get_entity_table();
+        u32 get_entity_table();
     };
 
     class Nexus final : public ISubSystem
@@ -276,17 +274,18 @@ namespace forge
         template<class ...Args>
         Entity* create_entity(std::optional<std::string_view> name = std::nullopt)
         {
-            auto index = m_entities.size();
-            auto &entity = m_entities.emplace_back();
+            auto &entities = m_entities.front();
+            auto index = entities.size();
+            auto &entity = entities.emplace_back();
 
             entity.m_nexus = this;
             entity.m_index = index;
 
             // TODO: resolve name collisions
-            if (name.has_value())
+            if (name)
             {
                 entity.m_name = name.value();
-                m_name_table.emplace(entity.m_name, EntityView{(u32)index, &m_entities});
+                m_name_table.emplace(entity.m_name, entity.get_view());
             }
 
             (add_components<Args>(&entity), ...);
@@ -296,7 +295,7 @@ namespace forge
 
         Entity* get_entity(std::string_view name);
 
-        void delete_entity(Entity *entity);
+        void destroy_entity(Entity *entity);
 
         template<class T>
         inline T* add_component(Entity *entity, bool should_update = false)
@@ -345,6 +344,11 @@ namespace forge
 
         std::vector<Entity>& get_entities()
         {
+            return m_entities[0];
+        }
+
+        std::vector<std::vector<Entity>>& get_all_entities()
+        {
             return m_entities;
         }
 
@@ -355,11 +359,12 @@ namespace forge
 
     private:
         friend Entity;
+        friend EntityView;
 
         HashMap<std::type_index, ComponentType> m_component_table;
-        HashMap<std::string_view, EntityView> m_name_table;
+        HashMap<std::string, EntityView, ENABLE_TRANSPARENT_HASH> m_name_table;
         std::vector<std::type_index> m_update_table;
-        std::vector<Entity> m_entities;
+        std::vector<std::vector<Entity>> m_entities;
         std::vector<std::pair<std::type_index, size_t>> m_remove_queue;
     };
 

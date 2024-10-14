@@ -8,7 +8,7 @@
 #include "src/util/types.hpp"
 #include "graphics/ogl_renderer/ogl_renderer.hpp"
 
-class SpinCamera : public forge::IComponent
+class SpinCamera final : public forge::IComponent
 {
 public:
 	forge::Camera camera {forge::CameraProjectionMode::Perspective};
@@ -17,18 +17,24 @@ public:
 	{
 		auto &engine = forge::Engine::get_instance();
 
-		auto runtime = forge::Engine::get_instance().get_engine_runtime();
-		auto radius = 10.0f;
-		auto camera_x = glm::sin(runtime) * radius;
-		auto camera_z = glm::cos(runtime) * radius;
+		auto runtime = forge::Engine::get_instance().get_engine_runtime() * m_speed;
+		auto camera_x = glm::sin(runtime) * m_radius;
+		auto camera_z = glm::cos(runtime) * m_radius;
 
-		camera.look_at({camera_x, 0.0f, camera_z}, {});
+		camera.look_at({camera_x, m_height, camera_z}, {});
 
 		engine.renderer->update_pv(camera.pv());
 	}
+
+	EXPORT_FIELDS(m_speed, m_radius, m_height);
+
+private:
+	float m_speed = 0.5;
+	float m_radius = 10;
+	float m_height = 0.0f;
 };
 
-class FlyCamera : public forge::IComponent
+class FlyCamera final : public forge::IComponent
 {
 public:
 	forge::Camera camera {forge::CameraProjectionMode::Perspective};
@@ -166,15 +172,42 @@ int main()
 	}
 
 	engine.nexus->register_component<FlyCamera>(true);
-	engine.nexus->register_component<Test>(true);
+	engine.nexus->register_component<Test>();
+	engine.nexus->register_component<SpinCamera>(true);
 
 	auto *entity = engine.nexus->create_entity("Player");
-
 	entity->add_components<FlyCamera>(true);
 
-	auto &entity2 = entity->emplace_child();
+	auto &entity2 = entity->emplace_child("Child");
 
 	entity2.add_component<Test>();
+
+	engine.nexus->create_entity("A");
+
+	// auto *ent = engine.nexus->create_entity();
+	// engine.nexus->destroy_entity(ent);
+
+	engine.nexus->create_entity("B");
+	engine.nexus->create_entity("C");
+	engine.nexus->create_entity("D");
+
+	auto *player = engine.nexus->get_entity("Player");
+
+	if (player == nullptr)
+	{
+		log::info("could not find player");
+		return -1;
+	}
+
+	for (auto &child : player->get_children())
+	{
+		log::info("{}", child.get_name());
+
+		for (auto &[index, view] : child.get_components())
+		{
+
+		}
+	}
 
 	engine.run();
 

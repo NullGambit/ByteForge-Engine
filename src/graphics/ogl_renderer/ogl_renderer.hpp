@@ -12,6 +12,11 @@ class GLFWwindow;
 
 namespace forge
 {
+	struct RenderStatistics
+	{
+		u32 draw_calls;
+	};
+
 	class OglRenderer final : public ISubSystem
 	{
 	public:
@@ -25,11 +30,19 @@ namespace forge
 		// 	return SubSystemThreadMode::OffloadThread;
 		// }
 
+		void start_tick() override;
+
 		void set_wireframe(bool enable);
 
 		void set_clear_color(glm::vec3 color);
 
 		glm::vec3 get_clear_color();
+
+		[[nodiscard]]
+		RenderStatistics get_statistics() const
+		{
+			return m_statistics;
+		}
 
 		// allows for manually adding a command that will be run the next frame
 		void add_command(CommandBuffer<>::Callback &&command)
@@ -53,6 +66,7 @@ namespace forge
 		OglTexture m_face_texture;
 		GLFWwindow *m_worker_window = nullptr;
 		CommandBuffer<> m_command_buffer;
+		RenderStatistics m_statistics;
 
 		struct Transform
 		{

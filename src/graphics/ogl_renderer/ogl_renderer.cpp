@@ -48,6 +48,16 @@ std::string forge::OglRenderer::init()
 
 #undef C
 
+	constexpr auto MAX_CUBES = 1200;
+
+	f32 batched_cubes[sizeof(CUBE_VERTS) * MAX_CUBES];
+	i32 batch_offset = 0;
+
+	for (auto i = 0; i < MAX_CUBES; i++)
+	{
+		memcpy(batched_cubes + batch_offset, CUBE_VERTS, sizeof(CUBE_VERTS));
+		batch_offset += sizeof(CUBE_VERTS);
+	}
 
 	uint32_t vbo, ebo;
 
@@ -60,10 +70,10 @@ std::string forge::OglRenderer::init()
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(CUBE_VERTS), CUBE_VERTS, GL_STATIC_DRAW);
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(f32) * 5, (void*)0);
 	glEnableVertexAttribArray(0);
 
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 5, (void*)(3 * sizeof(float)));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 5, (void*)(3 * sizeof(f32)));
 	glEnableVertexAttribArray(1);
 
 	m_cube_texture.load("assets/textures/smoking_rat.png");
@@ -74,7 +84,7 @@ std::string forge::OglRenderer::init()
 	srand(time(0));
 
 	std::set<int> pos_set;
-	constexpr auto MAX_ATTEMPTS = 10;
+	constexpr auto MAX_ATTEMPTS = 100;
 
 	for (int i = 0; i < 1200; i++)
 	{
@@ -134,6 +144,8 @@ void forge::OglRenderer::update()
 		m_tri_shader.set("pvm", m_pv * model);
 
 		glDrawArrays(GL_TRIANGLES, 0, 36);
+
+		m_statistics.draw_calls++;
 	}
 
 	glBindVertexArray(0);
@@ -141,6 +153,11 @@ void forge::OglRenderer::update()
 
 void forge::OglRenderer::shutdown()
 {
+}
+
+void forge::OglRenderer::start_tick()
+{
+	m_statistics = {};
 }
 
 void forge::OglRenderer::set_wireframe(bool enable)
