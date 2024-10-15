@@ -182,24 +182,20 @@ int main()
 
 	entity2.add_component<Test>();
 
-	engine.nexus->create_entity("A");
-
-	// auto *ent = engine.nexus->create_entity();
-	// engine.nexus->destroy_entity(ent);
-
-	engine.nexus->create_entity("B");
-	engine.nexus->create_entity("C");
+	engine.nexus->create_entity("David john smith");
+	engine.nexus->create_entity("john allen");
+	engine.nexus->create_entity("johnny");
 	engine.nexus->create_entity("D");
 
-	auto *player = engine.nexus->get_entity("Player");
+	auto player = engine.nexus->get_entity("Player");
 
-	if (player == nullptr)
+	if (!player.has_value())
 	{
 		log::info("could not find player");
 		return -1;
 	}
 
-	for (auto &child : player->get_children())
+	for (auto &child : player.get().get_children())
 	{
 		log::info("{}", child.get_name());
 

@@ -142,14 +142,14 @@ public:
 
 			auto should_delete_entity = ImGui::Button("Delete Entity");
 
-			char name_buffer[256];
+			char name_buffer[256] {};
 
-			// auto name = entity.get_name();
-			//
-			// if (!name.empty())
-			// {
-			// 	strncpy(name_buffer, name.data(), name.size());
-			// }
+			auto name = entity.get_name();
+
+			if (!name.empty())
+			{
+				strcpy(name_buffer, name.data());
+			}
 
 			if (ImGui::InputText("##", name_buffer, sizeof(name_buffer)))
 			{
@@ -271,11 +271,41 @@ protected:
 				flags |= ImGuiTreeNodeFlags_Selected;
 			}
 
+			if (!m_filter.empty() && name.find(m_filter) == std::string::npos)
+			{
+				continue;
+			}
+
 			auto node_enabled = ImGui::TreeNodeEx(name.c_str(), flags);
 
 			if (ImGui::IsItemClicked())
 			{
 				m_selected_entity = entity.get_view();
+			}
+
+			if (ImGui::IsMouseReleased(1) && ImGui::IsItemHovered())
+			{
+				ImGui::OpenPopup("EntityRightClick");
+				m_selected_context_entity = entity.get_view();
+			}
+
+			if (entity.get_view() == m_selected_context_entity && ImGui::BeginPopup("EntityRightClick"))
+			{
+				if (ImGui::Selectable("Add child"))
+				{
+					m_selected_entity = entity.emplace_child().get_view();
+				}
+
+				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+
+				if (ImGui::Selectable("Delete"))
+				{
+					engine.nexus->destroy_entity(&entity);
+				}
+
+				ImGui::PopStyleColor(1);
+
+				ImGui::EndPopup();
 			}
 
 			if (node_enabled)
@@ -296,11 +326,29 @@ protected:
 
 	void on_window() override
 	{
+		if (ImGui::Button("+"))
+		{
+			auto &engine = forge::Engine::get_instance();
+
+			engine.nexus->create_entity();
+		}
+
+		ImGui::SameLine();
+
+		static char name_buffer[256] {};
+
+		if (ImGui::InputText("Filter", name_buffer, sizeof(name_buffer)))
+		{
+			m_filter = name_buffer;
+		}
+
 		show_entities();
 	}
 
 private:
 	forge::EntityView m_selected_entity;
+	forge::EntityView m_selected_context_entity;
+	std::string_view m_filter;
 	bool m_show_components_window = false;
 };
 

@@ -47,7 +47,7 @@ void forge::Entity::set_name(std::string_view new_name)
 
 forge::Entity& forge::Entity::emplace_child(std::optional<std::string_view> name)
 {
-	auto should_create_children = m_children_index + 1 >= m_nexus->m_entities.size();
+	auto should_create_children = m_children_index == 0;
 	auto &children = should_create_children ? m_nexus->m_entities.emplace_back() : m_nexus->m_entities[m_children_index];
 	auto index = children.size();
 	auto &entity = children.emplace_back();
@@ -143,16 +143,16 @@ void forge::Nexus::shutdown()
 {
 }
 
-forge::Entity* forge::Nexus::get_entity(std::string_view name)
+forge::EntityView forge::Nexus::get_entity(std::string_view name)
 {
 	auto it = m_name_table.find(name);
 
 	if (it == m_name_table.end())
 	{
-		return nullptr;
+		return {};
 	}
 
-	return &it->second.get();
+	return it->second.get().get_view();
 }
 
 void forge::Nexus::destroy_entity(Entity* entity)

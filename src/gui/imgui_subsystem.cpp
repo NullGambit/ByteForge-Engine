@@ -16,11 +16,17 @@ std::string forge::ImGuiSubsystem::init()
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-	io.IniFilename = "editor_config.ini";
+
+	if (!std::filesystem::exists("./config"))
+	{
+		std::filesystem::create_directory("./config");
+	}
+
+	io.IniFilename = "./config/editor_config.ini";
 
 	auto &window = Engine::get_instance().window;
 
-	auto ok = true;
+	bool ok;
 
 #define VALIDATE(expr, message) ok = (expr); if (!ok) return message
 

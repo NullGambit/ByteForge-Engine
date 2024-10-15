@@ -58,6 +58,11 @@ namespace forge
         {
             return index != NO_INDEX;
         }
+
+        bool operator==(const EntityView &b) const
+        {
+            return index == b.index && table == b.table;
+        }
     };
 
     using OnComponentDestroy = Signal<void()>;
@@ -205,10 +210,10 @@ namespace forge
 
         bool is_critical() override { return true; }
 
-        // SubSystemThreadMode get_thread_mode() override
-        // {
-        //     return SubSystemThreadMode::OffloadThread;
-        // }
+        SubSystemThreadMode get_thread_mode() override
+        {
+            return SubSystemThreadMode::OffloadThread;
+        }
 
         template<class T>
         EcsResult register_component(bool should_update = false)
@@ -293,7 +298,7 @@ namespace forge
             return &entity;
         }
 
-        Entity* get_entity(std::string_view name);
+        EntityView get_entity(std::string_view name);
 
         void destroy_entity(Entity *entity);
 
