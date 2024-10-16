@@ -34,6 +34,7 @@ namespace forge
     };
 
     using DeltaTime = float;
+    using EntityID = u32;
 
     class Nexus;
     class Entity;
@@ -51,9 +52,16 @@ namespace forge
         Nexus *nexus;
         u32 index = NO_INDEX;
         u32 table;
+        EntityID id;
 
         Entity& get();
 
+        // verifies that this entity points to the same entity the view was taken from and that it still exists in the table
+        [[nodiscard]]
+        bool is_entity_valid();
+
+        // equivalent to doing a null check on an entity pointer
+        [[nodiscard]]
         inline bool has_value() const
         {
             return index != NO_INDEX;
@@ -61,8 +69,14 @@ namespace forge
 
         bool operator==(const EntityView &b) const
         {
-            return index == b.index && table == b.table;
+            return index == b.index && table == b.table && id == b.id;
         }
+    };
+
+    struct EntitiesTableEntry
+    {
+        std::vector<Entity> entities;
+        EntityView owner;
     };
 
     using OnComponentDestroy = Signal<void()>;
@@ -84,7 +98,8 @@ namespace forge
 
         void set_enabled(bool value);
 
-        inline bool is_enabled() const
+        [[nodiscard]]
+        bool is_enabled() const
         {
             return m_is_enabled;
         }
@@ -130,6 +145,13 @@ namespace forge
             return m_children_index;
         }
 
+        [[nodiscard]]
+        inline EntityID get_id() const
+        {
+            return m_id;
+        }
+
+        [[nodiscard]]
         inline std::string_view get_name() const
         {
             return m_name;
@@ -137,11 +159,13 @@ namespace forge
 
         void set_name(std::string_view new_name);
 
+        [[nodiscard]]
         inline const HashMap<std::type_index, ComponentView>& get_components() const
         {
             return m_components;
         }
 
+        template<class ...Args>
         Entity& emplace_child(std::optional<std::string_view> name = std::nullopt);
 
         template<class T>
@@ -153,9 +177,10 @@ namespace forge
 
         void update_hierarchy();
 
+        [[nodiscard]]
         inline EntityView get_view()
         {
-            return {m_nexus, m_index, get_entity_table()};
+            return {m_nexus, m_index, m_table_index, m_id};
         }
 
         void destroy();
@@ -167,15 +192,22 @@ namespace forge
         Transform m_transform;
 
         std::string m_name;
+
         HashMap<std::type_index, ComponentView> m_components;
 
         Nexus  *m_nexus = nullptr;
-        EntityView m_parent {};
-        u32 m_children_index = 0;
-        u32 m_index;
 
-        // gets the table this entity belongs to (see m_index for more info)
-        u32 get_entity_table();
+        // a view to its parent if it has any
+        EntityView m_parent {};
+        // the index of where its child is stored in the nexus's entity table
+        u32 m_children_index = 0;
+        // the index of where this entity is stored within its table
+        u32 m_index;
+        // the actual table this entity belongs to if 0 than it is a top level entity
+        u32 m_table_index;
+        // an id used for comparison and verification to make sure the entity has not been changed (swapped and popped)
+        EntityID m_id;
+
     };
 
     class Nexus final : public ISubSystem
@@ -277,14 +309,16 @@ namespace forge
         }
 
         template<class ...Args>
-        Entity* create_entity(std::optional<std::string_view> name = std::nullopt)
+        Entity& create_entity(std::optional<std::string_view> name = std::nullopt)
         {
-            auto &entities = m_entities.front();
+            auto &entities = m_entities_table.front().entities;
             auto index = entities.size();
             auto &entity = entities.emplace_back();
 
             entity.m_nexus = this;
+            entity.m_table_index = 0;
             entity.m_index = index;
+            entity.m_id = m_id_counter++;
 
             // TODO: resolve name collisions
             if (name)
@@ -295,10 +329,12 @@ namespace forge
 
             (add_components<Args>(&entity), ...);
 
-            return &entity;
+            return entity;
         }
 
         EntityView get_entity(std::string_view name);
+
+        void destroy_children(Entity *entity);
 
         void destroy_entity(Entity *entity);
 
@@ -349,12 +385,12 @@ namespace forge
 
         std::vector<Entity>& get_entities()
         {
-            return m_entities[0];
+            return m_entities_table[0].entities;
         }
 
-        std::vector<std::vector<Entity>>& get_all_entities()
+        std::vector<EntitiesTableEntry>& get_all_entities()
         {
-            return m_entities;
+            return m_entities_table;
         }
 
         inline HashMap<std::type_index, ComponentType>& get_component_table()
@@ -369,8 +405,10 @@ namespace forge
         HashMap<std::type_index, ComponentType> m_component_table;
         HashMap<std::string, EntityView, ENABLE_TRANSPARENT_HASH> m_name_table;
         std::vector<std::type_index> m_update_table;
-        std::vector<std::vector<Entity>> m_entities;
+        // stores an array of all entity arrays in the nexus including nested array of entities (child entities)
+        std::vector<EntitiesTableEntry> m_entities_table;
         std::vector<std::pair<std::type_index, size_t>> m_remove_queue;
+        EntityID m_id_counter {};
     };
 
     template<class T>
@@ -418,6 +456,41 @@ namespace forge
         }
 
         return (T*)iter->second.pointer;
+    }
+
+    template<class ... Args>
+    Entity& Entity::emplace_child(std::optional<std::string_view> name)
+    {
+        auto should_create_children = m_children_index == 0;
+
+        auto &children =
+            should_create_children
+            ? m_nexus->m_entities_table.emplace_back(EntitiesTableEntry{{}, get_view()}).entities
+            : m_nexus->m_entities_table[m_children_index].entities;
+
+        auto index = children.size();
+        auto &entity = children.emplace_back();
+
+        if (should_create_children)
+        {
+            m_children_index = m_nexus->m_entities_table.size() - 1;
+        }
+
+        entity.m_parent = get_view();
+        entity.m_nexus = m_nexus;
+        entity.m_table_index = m_children_index;
+        entity.m_index = index;
+        entity.m_id = m_nexus->m_id_counter++;
+
+        if (name)
+        {
+            entity.m_name = name.value();
+            m_nexus->m_name_table[entity.m_name] = entity.get_view();
+        }
+
+        (m_nexus->add_components<Args>(&entity), ...);
+
+        return entity;
     }
 
     template<class T>

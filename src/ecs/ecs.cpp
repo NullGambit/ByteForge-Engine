@@ -6,7 +6,19 @@
 
 forge::Entity& forge::EntityView::get()
 {
-	return nexus->m_entities[table][index];
+	return nexus->m_entities_table[table].entities[index];
+}
+
+bool forge::EntityView::is_entity_valid()
+{
+	auto &entities_table = nexus->m_entities_table;
+
+	if (table >= entities_table.size() || index >= entities_table[table].entities.size())
+	{
+		return false;
+	}
+
+	return id == get().m_id;
 }
 
 void forge::IComponent::set_enabled(bool value)
@@ -30,7 +42,7 @@ u8* forge::Entity::add_component(std::type_index index)
 
 std::vector<forge::Entity>& forge::Entity::get_children()
 {
-	return m_nexus->m_entities[m_children_index];
+	return m_nexus->m_entities_table[m_children_index].entities;
 }
 
 void forge::Entity::set_name(std::string_view new_name)
@@ -43,31 +55,6 @@ void forge::Entity::set_name(std::string_view new_name)
 	m_name = new_name;
 
 	m_nexus->m_name_table[m_name] = get_view();
-}
-
-forge::Entity& forge::Entity::emplace_child(std::optional<std::string_view> name)
-{
-	auto should_create_children = m_children_index == 0;
-	auto &children = should_create_children ? m_nexus->m_entities.emplace_back() : m_nexus->m_entities[m_children_index];
-	auto index = children.size();
-	auto &entity = children.emplace_back();
-
-	if (should_create_children)
-	{
-		m_children_index = m_nexus->m_entities.size() - 1;
-	}
-
-	entity.m_nexus = m_nexus;
-	entity.m_parent = get_view();
-	entity.m_index = index;
-
-	if (name)
-	{
-		entity.m_name = name.value();
-		m_nexus->m_name_table[entity.m_name] = entity.get_view();
-	}
-
-	return entity;
 }
 
 forge::EcsResult forge::Entity::remove_component(std::type_index index)
@@ -87,29 +74,29 @@ void forge::Entity::on_editor_enter()
 
 void forge::Entity::update_hierarchy()
 {
-	// if (m_parent.has_value())
-	// {
-	// 	m_transform.model = m_parent->m_transform.model * m_transform.get_local_transform();
-	// }
-	// else
-	// {
-	// 	m_transform.model = m_transform.get_local_transform();
-	// }
-	//
-	// for (auto &child : m_children)
-	// {
-	// 	child.update_hierarchy();
-	// }
+	if (m_parent.has_value())
+	{
+		m_transform.model = m_parent.get().m_transform.model * m_transform.get_local_transform();
+	}
+	else
+	{
+		m_transform.model = m_transform.get_local_transform();
+	}
+
+	if (m_children_index == 0)
+	{
+		return;
+	}
+
+	for (auto &child : get_children())
+	{
+		child.update_hierarchy();
+	}
 }
 
 void forge::Entity::destroy()
 {
 	m_nexus->destroy_entity(this);
-}
-
-u32 forge::Entity::get_entity_table()
-{
-	return !m_parent.has_value() ? 0 : m_nexus->m_entities[m_parent.table][m_parent.index].m_children_index;
 }
 
 void forge::Nexus::ComponentType::update(DeltaTime delta) const
@@ -134,7 +121,7 @@ std::string forge::Nexus::init()
 	// m_entities.reserve(1000);
 
 	// construct global entities vector
-	m_entities.emplace_back();
+	m_entities_table.emplace_back();
 
 	return {};
 }
@@ -155,6 +142,48 @@ forge::EntityView forge::Nexus::get_entity(std::string_view name)
 	return it->second.get().get_view();
 }
 
+void forge::Nexus::destroy_children(Entity* entity)
+{
+	if (entity->m_children_index == 0)
+	{
+		return;
+	}
+
+	auto &entry = m_entities_table[entity->m_children_index];
+
+	for (auto &child_entity : entry.entities)
+	{
+		destroy_entity(&child_entity);
+	}
+
+	// if its already at the back just pop it and stop
+	if (entry.owner.table == m_entities_table.size()-1)
+	{
+		m_entities_table.pop_back();
+		return;
+	}
+
+	// it's a top level entity and thus does not need to be removed
+	if (entry.owner.table == 0)
+	{
+		return;
+	}
+
+	auto &owner = entry.owner.get();
+
+	auto old_index = owner.m_table_index;
+
+	auto last_table = std::move(m_entities_table.back());
+
+	m_entities_table[m_entities_table.size()-1] = std::move(entry);
+
+	last_table.owner.get().m_table_index = old_index;
+
+	m_entities_table[old_index] = std::move(last_table);
+
+	m_entities_table.pop_back();
+}
+
 void forge::Nexus::destroy_entity(Entity* entity)
 {
 	// free components and call their destructors
@@ -163,32 +192,35 @@ void forge::Nexus::destroy_entity(Entity* entity)
 		m_component_table[index].free(cv.offset);
 	}
 
+	destroy_children(entity);
+
 	// swaps the current entity with the last entity in the table and updates its index then pops it for a fast removal
 
 	auto old_index = entity->m_index;
 
-	auto table_index = entity->get_entity_table();
-	auto &table = m_entities[table_index];
+	auto table_index = entity->m_table_index;
+	auto &entities = m_entities_table[table_index].entities;
 
-	if (table.size() == 1)
+	// if its already at the back just pop it and stop
+	if (entities.size() == 1)
 	{
-		table.pop_back();
+		entities.pop_back();
 		return;
 	}
-	if (table.empty())
+	if (entities.empty())
 	{
 		return;
 	}
 
-	auto temp = std::move(table.back());
+	auto temp = std::move(entities.back());
 
-	table[temp.m_index] = std::move(*entity);
+	entities[temp.m_index] = std::move(*entity);
 
 	temp.m_index = old_index;
 
-	table[old_index] = std::move(temp);
+	entities[old_index] = std::move(temp);
 
-	table.pop_back();
+	entities.pop_back();
 }
 
 u8* forge::Nexus::add_component(Entity* entity, std::type_index index)
@@ -232,9 +264,9 @@ void forge::Nexus::update()
 		iter->second.update(delta);
 	}
 
-	for (auto &table : m_entities)
+	for (auto &table : m_entities_table)
 	{
-		for (auto &entity : table)
+		for (auto &entity : table.entities)
 		{
 			entity.update_hierarchy();
 		}

@@ -162,8 +162,8 @@ int main()
 	auto ok = engine.init(
 	{
 		.window_title = "ByteForge Engine",
-		.window_width = 720,
-		.window_height = 480,
+		.window_width = 1920,
+		.window_height = 1080,
 	});
 
 	if (!ok)
@@ -175,10 +175,10 @@ int main()
 	engine.nexus->register_component<Test>();
 	engine.nexus->register_component<SpinCamera>(true);
 
-	auto *entity = engine.nexus->create_entity("Player");
-	entity->add_components<FlyCamera>(true);
+	auto &entity = engine.nexus->create_entity("Player");
+	entity.add_components<FlyCamera>(true);
 
-	auto &entity2 = entity->emplace_child("Child");
+	auto &entity2 = entity.emplace_child("Child");
 
 	entity2.add_component<Test>();
 

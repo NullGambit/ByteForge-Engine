@@ -14,6 +14,19 @@ class IEditorWindow;
 
 static forge::HashMap<std::string_view, IEditorWindow*> g_window_table;
 
+struct ScopedWindow
+{
+	ScopedWindow(std::string_view name, bool *is_open = nullptr)
+	{
+		ImGui::Begin(name.data(), is_open);
+	}
+
+	~ScopedWindow()
+	{
+		ImGui::End();
+	}
+};
+
 class IEditorWindow : public forge::IComponent
 {
 public:
@@ -82,6 +95,7 @@ protected:
 		ImGui::Text("FPS: %d", (int)last_frame);
 		ImGui::Text("Tick: %f", last_engine_delta);
 		ImGui::Text("Draw calls: %d", render_stats.draw_calls);
+		ImGui::Text("Entity tables: %d", engine.nexus->get_all_entities().size());
 	}
 };
 
@@ -132,11 +146,14 @@ public:
 	{
 		IEditorWindow::update(delta);
 
-		m_show_components_window = show_window;
-
-		if (m_show_components_window && m_selected_entity.has_value())
+		if (show_window && m_selected_entity.has_value())
 		{
-			ImGui::Begin("Components", &m_show_components_window);
+			ScopedWindow components_window {"Components"};
+
+			if (!m_selected_entity.is_entity_valid())
+			{
+				return;
+			}
 
 			auto &entity = m_selected_entity.get();
 
@@ -157,6 +174,8 @@ public:
 			}
 
 			ImGui::SameLine();
+
+			ImGui::Text("(%d)", entity.get_id());
 
 			if (ImGui::Button("+"))
 			{
@@ -236,8 +255,6 @@ public:
 					m_selected_entity.index--;
 				}
 			}
-
-			ImGui::End();
 		}
 	}
 
@@ -253,7 +270,7 @@ protected:
 			return;
 		}
 
-		auto &entities = entities_table[entity_table_index];
+		auto &entities = entities_table[entity_table_index].entities;
 
 		for (u32 index = 0; auto &entity : entities)
 		{
@@ -264,9 +281,9 @@ protected:
 				name += "Entity_" + std::to_string(index);
 			}
 
-			auto flags = 0;
+			auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
 
-			if (m_selected_entity.index == index)
+			if (m_selected_entity.index == index && entity_table_index == m_selected_entity.table)
 			{
 				flags |= ImGuiTreeNodeFlags_Selected;
 			}
@@ -349,7 +366,6 @@ private:
 	forge::EntityView m_selected_entity;
 	forge::EntityView m_selected_context_entity;
 	std::string_view m_filter;
-	bool m_show_components_window = false;
 };
 
 class TopBarEditorComponent final : public forge::IComponent
@@ -358,6 +374,11 @@ public:
 	void update(forge::DeltaTime delta) override
 	{
 		auto &engine = forge::Engine::get_instance();
+
+		if (m_show_demo_window)
+		{
+			ImGui::ShowDemoWindow();
+		}
 
 		if (ImGui::BeginMainMenuBar())
 		{
@@ -373,6 +394,8 @@ public:
 
 			if (ImGui::BeginMenu("Windows"))
 			{
+				ImGui::Checkbox("Demo", &m_show_demo_window);
+
 				for (auto &[name, window] : g_window_table)
 				{
 					ImGui::Checkbox(name.data(), &window->show_window);
@@ -384,6 +407,9 @@ public:
 			ImGui::EndMainMenuBar();
 		}
 	}
+
+private:
+	bool m_show_demo_window;
 };
 
 std::string forge::EditorSubsystem::init()
@@ -396,16 +422,16 @@ std::string forge::EditorSubsystem::init()
 	}
 
 	// entity for all editor windows
-	auto *windows_entity = m_nexus.create_entity("windows");
+	auto &windows_entity = m_nexus.create_entity("windows");
 
-	windows_entity->add_components<StatisticsEditorWindow, SettingsEditorWindow, SceneOutlineEditorWindow>(true);
+	windows_entity.add_components<StatisticsEditorWindow, SettingsEditorWindow, SceneOutlineEditorWindow>(true);
 
-	windows_entity->on_editor_enter();
+	windows_entity.on_editor_enter();
 
 	// entity for anything related to view config such as the top bar
-	auto *config_entity = m_nexus.create_entity("config");
+	auto &config_entity = m_nexus.create_entity("config");
 
-	config_entity->add_components<TopBarEditorComponent>(true);
+	config_entity.add_components<TopBarEditorComponent>(true);
 
 	return {};
 }
