@@ -156,22 +156,16 @@ void forge::Nexus::destroy_children(Entity* entity)
 		destroy_entity(&child_entity);
 	}
 
-	// if its already at the back just pop it and stop
-	if (entry.owner.table == m_entities_table.size()-1)
+	auto table_size = m_entities_table.size();
+
+	// if it's at the end just pop it or if its just two values pop it so it doesnt do a weird swap with the top level table
+	if ((entry.owner.table == table_size-1 && table_size > 1) || table_size == 2)
 	{
 		m_entities_table.pop_back();
 		return;
 	}
 
-	// it's a top level entity and thus does not need to be removed
-	if (entry.owner.table == 0)
-	{
-		return;
-	}
-
-	auto &owner = entry.owner.get();
-
-	auto old_index = owner.m_table_index;
+	auto old_index = entity->m_children_index;
 
 	auto last_table = std::move(m_entities_table.back());
 
