@@ -130,6 +130,51 @@ void forge::Nexus::shutdown()
 {
 }
 
+void forge::Nexus::add_to_group(std::string_view group_name, Entity& entity)
+{
+	auto iter = m_groups.find(group_name);
+
+	if (iter == m_groups.end())
+	{
+		iter = m_groups.emplace(group_name, std::vector<EntityView>{}).first;
+	}
+
+	iter->second.emplace_back(entity.get_view());
+}
+
+void forge::Nexus::remove_group(std::string_view group_name)
+{
+	m_groups.erase(group_name);
+}
+
+std::vector<forge::EntityView>* forge::Nexus::get_group(std::string_view group_name, bool trim_invalid_entities)
+{
+	auto iter = m_groups.find(group_name);
+
+	if (iter == m_groups.end())
+	{
+		return nullptr;
+	}
+
+	auto &entities = iter->second;
+
+	if (trim_invalid_entities)
+	{
+		for (auto i = 0; i < entities.size(); i++)
+		{
+			auto &view = entities[i];
+
+			if (!view.is_entity_valid())
+			{
+				std::swap(entities[i], entities[entities.size()-1]);
+				entities.pop_back();
+			}
+		}
+	}
+
+	return &entities;
+}
+
 forge::EntityView forge::Nexus::get_entity(std::string_view name)
 {
 	auto it = m_name_table.find(name);
@@ -187,6 +232,11 @@ void forge::Nexus::destroy_entity(Entity* entity)
 	}
 
 	destroy_children(entity);
+
+	if (!entity->m_name.empty())
+	{
+		m_name_table.erase(entity->m_name);
+	}
 
 	// swaps the current entity with the last entity in the table and updates its index then pops it for a fast removal
 

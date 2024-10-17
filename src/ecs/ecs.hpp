@@ -332,6 +332,14 @@ namespace forge
             return entity;
         }
 
+        void add_to_group(std::string_view group_name, Entity& entity);
+
+        void remove_group(std::string_view group_name);
+
+        // if trim_invalid_entities is true it will search the group for any entities that have been destroyed and remove them from the group
+        [[nodiscard]]
+        std::vector<EntityView>* get_group(std::string_view group_name, bool trim_invalid_entities = true);
+
         EntityView get_entity(std::string_view name);
 
         void destroy_children(Entity *entity);
@@ -404,6 +412,7 @@ namespace forge
 
         HashMap<std::type_index, ComponentType> m_component_table;
         HashMap<std::string, EntityView, ENABLE_TRANSPARENT_HASH> m_name_table;
+        HashMap<std::string, std::vector<EntityView>, ENABLE_TRANSPARENT_HASH> m_groups;
         std::vector<std::type_index> m_update_table;
         // stores an array of all entity arrays in the nexus including nested array of entities (child entities)
         std::vector<EntitiesTableEntry> m_entities_table;

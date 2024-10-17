@@ -178,12 +178,20 @@ int main()
 	auto &entity = engine.nexus->create_entity("Player");
 	entity.add_components<FlyCamera>(true);
 
+	engine.nexus->add_to_group("important entities", entity);
+
 	auto &entity2 = entity.emplace_child("Child");
 
 	entity2.add_component<Test>();
 
 	engine.nexus->create_entity("David john smith");
-	engine.nexus->create_entity("john allen");
+
+	auto &john = engine.nexus->create_entity("john allen");
+
+	engine.nexus->add_to_group("important entities", john);
+
+	engine.nexus->destroy_entity(&john);
+
 	engine.nexus->create_entity("johnny");
 	engine.nexus->create_entity("D");
 
@@ -198,10 +206,13 @@ int main()
 	for (auto &child : player.get().get_children())
 	{
 		log::info("{}", child.get_name());
+	}
 
-		for (auto &[index, view] : child.get_components())
+	for (auto &entity_view : *engine.nexus->get_group("important entities"))
+	{
+		if (entity_view.is_entity_valid())
 		{
-
+			log::info("{}", entity_view.get().get_name());
 		}
 	}
 
