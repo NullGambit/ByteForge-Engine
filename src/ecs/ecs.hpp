@@ -334,13 +334,23 @@ namespace forge
 
         void add_to_group(std::string_view group_name, Entity& entity);
 
+        void remove_from_group(std::string_view group_name, Entity& entity);
+
         void remove_group(std::string_view group_name);
+
+        void create_group(std::string_view group_name);
 
         // if trim_invalid_entities is true it will search the group for any entities that have been destroyed and remove them from the group
         [[nodiscard]]
         std::vector<EntityView>* get_group(std::string_view group_name, bool trim_invalid_entities = true);
 
+        [[nodiscard]]
         EntityView get_entity(std::string_view name);
+
+        HashMap<std::string, std::vector<EntityView>, ENABLE_TRANSPARENT_HASH>& get_all_groups()
+        {
+            return m_groups;
+        }
 
         void destroy_children(Entity *entity);
 

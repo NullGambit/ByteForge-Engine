@@ -10,6 +10,8 @@ target_sources(IMGUI
                     imgui_draw.cpp
                     imgui_tables.cpp
                     imgui_widgets.cpp
+                    misc/cpp/imgui_stdlib.h
+                    misc/cpp/imgui_stdlib.cpp
                     imgui.cpp
                     misc/cpp/imgui_stdlib.cpp
 

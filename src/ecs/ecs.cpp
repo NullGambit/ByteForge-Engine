@@ -142,9 +142,42 @@ void forge::Nexus::add_to_group(std::string_view group_name, Entity& entity)
 	iter->second.emplace_back(entity.get_view());
 }
 
+void forge::Nexus::remove_from_group(std::string_view group_name, Entity& entity)
+{
+	auto iter = m_groups.find(group_name);
+
+	if (iter == m_groups.end())
+	{
+		return;
+	}
+
+	auto &entities = iter->second;
+
+	for (auto i = 0; i < entities.size(); i++)
+	{
+		auto &view = entities[i];
+
+		if (view.is_entity_valid() && view == entity.get_view())
+		{
+			std::swap(entities[i], entities[entities.size()-1]);
+			entities.pop_back();
+		}
+	}
+}
+
 void forge::Nexus::remove_group(std::string_view group_name)
 {
 	m_groups.erase(group_name);
+}
+
+void forge::Nexus::create_group(std::string_view group_name)
+{
+	if (m_groups.contains(group_name))
+	{
+		return;
+	}
+
+	m_groups.emplace(group_name, std::vector<EntityView>{});
 }
 
 std::vector<forge::EntityView>* forge::Nexus::get_group(std::string_view group_name, bool trim_invalid_entities)

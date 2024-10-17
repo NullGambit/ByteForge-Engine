@@ -16,14 +16,18 @@ void on_framebuffer_resize_callback(GLFWwindow *window, int width, int height)
 
 void on_mouse_callback(GLFWwindow *window, double xpos, double ypos)
 {
-    auto &io = ImGui::GetIO();
+	if (ImGui::GetCurrentContext() != nullptr)
+	{
+	    auto &io = ImGui::GetIO();
 
-    io.AddMousePosEvent(xpos, ypos);
+	    io.AddMousePosEvent(xpos, ypos);
 
-    if (io.WantCaptureMouse)
-    {
-        return;
-    }
+	    if (io.WantCaptureMouse)
+	    {
+	        return;
+	    }
+	}
+
 
 	auto *windowPtr = (forge::Window*)glfwGetWindowUserPointer(window);
 
@@ -57,11 +61,14 @@ uint32_t translate_glfw_key(int key);
 
 void on_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-	auto &io = ImGui::GetIO();
-
-	if (io.WantCaptureKeyboard)
+	if (ImGui::GetCurrentContext() != nullptr)
 	{
-		return;
+		auto &io = ImGui::GetIO();
+
+		if (io.WantCaptureKeyboard)
+		{
+			return;
+		}
 	}
 
 	auto *windowPtr = (forge::Window*)glfwGetWindowUserPointer(window);
@@ -78,11 +85,14 @@ void on_key_callback(GLFWwindow* window, int key, int scancode, int action, int 
 
 void on_mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
-	auto &io = ImGui::GetIO();
-
-	if (io.WantCaptureKeyboard)
+	if (ImGui::GetCurrentContext() != nullptr)
 	{
-		return;
+		auto &io = ImGui::GetIO();
+
+		if (io.WantCaptureKeyboard)
+		{
+			return;
+		}
 	}
 
 	auto *windowPtr = (forge::Window*)glfwGetWindowUserPointer(window);
@@ -219,9 +229,15 @@ bool forge::Window::is_key_pressed(Key key, Modifier mod) const
 
 bool forge::Window::is_key_held(Key key) const
 {
-	auto &io = ImGui::GetIO();
+	bool imgui_wants_keyboard = false;
 
-	return !io.WantCaptureKeyboard && glfwGetKey(m_handle, (int)key);
+	if (ImGui::GetCurrentContext() != nullptr)
+	{
+		auto &io = ImGui::GetIO();
+		imgui_wants_keyboard = io.WantCaptureKeyboard;
+	}
+
+	return !imgui_wants_keyboard && glfwGetKey(m_handle, (int)key);
 }
 
 bool forge::Window::is_mouse_button_pressed(MouseButton key, Modifier mod) const

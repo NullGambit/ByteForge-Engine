@@ -1,6 +1,7 @@
 #include "editor_subsystem.hpp"
 
 #include <imgui.h>
+#include "misc/cpp/imgui_stdlib.h"
 #include <imgui_internal.h>
 #include <glm/gtc/type_ptr.hpp>
 
@@ -26,6 +27,57 @@ struct ScopedWindow
 		ImGui::End();
 	}
 };
+
+struct ContextMenuItem
+{
+	std::string_view name;
+	std::function<void()> callback;
+	std::optional<ImVec4> color = std::nullopt;
+	std::function<bool()> predicate = []{ return true; };
+	bool on_hover = false;
+};
+
+bool check_context_menu(std::string_view name)
+{
+	if (ImGui::IsMouseReleased(1) && ImGui::IsItemHovered())
+	{
+		ImGui::OpenPopup(name.data());
+		return true;
+	}
+
+	return false;
+}
+
+void open_context_menu(std::string_view name, const std::vector<ContextMenuItem> &items)
+{
+	if (!ImGui::IsPopupOpen(name.data()))
+	{
+		check_context_menu(name);
+	}
+
+	if (ImGui::BeginPopup(name.data()))
+	{
+		for (const auto &item : items)
+		{
+			if (item.color)
+			{
+				ImGui::PushStyleColor(ImGuiCol_Text, item.color.value());
+			}
+
+			if (item.predicate() && ImGui::Selectable(item.name.data()) || (item.on_hover && ImGui::IsItemHovered()))
+			{
+				item.callback();
+			}
+
+			if (item.color)
+			{
+				ImGui::PopStyleColor(1);
+			}
+		}
+
+		ImGui::EndPopup();
+	}
+}
 
 class IEditorWindow : public forge::IComponent
 {
@@ -136,16 +188,61 @@ protected:
 	}
 };
 
+class Dialog
+{
+public:
+	Dialog(std::string_view name) :
+		m_name(name)
+	{}
+
+	void open()
+	{
+		ImGui::OpenPopup(m_name.data());
+		m_show_modal = true;
+	}
+
+	void take_text_input(std::function<void(std::string&)> &&callback)
+	{
+		if (ImGui::BeginPopupModal(m_name.data(), &m_show_modal, ImGuiChildFlags_AlwaysAutoResize))
+		{
+			ImGui::InputText("Input", &m_input_buffer);
+
+			if (should_confirm())
+			{
+				callback(m_input_buffer);
+
+				m_show_modal = false;
+
+				m_input_buffer.clear();
+
+				ImGui::CloseCurrentPopup();
+			}
+
+			ImGui::EndPopup();
+		}
+	}
+
+private:
+	std::string_view m_name;
+	bool m_show_modal = false;
+	std::string m_input_buffer;
+
+	bool should_confirm() const
+	{
+		return ImGui::Button("Confirm") || ImGui::IsKeyPressed(ImGuiKey_Enter) && !m_input_buffer.empty();
+	}
+};
+
 class SceneOutlineEditorWindow final : public IEditorWindow
 {
 public:
 
 	SceneOutlineEditorWindow() : IEditorWindow("Scene Outline") {}
 
-	void update(forge::DeltaTime delta) override
-	{
-		IEditorWindow::update(delta);
+protected:
 
+	void draw_right_side()
+	{
 		if (show_window && m_selected_entity.has_value())
 		{
 			ScopedWindow components_window {"Components"};
@@ -156,8 +253,6 @@ public:
 			}
 
 			auto &entity = m_selected_entity.get();
-
-			auto should_delete_entity = ImGui::Button("Delete Entity");
 
 			char name_buffer[256] {};
 
@@ -176,6 +271,8 @@ public:
 			ImGui::SameLine();
 
 			ImGui::Text("(%d)", entity.get_id());
+
+			ImGui::Separator();
 
 			if (ImGui::Button("+"))
 			{
@@ -245,20 +342,209 @@ public:
 					}
 				}
 			}
+		}
+	}
 
-			if (should_delete_entity)
+	void draw_left_side()
+	{
+		if (ImGui::BeginTabBar("LeftSide"))
+		{
+			if (ImGui::BeginTabItem("Scene"))
 			{
-				entity.destroy();
+				m_is_in_group_tab = false;
 
-				if (m_selected_entity.index > 0)
+				show_entities(0);
+
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem("Groups"))
+			{
+				m_is_in_group_tab = true;
+
+				draw_groups();
+
+				ImGui::EndTabItem();
+			}
+
+			ImGui::EndTabBar();
+		}
+	}
+
+	void draw_groups()
+	{
+		if (ImGui::Button("Create group"))
+		{
+			m_create_group_dialog.open();
+		}
+
+		m_create_group_dialog.take_text_input([](std::string &input)
+		{
+			forge::Engine::get_instance().nexus->create_group(input);
+		});
+
+		auto &engine = forge::Engine::get_instance();
+
+		for (auto &[name, entities] : engine.nexus->get_all_groups())
+		{
+			if (ImGui::IsItemHovered())
+			{
+				m_last_hovered_group_name = name;
+			}
+
+			if (ImGui::TreeNode(name.c_str()))
+			{
+				open_context_menu("GroupContext",
 				{
-					m_selected_entity.index--;
+					{
+						"Delete", [&name]
+						{
+							forge::Engine::get_instance().nexus->remove_group(name);
+						},
+						ImVec4(1.0f, 0.0f, 0.0f, 1.0f)
+					},
+				});
+
+				for (auto &view : entities)
+				{
+					if (!view.is_entity_valid())
+					{
+						continue;
+					}
+
+					draw_entity(view.get(), name);
 				}
+
+				ImGui::TreePop();
 			}
 		}
 	}
 
-protected:
+	bool does_filter_fail(std::string_view name)
+	{
+		return !m_filter.empty() && name.find(m_filter) == std::string::npos;
+	}
+
+	void draw_entity(forge::Entity &entity, std::string_view from_group = "")
+	{
+		auto name = entity.get_name();
+
+		if (name.empty())
+		{
+			name = "Entity";
+		}
+
+		auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+
+		if (m_selected_entity == entity.get_view())
+		{
+			flags |= ImGuiTreeNodeFlags_Selected;
+		}
+
+		if (does_filter_fail(name))
+		{
+			return;
+		}
+
+		ImGui::PushID(entity.get_id());
+
+		auto node_enabled = ImGui::TreeNodeEx(name.data(), flags);
+
+		ImGui::PopID();
+
+		if (ImGui::IsItemClicked())
+		{
+			m_selected_entity = entity.get_view();
+		}
+
+		if (check_context_menu("EntityContext"))
+		{
+			m_selected_context_entity = entity.get_view();
+		}
+
+		if (entity.get_view() == m_selected_context_entity)
+		{
+			open_context_menu("EntityContext",
+			{
+				{
+					"Add child",
+					[&]
+					{
+						m_selected_entity = entity.emplace_child().get_view();
+					}
+				},
+				{
+					.name = "Add to group",
+					.callback = [&]
+					{
+						auto &engine = forge::Engine::get_instance();
+
+						// std::vector<ContextMenuItem> items;
+
+						auto &groups = engine.nexus->get_all_groups();
+
+						if (ImGui::BeginMenu("Yes"))
+						{
+							for (auto &[name, _] : groups)
+							{
+								ImGui::MenuItem(name.data());
+							}
+
+							ImGui::EndMenu();
+						}
+
+						// items.reserve(groups.size());
+						//
+						// for (auto &[name, _] : groups)
+						// {
+						// 	items.emplace_back(
+						// 	ContextMenuItem
+						// 	{
+						// 		name,
+						// 		[&]
+						// 		{
+						// 			engine.nexus->add_to_group(name, m_selected_context_entity.get());
+						// 		}
+						// 	});
+						// }
+						//
+						// ImGui::OpenPopup("AddToGroupContext");
+						//
+						// open_context_menu("AddToGroupContext", items);
+					},
+					.on_hover = true,
+				},
+				{
+					.name = "Remove from group",
+					.callback = [&]
+					{
+						forge::Engine::get_instance().nexus->remove_from_group(from_group, m_selected_context_entity.get());
+					},
+					.predicate = [&] { return m_is_in_group_tab; }
+				},
+				{
+					.name = "Delete",
+					.callback = [&]
+					{
+						m_selected_context_entity.get().destroy();
+					},
+					.color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+				},
+			});
+		}
+
+		if (node_enabled)
+		{
+			auto children_index = entity.get_children_index();
+
+			if (children_index > 0)
+			{
+				show_entities(children_index);
+			}
+
+			ImGui::TreePop();
+		}
+	}
 
 	void show_entities(u32 entity_table_index = 0)
 	{
@@ -272,72 +558,9 @@ protected:
 
 		auto &entities = entities_table[entity_table_index].entities;
 
-		for (u32 index = 0; auto &entity : entities)
+		for (auto &entity : entities)
 		{
-			auto name = std::string{entity.get_name()};
-
-			if (name.empty())
-			{
-				name += "Entity_" + std::to_string(index);
-			}
-
-			auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
-
-			if (m_selected_entity.index == index && entity_table_index == m_selected_entity.table)
-			{
-				flags |= ImGuiTreeNodeFlags_Selected;
-			}
-
-			if (!m_filter.empty() && name.find(m_filter) == std::string::npos)
-			{
-				continue;
-			}
-
-			auto node_enabled = ImGui::TreeNodeEx(name.c_str(), flags);
-
-			if (ImGui::IsItemClicked())
-			{
-				m_selected_entity = entity.get_view();
-			}
-
-			if (ImGui::IsMouseReleased(1) && ImGui::IsItemHovered())
-			{
-				ImGui::OpenPopup("EntityRightClick");
-				m_selected_context_entity = entity.get_view();
-			}
-
-			if (entity.get_view() == m_selected_context_entity && ImGui::BeginPopup("EntityRightClick"))
-			{
-				if (ImGui::Selectable("Add child"))
-				{
-					m_selected_entity = entity.emplace_child().get_view();
-				}
-
-				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
-
-				if (ImGui::Selectable("Delete"))
-				{
-					engine.nexus->destroy_entity(&entity);
-				}
-
-				ImGui::PopStyleColor(1);
-
-				ImGui::EndPopup();
-			}
-
-			if (node_enabled)
-			{
-				auto children_index = entity.get_children_index();
-
-				if (children_index > 0)
-				{
-					show_entities(children_index);
-				}
-
-				ImGui::TreePop();
-			}
-
-			index++;
+			draw_entity(entity);
 		}
 	}
 
@@ -359,13 +582,18 @@ protected:
 			m_filter = name_buffer;
 		}
 
-		show_entities();
+		draw_left_side();
+		draw_right_side();
 	}
 
 private:
+	u32 m_entity_counter = 0;
 	forge::EntityView m_selected_entity;
 	forge::EntityView m_selected_context_entity;
 	std::string_view m_filter;
+	bool m_is_in_group_tab = false;
+	std::string_view m_last_hovered_group_name;
+	Dialog m_create_group_dialog {"Create group"};
 };
 
 class TopBarEditorComponent final : public forge::IComponent
