@@ -59,19 +59,9 @@ void open_context_menu(std::string_view name, const std::vector<ContextMenuItem>
 	{
 		for (const auto &item : items)
 		{
-			if (item.color)
-			{
-				ImGui::PushStyleColor(ImGuiCol_Text, item.color.value());
-			}
-
 			if (item.predicate() && ImGui::Selectable(item.name.data()) || (item.on_hover && ImGui::IsItemHovered()))
 			{
 				item.callback();
-			}
-
-			if (item.color)
-			{
-				ImGui::PopStyleColor(1);
 			}
 		}
 
@@ -462,75 +452,43 @@ protected:
 			m_selected_context_entity = entity.get_view();
 		}
 
-		if (entity.get_view() == m_selected_context_entity)
+		if (entity.get_view() == m_selected_context_entity && ImGui::BeginPopup("EntityContext"))
 		{
-			open_context_menu("EntityContext",
+			if (ImGui::Selectable("Add child"))
 			{
+				m_selected_entity = entity.emplace_child().get_view();
+			}
+			if (ImGui::BeginMenu("Add to group"))
+			{
+				auto &engine = forge::Engine::get_instance();
+
+				auto &groups = engine.nexus->get_all_groups();
+
+				for (auto &[name, _] : groups)
 				{
-					"Add child",
-					[&]
+					if (ImGui::MenuItem(name.data()))
 					{
-						m_selected_entity = entity.emplace_child().get_view();
+						engine.nexus->add_to_group(name, m_selected_context_entity.get());
 					}
-				},
-				{
-					.name = "Add to group",
-					.callback = [&]
-					{
-						auto &engine = forge::Engine::get_instance();
+				}
 
-						// std::vector<ContextMenuItem> items;
+				ImGui::EndMenu();
+			}
+			if (m_is_in_group_tab && ImGui::Selectable("Remove from group"))
+			{
+				forge::Engine::get_instance().nexus->remove_from_group(from_group, m_selected_context_entity.get());
+			}
 
-						auto &groups = engine.nexus->get_all_groups();
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
 
-						if (ImGui::BeginMenu("Yes"))
-						{
-							for (auto &[name, _] : groups)
-							{
-								ImGui::MenuItem(name.data());
-							}
+			if (ImGui::Selectable("Delete"))
+			{
+				m_selected_context_entity.get().destroy();
+			}
 
-							ImGui::EndMenu();
-						}
+			ImGui::PopStyleColor(1);
 
-						// items.reserve(groups.size());
-						//
-						// for (auto &[name, _] : groups)
-						// {
-						// 	items.emplace_back(
-						// 	ContextMenuItem
-						// 	{
-						// 		name,
-						// 		[&]
-						// 		{
-						// 			engine.nexus->add_to_group(name, m_selected_context_entity.get());
-						// 		}
-						// 	});
-						// }
-						//
-						// ImGui::OpenPopup("AddToGroupContext");
-						//
-						// open_context_menu("AddToGroupContext", items);
-					},
-					.on_hover = true,
-				},
-				{
-					.name = "Remove from group",
-					.callback = [&]
-					{
-						forge::Engine::get_instance().nexus->remove_from_group(from_group, m_selected_context_entity.get());
-					},
-					.predicate = [&] { return m_is_in_group_tab; }
-				},
-				{
-					.name = "Delete",
-					.callback = [&]
-					{
-						m_selected_context_entity.get().destroy();
-					},
-					.color = ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
-				},
-			});
+			ImGui::EndPopup();
 		}
 
 		if (node_enabled)
@@ -539,14 +497,14 @@ protected:
 
 			if (children_index > 0)
 			{
-				show_entities(children_index);
+				show_entities(children_index, from_group);
 			}
 
 			ImGui::TreePop();
 		}
 	}
 
-	void show_entities(u32 entity_table_index = 0)
+	void show_entities(u32 entity_table_index = 0, std::string_view from_group = "")
 	{
 		auto &engine = forge::Engine::get_instance();
 		auto &entities_table = engine.nexus->get_all_entities();
@@ -560,7 +518,7 @@ protected:
 
 		for (auto &entity : entities)
 		{
-			draw_entity(entity);
+			draw_entity(entity, from_group);
 		}
 	}
 
