@@ -235,6 +235,46 @@ public:
 
 protected:
 
+	void vec_drag_control(std::string_view label, float *values, int components, bool *uniform = nullptr)
+	{
+		static const char *component_table[] = {"X", "Y", "Z", "W"};
+
+		ImGui::Text(label.data());
+
+		if (uniform != nullptr)
+		{
+			ImGui::SameLine();
+			ImGui::PushID(uniform);
+			ImGui::Checkbox("##", uniform);
+			ImGui::PopID();
+		}
+
+		ImGui::PushItemWidth(50);
+
+		for (auto i = 0; i < components; i++)
+		{
+			ImGui::PushID(values + i);
+
+			ImGui::DragFloat(component_table[i], &values[i]);
+
+			ImGui::PopID();
+
+			if (i != components-1)
+			{
+				ImGui::SameLine();
+			}
+		}
+
+		ImGui::PopItemWidth();
+	}
+
+	template<class T>
+	void vec_drag_control(std::string_view label, T &values, bool *uniform = nullptr)
+	{
+		auto *ptr = glm::value_ptr(values);
+		vec_drag_control(label, ptr, sizeof(T) / sizeof(ptr[0]), uniform);
+	}
+
 	void draw_right_side()
 	{
 		if (show_window && m_selected_entity.has_value())
@@ -272,20 +312,14 @@ protected:
 
 				static bool uniform_scale = true;
 
-				ImGui::Checkbox("*", &uniform_scale);
-				ImGui::SameLine();
+				auto scale = transform.scale;
 
-				auto scale = glm::value_ptr(transform.scale);
+				vec_drag_control("Scale", scale, &uniform_scale);
 
-				ImGui::DragFloat3("Scale", scale);
+				transform.scale = uniform_scale ? glm::vec3{scale[0]} : scale;
 
-				if (uniform_scale)
-				{
-					transform.scale = glm::vec3{scale[0]};
-				}
-
-				ImGui::DragFloat3("Position", glm::value_ptr(transform.position));
-				ImGui::DragFloat3("Rotation", glm::value_ptr(transform.euler));
+				vec_drag_control("Position", transform.position);
+				vec_drag_control("Rotation", transform.euler);
 			}
 
 			ImGui::Separator();
