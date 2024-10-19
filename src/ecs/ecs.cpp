@@ -300,7 +300,7 @@ void forge::Nexus::destroy_entity(Entity* entity)
 	entities.pop_back();
 }
 
-u8* forge::Nexus::add_component(Entity* entity, std::type_index index)
+u8* forge::Nexus::add_component(Entity *entity, std::type_index index)
 {
 	auto &ct = m_component_table[index];
 
@@ -312,6 +312,8 @@ u8* forge::Nexus::add_component(Entity* entity, std::type_index index)
 		component->m_owner = entity->get_view();
 		component->m_is_active = true;
 		component->m_is_enabled = true;
+
+		component->on_enter();
 	}
 
 	entity->m_components[index] =

@@ -11,6 +11,9 @@
 class SpinCamera final : public forge::IComponent
 {
 public:
+
+	REGISTER_UPDATE_FUNC
+
 	forge::Camera camera {forge::CameraProjectionMode::Perspective};
 
 	void update(forge::DeltaTime delta) override
@@ -37,6 +40,9 @@ private:
 class FlyCamera final : public forge::IComponent
 {
 public:
+
+	REGISTER_UPDATE_FUNC
+
 	forge::Camera camera {forge::CameraProjectionMode::Perspective};
 
 	void update(forge::DeltaTime delta) override
@@ -155,6 +161,43 @@ public:
 	EXPORT_FIELDS(x, y);
 };
 
+class PrimitiveRendererComponent : public forge::IComponent
+{
+public:
+
+	REGISTER_UPDATE_FUNC
+
+	void update(forge::DeltaTime delta) override
+	{
+		m_renderer->update_primitive(m_id, m_owner.get().get_transform().get_local_transform());
+	}
+
+	void on_editor_controls()
+	{
+		ImGui::Text("render id: %d", m_id);
+	}
+
+private:
+	u32 m_id;
+	forge::OglRenderer *m_renderer;
+
+protected:
+	void on_enter() override
+	{
+		m_renderer = forge::Engine::get_instance().renderer;
+
+		auto &transform = m_owner.get().get_transform();
+
+		transform.scale *= 100;
+
+		auto model = transform.get_local_transform();
+
+		m_id = m_renderer->create_primitive(model);
+
+		log::info("{}", m_id);
+	}
+};
+
 int main()
 {
 	auto &engine = forge::Engine::get_instance();
@@ -171,12 +214,13 @@ int main()
 		return -1;
 	}
 
-	engine.nexus->register_component<FlyCamera>(true);
+	engine.nexus->register_component<FlyCamera>();
 	engine.nexus->register_component<Test>();
-	engine.nexus->register_component<SpinCamera>(true);
+	engine.nexus->register_component<SpinCamera>();
+	engine.nexus->register_component<PrimitiveRendererComponent>();
 
 	auto &entity = engine.nexus->create_entity("Player");
-	entity.add_components<FlyCamera>(true);
+	entity.add_components<FlyCamera>();
 
 	engine.nexus->add_to_group("important entities", entity);
 
@@ -184,7 +228,7 @@ int main()
 
 	entity2.add_component<Test>();
 
-	engine.nexus->create_entity("David john smith");
+	engine.nexus->create_entity<PrimitiveRendererComponent>("David john smith");
 
 	auto &john = engine.nexus->create_entity("john allen");
 

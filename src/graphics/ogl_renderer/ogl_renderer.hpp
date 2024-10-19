@@ -44,6 +44,12 @@ namespace forge
 			return m_statistics;
 		}
 
+		u32 create_primitive(glm::mat4 model = {1.0});
+
+		void update_primitive(u32 id, glm::mat4 updated_model);
+
+		void destroy_primitive(u32 id);
+
 		// allows for manually adding a command that will be run the next frame
 		void add_command(CommandBuffer<>::Callback &&command)
 		{
@@ -60,7 +66,7 @@ namespace forge
 
 	private:
 		bool m_draw_wireframe = false;
-		uint32_t m_vao;
+		uint32_t m_cube_vao;
 		OglShader m_tri_shader;
 		OglTexture m_cube_texture;
 		OglTexture m_face_texture;
@@ -68,16 +74,18 @@ namespace forge
 		CommandBuffer<> m_command_buffer;
 		RenderStatistics m_statistics;
 
-		struct Transform
+		struct PrimitiveRenderData
 		{
-			glm::vec3 position;
-			glm::vec3 euler_angle;
+			glm::mat4 model;
+			bool is_valid = true;
 		};
 
-		std::vector<Transform> m_cube_positions;
+		std::vector<PrimitiveRenderData> m_cube_positions;
 		glm::mat4 m_pv;
 
 		void handle_framebuffer_resize(int width, int height);
+
+		u32 get_free_rdi();
 	};
 
 }

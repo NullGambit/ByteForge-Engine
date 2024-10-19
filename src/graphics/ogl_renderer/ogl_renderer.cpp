@@ -61,11 +61,11 @@ std::string forge::OglRenderer::init()
 
 	uint32_t vbo, ebo;
 
-	glGenVertexArrays(1, &m_vao);
+	glGenVertexArrays(1, &m_cube_vao);
 	glGenBuffers(1, &vbo);
 	glGenBuffers(1, &ebo);
 
-	glBindVertexArray(m_vao);
+	glBindVertexArray(m_cube_vao);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(CUBE_VERTS), CUBE_VERTS, GL_STATIC_DRAW);
@@ -82,31 +82,6 @@ std::string forge::OglRenderer::init()
 	glEnable(GL_DEPTH_TEST);
 
 	srand(time(0));
-
-	std::set<int> pos_set;
-	constexpr auto MAX_ATTEMPTS = 100;
-
-	for (int i = 0; i < 1200; i++)
-	{
-		auto rand_position = util::rand_vec3(-20, 20);
-		auto length = glm::length(rand_position) * 2;
-
-		auto attempts = 0;
-
-		while (!pos_set.emplace(length).second && attempts <= MAX_ATTEMPTS)
-		{
-			rand_position = util::rand_vec3(-20, 20);
-			length = glm::length(rand_position) * 2;
-			attempts++;
-		}
-
-		if (attempts == MAX_ATTEMPTS)
-		{
-			continue;
-		}
-
-		m_cube_positions.emplace_back(rand_position, util::rand_vec3(-1, 1));
-	}
 
 	auto &window = Engine::get_instance().window;
 
@@ -128,32 +103,25 @@ void forge::OglRenderer::update()
 
 	m_tri_shader.use();
 
-	auto runtime = Engine::get_instance().get_engine_runtime();
+	glBindVertexArray(m_cube_vao);
 
-	glBindVertexArray(m_vao);
-
-	for (const auto &[position, euler_angle] : m_cube_positions)
+	for (const auto &[model, is_valid] : m_cube_positions)
 	{
-		glm::mat4 model {1.0};
+		if (is_valid)
+		{
+			m_tri_shader.set("pvm", m_pv * model);
 
-		model = glm::translate(model, position);
-		model = glm::scale(model, glm::vec3{0.5});
+			glDrawArrays(GL_TRIANGLES, 0, 36);
 
-		model = glm::rotate(model, runtime, euler_angle);
-
-		m_tri_shader.set("pvm", m_pv * model);
-
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-
-		m_statistics.draw_calls++;
+			m_statistics.draw_calls++;
+		}
 	}
 
 	glBindVertexArray(0);
 }
 
 void forge::OglRenderer::shutdown()
-{
-}
+{}
 
 void forge::OglRenderer::start_tick()
 {
@@ -183,10 +151,47 @@ glm::vec3 forge::OglRenderer::get_clear_color()
 	return out;
 }
 
+u32 forge::OglRenderer::create_primitive(glm::mat4 model)
+{
+	auto id = get_free_rdi();
+
+	auto &data = m_cube_positions[id];
+
+	data.model = model;
+	data.is_valid = true;
+
+	return id;
+}
+
+void forge::OglRenderer::update_primitive(u32 id, glm::mat4 updated_model)
+{
+	m_cube_positions[id].model = updated_model;
+}
+
+void forge::OglRenderer::destroy_primitive(u32 id)
+{
+	m_cube_positions[id].is_valid = false;
+}
+
 void forge::OglRenderer::handle_framebuffer_resize(int width, int height)
 {
 	m_command_buffer.emplace([width, height]
 	{
 		glViewport(0, 0, width, height);
 	});
+}
+
+u32 forge::OglRenderer::get_free_rdi()
+{
+	for (u32 i = 0; i < m_cube_positions.size(); i++)
+	{
+		if (!m_cube_positions[i].is_valid)
+		{
+			return i;
+		}
+	}
+
+	m_cube_positions.emplace_back();
+
+	return m_cube_positions.size() - 1;
 }

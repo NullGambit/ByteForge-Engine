@@ -120,6 +120,7 @@ namespace forge
 
         virtual void on_enabled() {}
         virtual void on_disabled() {}
+        virtual void on_enter() {}
     };
 
     class Entity final
@@ -127,12 +128,12 @@ namespace forge
     public:
 
         template<class T>
-        T* add_component(bool should_update = false);
+        T* add_component();
 
         u8* add_component(std::type_index index);
 
         template<class ...Args>
-        void add_components(bool should_update = false);
+        void add_components();
 
         template<class T>
         T* get_component(std::optional<void(*)()> on_destroy = std::nullopt);
@@ -149,6 +150,12 @@ namespace forge
         inline EntityID get_id() const
         {
             return m_id;
+        }
+
+        [[nodiscard]]
+        inline Transform& get_transform()
+        {
+            return m_transform;
         }
 
         [[nodiscard]]
@@ -210,6 +217,14 @@ namespace forge
 
     };
 
+#define REGISTER_UPDATE_FUNC virtual void should_ever_update() {}
+
+    template<class T>
+    concept ComponentShouldEverUpdate = requires(T t)
+    {
+        t.should_ever_update();
+    };
+
     class Nexus final : public ISubSystem
     {
         struct ComponentType
@@ -248,7 +263,7 @@ namespace forge
         }
 
         template<class T>
-        EcsResult register_component(bool should_update = false)
+        EcsResult register_component(bool override_should_update = false)
         {
             const auto &type = typeid(T);
 
@@ -272,7 +287,7 @@ namespace forge
             {
                 ct.is_component = true;
 
-                if (should_update)
+                if (ComponentShouldEverUpdate<T> || override_should_update)
                 {
                     m_update_table.emplace_back(type);
                 }
@@ -357,11 +372,11 @@ namespace forge
         void destroy_entity(Entity *entity);
 
         template<class T>
-        inline T* add_component(Entity *entity, bool should_update = false)
+        inline T* add_component(Entity *entity)
         {
             if (!is_component_registered<T>())
             {
-                register_component<T>(should_update);
+                register_component<T>();
             }
 
             return (T*)add_component(entity, typeid(T));
@@ -370,9 +385,9 @@ namespace forge
        u8* add_component(Entity *entity, std::type_index index);
 
         template<class ...Args>
-        void add_components(Entity *entity, bool should_update = false)
+        void add_components(Entity *entity)
         {
-            (add_component<Args>(entity, should_update), ...);
+            (add_component<Args>(entity), ...);
         }
 
         template<class T>
@@ -431,15 +446,15 @@ namespace forge
     };
 
     template<class T>
-    T* Entity::add_component(bool should_update)
+    T* Entity::add_component()
     {
-        return m_nexus->add_component<T>(this, should_update);
+        return m_nexus->add_component<T>(this);
     }
 
     template<class ... Args>
-    void Entity::add_components(bool should_update)
+    void Entity::add_components()
     {
-        m_nexus->add_components<Args...>(this, should_update);
+        m_nexus->add_components<Args...>(this);
     }
 
     template<class T>

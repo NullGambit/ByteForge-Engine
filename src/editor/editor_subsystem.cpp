@@ -73,6 +73,8 @@ class IEditorWindow : public forge::IComponent
 {
 public:
 
+	REGISTER_UPDATE_FUNC
+
 	IEditorWindow(std::string_view name, bool show_window = false) :
 		show_window(show_window),
 		m_window_name(name)
@@ -108,6 +110,8 @@ public:
 	float last_frame {};
 	float last_engine_delta {};
 	forge::DeltaTime elapsed_time {};
+
+	REGISTER_UPDATE_FUNC
 
 	StatisticsEditorWindow() : IEditorWindow("Statistics") {}
 
@@ -261,6 +265,28 @@ protected:
 			ImGui::SameLine();
 
 			ImGui::Text("(%d)", entity.get_id());
+
+			if (ImGui::CollapsingHeader("Transform"))
+			{
+				auto &transform = m_selected_entity.get().get_transform();
+
+				static bool uniform_scale = true;
+
+				ImGui::Checkbox("*", &uniform_scale);
+				ImGui::SameLine();
+
+				auto scale = glm::value_ptr(transform.scale);
+
+				ImGui::DragFloat3("Scale", scale);
+
+				if (uniform_scale)
+				{
+					transform.scale = glm::vec3{scale[0]};
+				}
+
+				ImGui::DragFloat3("Position", glm::value_ptr(transform.position));
+				ImGui::DragFloat3("Rotation", glm::value_ptr(transform.euler));
+			}
 
 			ImGui::Separator();
 
@@ -557,6 +583,9 @@ private:
 class TopBarEditorComponent final : public forge::IComponent
 {
 public:
+
+	REGISTER_UPDATE_FUNC
+
 	void update(forge::DeltaTime delta) override
 	{
 		auto &engine = forge::Engine::get_instance();
@@ -610,14 +639,14 @@ std::string forge::EditorSubsystem::init()
 	// entity for all editor windows
 	auto &windows_entity = m_nexus.create_entity("windows");
 
-	windows_entity.add_components<StatisticsEditorWindow, SettingsEditorWindow, SceneOutlineEditorWindow>(true);
+	windows_entity.add_components<StatisticsEditorWindow, SettingsEditorWindow, SceneOutlineEditorWindow>();
 
 	windows_entity.on_editor_enter();
 
 	// entity for anything related to view config such as the top bar
 	auto &config_entity = m_nexus.create_entity("config");
 
-	config_entity.add_components<TopBarEditorComponent>(true);
+	config_entity.add_components<TopBarEditorComponent>();
 
 	return {};
 }
