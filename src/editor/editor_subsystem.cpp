@@ -314,19 +314,23 @@ protected:
 
 				static bool uniform_scale = true;
 
-				auto scale = transform.m_scale;
+				auto scale = transform.get_local_scale();
 
 				vec_drag_control("Scale", scale, &uniform_scale);
 
-				transform.m_scale = uniform_scale ? glm::vec3{scale[0]} : scale;
+				transform.set_local_scale(uniform_scale ? glm::vec3{scale[0]} : scale);
 
-				vec_drag_control("Position", transform.m_position);
+				auto position = transform.get_local_position();
 
-				auto euler = glm::eulerAngles(transform.m_rotation);
+				vec_drag_control("Position", position);
 
-				vec_drag_control("Rotation", euler, nullptr, 0.01);
+				transform.set_local_position(position);
 
-				transform.m_rotation = euler;
+				auto rotation = transform.get_local_euler_rotation();
+
+				vec_drag_control("Rotation", rotation, nullptr, 0.01);
+
+				transform.set_local_rotation(rotation);
 			}
 
 			ImGui::Separator();

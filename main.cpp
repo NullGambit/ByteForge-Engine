@@ -115,7 +115,8 @@ public:
 
 	void handle_movement(forge::DeltaTime delta)
 	{
-		auto &position = m_owner.get().get_transform().m_position;
+		auto &transform = m_owner.get().get_transform();
+		auto position = transform.get_local_position();
 
 		auto speed = ((is_key_held(forge::Key::LeftShift) ? m_boost_speed : 0) + m_speed) * delta;
 
@@ -137,6 +138,7 @@ public:
 		}
 
 		camera.set_position(position);
+		transform.set_local_position(position);
 	}
 
 	EXPORT_FIELDS(
@@ -169,7 +171,7 @@ public:
 
 	void update(forge::DeltaTime delta) override
 	{
-		m_renderer->update_primitive(m_id, m_owner.get().get_transform().m_model);
+		m_renderer->update_primitive(m_id, m_owner.get().get_transform().get_model());
 	}
 
 	void on_editor_controls()
@@ -188,7 +190,7 @@ protected:
 
 		auto &transform = m_owner.get().get_transform();
 
-		auto model = transform.compute_local_transform();
+		auto model = transform.get_model();
 
 		m_id = m_renderer->create_primitive(model);
 	}
@@ -218,13 +220,11 @@ int main()
 	auto &entity = engine.nexus->create_entity("Player");
 	entity.add_component<FlyCamera>();
 
-	entity.get_transform().m_position = {0, 0, 5};
+	entity.get_transform().set_local_position({0, 0, 5});
 
 	engine.nexus->add_to_group("important entities", entity);
 
-	// auto &entity2 = entity.emplace_child("Child");
-
-	// entity2.add_component<Test>();
+	entity.emplace_child<Test>("Child");
 
 	engine.nexus->create_entity<PrimitiveRendererComponent>("David john smith");
 
@@ -243,19 +243,6 @@ int main()
 	{
 		log::info("could not find player");
 		return -1;
-	}
-
-	for (auto &child : player.get().get_children())
-	{
-		log::info("{}", child.get_name());
-	}
-
-	for (auto &entity_view : *engine.nexus->get_group("important entities"))
-	{
-		if (entity_view.is_entity_valid())
-		{
-			log::info("{}", entity_view.get().get_name());
-		}
 	}
 
 	engine.run();

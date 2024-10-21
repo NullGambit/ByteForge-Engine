@@ -26,7 +26,7 @@ namespace forge
 
 		inline void set_local_rotation(glm::vec3 euler_rotation)
 		{
-			m_rotation = glm::radians(euler_rotation);
+			m_rotation = euler_rotation;
 			m_is_dirty = true;
 		}
 
@@ -48,7 +48,7 @@ namespace forge
 
 		inline void set_local_scale(glm::vec3 scale)
 		{
-			m_position = scale;
+			m_scale = scale;
 			m_is_dirty = true;
 		}
 
@@ -92,13 +92,18 @@ namespace forge
 
 		inline void set_scale(glm::vec3 parent, glm::vec3 scale)
 		{
-			m_position = parent * scale;
+			m_scale = parent * scale;
 			m_is_dirty = true;
 		}
 
 		inline glm::vec3 get_scale(glm::vec3 parent) const
 		{
 			return parent * m_scale;
+		}
+
+		inline glm::mat4 get_model() const
+		{
+			return m_model;
 		}
 
 	private:
@@ -114,9 +119,9 @@ namespace forge
 		[[nodiscard]]
 		inline glm::mat4 compute_local_transform()
 		{
-			auto rotation_matrix = glm::toMat4(m_rotation);
+			auto rotation_matrix	= glm::toMat4(m_rotation);
 			auto translation_matrix = glm::translate(glm::mat4(1.0f), m_position);
-			auto scale_matrix = glm::scale(glm::mat4(1.0f), m_scale);
+			auto scale_matrix		= glm::scale(glm::mat4(1.0f), m_scale);
 
 			m_is_dirty = false;
 

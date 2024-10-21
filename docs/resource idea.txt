@@ -1,0 +1,5 @@
+Whenever the engine reads an asset especially during a production build it can compile it into a special file that stores all the data in an easy to read binary format for example with meshes.
+
+Then you can have metadata files that are composites of references to multiple compiled resources. for example a model object could store a reference to a mesh, textures, materials which could just be shaders or material resources that hold on to shaders, and finally maybe even a skeleton. the engine would only ever make one file for a compiled asset and everything else that needs to use it will be in these reference or metadata files.
+
+this would be very similar to how a file system stores data.
