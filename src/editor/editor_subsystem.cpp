@@ -235,7 +235,8 @@ public:
 
 protected:
 
-	void vec_drag_control(std::string_view label, float *values, int components, bool *uniform = nullptr)
+	void vec_drag_control(std::string_view label, float *values, int components, bool *uniform = nullptr,
+		float speed = 1, float min_steps = 0, float max_steps = 0)
 	{
 		static const char *component_table[] = {"X", "Y", "Z", "W"};
 
@@ -255,7 +256,7 @@ protected:
 		{
 			ImGui::PushID(values + i);
 
-			ImGui::DragFloat(component_table[i], &values[i]);
+			ImGui::DragFloat(component_table[i], &values[i], speed, min_steps, max_steps);
 
 			ImGui::PopID();
 
@@ -269,10 +270,11 @@ protected:
 	}
 
 	template<class T>
-	void vec_drag_control(std::string_view label, T &values, bool *uniform = nullptr)
+	void vec_drag_control(std::string_view label, T &values, bool *uniform = nullptr,
+		float speed = 1, float min_steps = 0, float max_steps = 0)
 	{
 		auto *ptr = glm::value_ptr(values);
-		vec_drag_control(label, ptr, sizeof(T) / sizeof(ptr[0]), uniform);
+		vec_drag_control(label, ptr, sizeof(T) / sizeof(ptr[0]), uniform, speed, min_steps, max_steps);
 	}
 
 	void draw_right_side()
@@ -312,14 +314,19 @@ protected:
 
 				static bool uniform_scale = true;
 
-				auto scale = transform.scale;
+				auto scale = transform.m_scale;
 
 				vec_drag_control("Scale", scale, &uniform_scale);
 
-				transform.scale = uniform_scale ? glm::vec3{scale[0]} : scale;
+				transform.m_scale = uniform_scale ? glm::vec3{scale[0]} : scale;
 
-				vec_drag_control("Position", transform.position);
-				vec_drag_control("Rotation", transform.euler);
+				vec_drag_control("Position", transform.m_position);
+
+				auto euler = glm::eulerAngles(transform.m_rotation);
+
+				vec_drag_control("Rotation", euler, nullptr, 0.01);
+
+				transform.m_rotation = euler;
 			}
 
 			ImGui::Separator();

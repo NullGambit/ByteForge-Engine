@@ -7,6 +7,8 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_definitions(SHADER_HOT_RELOAD)
 endif()
 
+add_compile_definitions(GLM_ENABLE_EXPERIMENTAL)
+
 #set(CMAKE_CXX_FLAGS "-fconstexpr-depth=4096")
 
 include_directories(

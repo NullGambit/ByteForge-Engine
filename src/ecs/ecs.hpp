@@ -147,6 +147,12 @@ namespace forge
         }
 
         [[nodiscard]]
+        inline bool has_children() const
+        {
+            return m_children_index > 0;
+        }
+
+        [[nodiscard]]
         inline EntityID get_id() const
         {
             return m_id;

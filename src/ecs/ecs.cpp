@@ -76,11 +76,11 @@ void forge::Entity::update_hierarchy()
 {
 	if (m_parent.has_value())
 	{
-		m_transform.model = m_parent.get().m_transform.model * m_transform.get_local_transform();
+		m_transform.m_model = m_parent.get().m_transform.m_model * m_transform.compute_local_transform();
 	}
 	else
 	{
-		m_transform.model = m_transform.get_local_transform();
+		m_transform.m_model = m_transform.compute_local_transform();
 	}
 
 	if (m_children_index == 0)
@@ -343,11 +343,8 @@ void forge::Nexus::update()
 		iter->second.update(delta);
 	}
 
-	for (auto &table : m_entities_table)
+	for (auto &entity : m_entities_table.front().entities)
 	{
-		for (auto &entity : table.entities)
-		{
-			entity.update_hierarchy();
-		}
+		entity.update_hierarchy();
 	}
 }

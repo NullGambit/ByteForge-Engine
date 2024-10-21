@@ -1,4 +1,5 @@
 #include <imgui.h>
+#include <iostream>
 #include <numeric>
 
 #include "glm/glm.hpp"
@@ -110,12 +111,11 @@ public:
 			auto should_disable = is_mouse_button_held(forge::MouseButton::Right);
 			set_cursor_mode(should_disable ? Disabled : Normal);
 		}
-
 	}
 
 	void handle_movement(forge::DeltaTime delta)
 	{
-		auto position = camera.get_position();
+		auto &position = m_owner.get().get_transform().m_position;
 
 		auto speed = ((is_key_held(forge::Key::LeftShift) ? m_boost_speed : 0) + m_speed) * delta;
 
@@ -169,7 +169,7 @@ public:
 
 	void update(forge::DeltaTime delta) override
 	{
-		m_renderer->update_primitive(m_id, m_owner.get().get_transform().get_local_transform());
+		m_renderer->update_primitive(m_id, m_owner.get().get_transform().m_model);
 	}
 
 	void on_editor_controls()
@@ -188,13 +188,9 @@ protected:
 
 		auto &transform = m_owner.get().get_transform();
 
-		transform.scale *= 100;
-
-		auto model = transform.get_local_transform();
+		auto model = transform.compute_local_transform();
 
 		m_id = m_renderer->create_primitive(model);
-
-		log::info("{}", m_id);
 	}
 };
 
@@ -220,13 +216,15 @@ int main()
 	engine.nexus->register_component<PrimitiveRendererComponent>();
 
 	auto &entity = engine.nexus->create_entity("Player");
-	entity.add_components<FlyCamera>();
+	entity.add_component<FlyCamera>();
+
+	entity.get_transform().m_position = {0, 0, 5};
 
 	engine.nexus->add_to_group("important entities", entity);
 
-	auto &entity2 = entity.emplace_child("Child");
+	// auto &entity2 = entity.emplace_child("Child");
 
-	entity2.add_component<Test>();
+	// entity2.add_component<Test>();
 
 	engine.nexus->create_entity<PrimitiveRendererComponent>("David john smith");
 
