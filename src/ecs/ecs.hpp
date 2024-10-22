@@ -4,6 +4,7 @@
 #include <typeindex>
 #include <concepts>
 #include <variant>
+#include <tuple>
 
 #include "../container/map.hpp"
 #include "../fmt/fmt.hpp"
@@ -54,7 +55,7 @@ namespace forge
         u32 table;
         EntityID id;
 
-        Entity& get();
+        Entity& get_entity();
 
         // verifies that this entity points to the same entity the view was taken from and that it still exists in the table
         [[nodiscard]]
@@ -73,10 +74,14 @@ namespace forge
         }
     };
 
+    using EntityViewHandle = std::shared_ptr<EntityView>;
+
+    struct EntityEntry;
+
     struct EntitiesTableEntry
     {
-        std::vector<Entity> entities;
-        EntityView owner;
+        EntityViewHandle owner;
+        std::vector<EntityEntry> entities;
     };
 
     using OnComponentDestroy = Signal<void()>;
@@ -116,7 +121,7 @@ namespace forge
         bool m_is_enabled = true;
 
     protected:
-        EntityView m_owner;
+        EntityViewHandle m_owner;
 
         virtual void on_enabled() {}
         virtual void on_disabled() {}
@@ -138,7 +143,7 @@ namespace forge
         template<class T>
         T* get_component(std::optional<void(*)()> on_destroy = std::nullopt);
 
-        std::vector<Entity>& get_children();
+        std::vector<EntityEntry>& get_children();
 
         [[nodiscard]]
         inline u32 get_children_index() const
@@ -191,10 +196,8 @@ namespace forge
         void update_hierarchy();
 
         [[nodiscard]]
-        inline EntityView get_view()
-        {
-            return {m_nexus, m_index, m_table_index, m_id};
-        }
+        EntityViewHandle get_view() const;
+
 
         void destroy();
 
@@ -211,7 +214,7 @@ namespace forge
         Nexus  *m_nexus = nullptr;
 
         // a view to its parent if it has any
-        EntityView m_parent {};
+        EntityViewHandle m_parent {};
         // the index of where its child is stored in the nexus's entity table
         u32 m_children_index = 0;
         // the index of where this entity is stored within its table
@@ -221,6 +224,25 @@ namespace forge
         // an id used for comparison and verification to make sure the entity has not been changed (swapped and popped)
         EntityID m_id;
 
+        [[nodiscard]]
+        EntityViewHandle make_view() const
+        {
+            return std::make_shared<EntityView>(EntityView
+            {
+                m_nexus,
+                m_index,
+                m_table_index,
+                m_id
+            });
+        }
+    };
+
+    struct EntityEntry
+    {
+        // the underlying entity
+        Entity entity;
+        // a view to the entity that will be given out as a reference and always kept updated
+        EntityViewHandle handle;
     };
 
 #define REGISTER_UPDATE_FUNC virtual void should_ever_update() {}
@@ -334,12 +356,14 @@ namespace forge
         {
             auto &entities = m_entities_table.front().entities;
             auto index = entities.size();
-            auto &entity = entities.emplace_back();
+            auto &[entity, handle] = entities.emplace_back();
 
             entity.m_nexus = this;
             entity.m_table_index = 0;
             entity.m_index = index;
             entity.m_id = m_id_counter++;
+
+            handle = entity.make_view();
 
             // TODO: resolve name collisions
             if (name)
@@ -363,12 +387,12 @@ namespace forge
 
         // if trim_invalid_entities is true it will search the group for any entities that have been destroyed and remove them from the group
         [[nodiscard]]
-        std::vector<EntityView>* get_group(std::string_view group_name, bool trim_invalid_entities = true);
+        std::vector<EntityViewHandle>* get_group(std::string_view group_name, bool trim_invalid_entities = true);
 
         [[nodiscard]]
-        EntityView get_entity(std::string_view name);
+        EntityViewHandle get_entity(std::string_view name);
 
-        HashMap<std::string, std::vector<EntityView>, ENABLE_TRANSPARENT_HASH>& get_all_groups()
+        auto& get_all_groups()
         {
             return m_groups;
         }
@@ -422,7 +446,7 @@ namespace forge
 
         void update() override;
 
-        std::vector<Entity>& get_entities()
+        std::vector<EntityEntry>& get_entities()
         {
             return m_entities_table[0].entities;
         }
@@ -437,13 +461,19 @@ namespace forge
             return m_component_table;
         }
 
+        [[nodiscard]]
+        inline bool is_index_valid(u32 table, u32 slot) const
+        {
+            return table < m_entities_table.size() && slot < m_entities_table[table].entities.size();
+        }
+
     private:
         friend Entity;
         friend EntityView;
 
         HashMap<std::type_index, ComponentType> m_component_table;
-        HashMap<std::string, EntityView, ENABLE_TRANSPARENT_HASH> m_name_table;
-        HashMap<std::string, std::vector<EntityView>, ENABLE_TRANSPARENT_HASH> m_groups;
+        HashMap<std::string, EntityViewHandle, ENABLE_TRANSPARENT_HASH> m_name_table;
+        HashMap<std::string, std::vector<EntityViewHandle>, ENABLE_TRANSPARENT_HASH> m_groups;
         std::vector<std::type_index> m_update_table;
         // stores an array of all entity arrays in the nexus including nested array of entities (child entities)
         std::vector<EntitiesTableEntry> m_entities_table;
@@ -505,11 +535,11 @@ namespace forge
 
         auto &children =
             should_create_children
-            ? m_nexus->m_entities_table.emplace_back(EntitiesTableEntry{{}, get_view()}).entities
+            ? m_nexus->m_entities_table.emplace_back(EntitiesTableEntry{get_view(), {}}).entities
             : m_nexus->m_entities_table[m_children_index].entities;
 
         auto index = children.size();
-        auto &entity = children.emplace_back();
+        auto &[entity, handle] = children.emplace_back();
 
         if (should_create_children)
         {
@@ -521,6 +551,8 @@ namespace forge
         entity.m_table_index = m_children_index;
         entity.m_index = index;
         entity.m_id = m_nexus->m_id_counter++;
+
+        handle = entity.make_view();
 
         if (name)
         {

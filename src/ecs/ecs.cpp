@@ -4,9 +4,9 @@
 
 #include "core/engine.hpp"
 
-forge::Entity& forge::EntityView::get()
+forge::Entity& forge::EntityView::get_entity()
 {
-	return nexus->m_entities_table[table].entities[index];
+	return nexus->m_entities_table[table].entities[index].entity;
 }
 
 bool forge::EntityView::is_entity_valid()
@@ -18,7 +18,7 @@ bool forge::EntityView::is_entity_valid()
 		return false;
 	}
 
-	return id == get().m_id;
+	return id == get_entity().m_id;
 }
 
 void forge::IComponent::set_enabled(bool value)
@@ -40,7 +40,7 @@ u8* forge::Entity::add_component(std::type_index index)
 	return m_nexus->add_component(this, index);
 }
 
-std::vector<forge::Entity>& forge::Entity::get_children()
+std::vector<forge::EntityEntry>& forge::Entity::get_children()
 {
 	return m_nexus->m_entities_table[m_children_index].entities;
 }
@@ -74,9 +74,9 @@ void forge::Entity::on_editor_enter()
 
 void forge::Entity::update_hierarchy()
 {
-	if (m_parent.has_value())
+	if (m_parent != nullptr)
 	{
-		m_transform.m_model = m_parent.get().m_transform.m_model * m_transform.compute_local_transform();
+		m_transform.m_model = m_parent->get_entity().m_transform.m_model * m_transform.compute_local_transform();
 	}
 	else
 	{
@@ -88,10 +88,15 @@ void forge::Entity::update_hierarchy()
 		return;
 	}
 
-	for (auto &child : get_children())
+	for (auto &[child, _] : get_children())
 	{
 		child.update_hierarchy();
 	}
+}
+
+forge::EntityViewHandle forge::Entity::get_view() const
+{
+	return m_nexus->m_entities_table[m_table_index].entities[m_index].handle;
 }
 
 void forge::Entity::destroy()
@@ -136,7 +141,7 @@ void forge::Nexus::add_to_group(std::string_view group_name, Entity& entity)
 
 	if (iter == m_groups.end())
 	{
-		iter = m_groups.emplace(group_name, std::vector<EntityView>{}).first;
+		iter = m_groups.emplace(group_name, std::vector<EntityViewHandle>{}).first;
 	}
 
 	iter->second.emplace_back(entity.get_view());
@@ -157,7 +162,7 @@ void forge::Nexus::remove_from_group(std::string_view group_name, Entity& entity
 	{
 		auto &view = entities[i];
 
-		if (view.is_entity_valid() && view == entity.get_view())
+		if (view->is_entity_valid() && view == entity.get_view())
 		{
 			std::swap(entities[i], entities[entities.size()-1]);
 			entities.pop_back();
@@ -177,10 +182,10 @@ void forge::Nexus::create_group(std::string_view group_name)
 		return;
 	}
 
-	m_groups.emplace(group_name, std::vector<EntityView>{});
+	m_groups.emplace(group_name, std::vector<EntityViewHandle>{});
 }
 
-std::vector<forge::EntityView>* forge::Nexus::get_group(std::string_view group_name, bool trim_invalid_entities)
+std::vector<forge::EntityViewHandle>* forge::Nexus::get_group(std::string_view group_name, bool trim_invalid_entities)
 {
 	auto iter = m_groups.find(group_name);
 
@@ -197,7 +202,7 @@ std::vector<forge::EntityView>* forge::Nexus::get_group(std::string_view group_n
 		{
 			auto &view = entities[i];
 
-			if (!view.is_entity_valid())
+			if (!view->is_entity_valid())
 			{
 				std::swap(entities[i], entities[entities.size()-1]);
 				entities.pop_back();
@@ -208,7 +213,7 @@ std::vector<forge::EntityView>* forge::Nexus::get_group(std::string_view group_n
 	return &entities;
 }
 
-forge::EntityView forge::Nexus::get_entity(std::string_view name)
+forge::EntityViewHandle forge::Nexus::get_entity(std::string_view name)
 {
 	auto it = m_name_table.find(name);
 
@@ -217,7 +222,7 @@ forge::EntityView forge::Nexus::get_entity(std::string_view name)
 		return {};
 	}
 
-	return it->second.get().get_view();
+	return it->second;
 }
 
 void forge::Nexus::destroy_children(Entity* entity)
@@ -229,15 +234,15 @@ void forge::Nexus::destroy_children(Entity* entity)
 
 	auto &entry = m_entities_table[entity->m_children_index];
 
-	for (auto &child_entity : entry.entities)
+	for (auto &[child_entity, _]: entry.entities)
 	{
 		destroy_entity(&child_entity);
 	}
 
 	auto table_size = m_entities_table.size();
 
-	// if it's at the end just pop it or if its just two values pop it so it doesnt do a weird swap with the top level table
-	if ((entry.owner.table == table_size-1 && table_size > 1) || table_size == 2)
+	// if it's at the end just pop it or if its just two values pop it so it doesn't do a weird swap with the top level table
+	if ((entry.owner->table == table_size-1 && table_size > 1) || table_size == 2)
 	{
 		m_entities_table.pop_back();
 		return;
@@ -249,7 +254,7 @@ void forge::Nexus::destroy_children(Entity* entity)
 
 	m_entities_table[m_entities_table.size()-1] = std::move(entry);
 
-	last_table.owner.get().m_table_index = old_index;
+	last_table.owner->get_entity().m_table_index = old_index;
 
 	m_entities_table[old_index] = std::move(last_table);
 
@@ -291,9 +296,10 @@ void forge::Nexus::destroy_entity(Entity* entity)
 
 	auto temp = std::move(entities.back());
 
-	entities[temp.m_index] = std::move(*entity);
+	entities[temp.entity.m_index].entity = std::move(*entity);
 
-	temp.m_index = old_index;
+	temp.entity.m_index = old_index;
+	temp.handle->index = old_index;
 
 	entities[old_index] = std::move(temp);
 
@@ -343,7 +349,7 @@ void forge::Nexus::update()
 		iter->second.update(delta);
 	}
 
-	for (auto &entity : m_entities_table.front().entities)
+	for (auto &[entity, _] : m_entities_table.front().entities)
 	{
 		entity.update_hierarchy();
 	}

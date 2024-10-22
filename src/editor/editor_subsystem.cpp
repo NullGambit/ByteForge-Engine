@@ -288,7 +288,7 @@ protected:
 				return;
 			}
 
-			auto &entity = m_selected_entity.get();
+			auto &entity = m_selected_entity.get_entity();
 
 			char name_buffer[256] {};
 
@@ -310,7 +310,7 @@ protected:
 
 			if (ImGui::CollapsingHeader("Transform"))
 			{
-				auto &transform = m_selected_entity.get().get_transform();
+				auto &transform = m_selected_entity.get_entity().get_transform();
 
 				static bool uniform_scale = true;
 
@@ -468,12 +468,12 @@ protected:
 
 				for (auto &view : entities)
 				{
-					if (!view.is_entity_valid())
+					if (!view->is_entity_valid())
 					{
 						continue;
 					}
 
-					draw_entity(view.get(), name);
+					draw_entity(view->get_entity(), name);
 				}
 
 				ImGui::TreePop();
@@ -497,7 +497,7 @@ protected:
 
 		auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
 
-		if (m_selected_entity == entity.get_view())
+		if (m_selected_entity == *entity.get_view())
 		{
 			flags |= ImGuiTreeNodeFlags_Selected;
 		}
@@ -515,19 +515,19 @@ protected:
 
 		if (ImGui::IsItemClicked())
 		{
-			m_selected_entity = entity.get_view();
+			m_selected_entity = *entity.get_view();
 		}
 
 		if (check_context_menu("EntityContext"))
 		{
-			m_selected_context_entity = entity.get_view();
+			m_selected_context_entity = *entity.get_view();
 		}
 
-		if (entity.get_view() == m_selected_context_entity && ImGui::BeginPopup("EntityContext"))
+		if (*entity.get_view() == m_selected_context_entity && ImGui::BeginPopup("EntityContext"))
 		{
 			if (ImGui::Selectable("Add child"))
 			{
-				m_selected_entity = entity.emplace_child().get_view();
+				m_selected_entity = *entity.emplace_child().get_view();
 			}
 			if (ImGui::BeginMenu("Add to group"))
 			{
@@ -539,7 +539,7 @@ protected:
 				{
 					if (ImGui::MenuItem(name.data()))
 					{
-						engine.nexus->add_to_group(name, m_selected_context_entity.get());
+						engine.nexus->add_to_group(name, m_selected_context_entity.get_entity());
 					}
 				}
 
@@ -547,14 +547,14 @@ protected:
 			}
 			if (m_is_in_group_tab && ImGui::Selectable("Remove from group"))
 			{
-				forge::Engine::get_instance().nexus->remove_from_group(from_group, m_selected_context_entity.get());
+				forge::Engine::get_instance().nexus->remove_from_group(from_group, m_selected_context_entity.get_entity());
 			}
 
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
 
 			if (ImGui::Selectable("Delete"))
 			{
-				m_selected_context_entity.get().destroy();
+				m_selected_context_entity.get_entity().destroy();
 			}
 
 			ImGui::PopStyleColor(1);
@@ -587,7 +587,7 @@ protected:
 
 		auto &entities = entities_table[entity_table_index].entities;
 
-		for (auto &entity : entities)
+		for (auto &[entity, _] : entities)
 		{
 			draw_entity(entity, from_group);
 		}

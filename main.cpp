@@ -96,9 +96,7 @@ public:
 
 		if (is_key_pressed(forge::Key::F1))
 		{
-
 			auto new_mode = is_cursor_active() ? Disabled : Normal;
-
 			set_cursor_mode(new_mode);
 		}
 		else if (is_key_pressed(forge::Key::F2))
@@ -115,7 +113,7 @@ public:
 
 	void handle_movement(forge::DeltaTime delta)
 	{
-		auto &transform = m_owner.get().get_transform();
+		auto &transform = m_owner->get_entity().get_transform();
 		auto position = transform.get_local_position();
 
 		auto speed = ((is_key_held(forge::Key::LeftShift) ? m_boost_speed : 0) + m_speed) * delta;
@@ -171,7 +169,7 @@ public:
 
 	void update(forge::DeltaTime delta) override
 	{
-		m_renderer->update_primitive(m_id, m_owner.get().get_transform().get_model());
+		m_renderer->update_primitive(m_id, m_owner->get_entity().get_transform().get_model());
 	}
 
 	void on_editor_controls()
@@ -188,7 +186,7 @@ protected:
 	{
 		m_renderer = forge::Engine::get_instance().renderer;
 
-		auto &transform = m_owner.get().get_transform();
+		auto &transform = m_owner->get_entity().get_transform();
 
 		auto model = transform.get_model();
 
@@ -239,7 +237,7 @@ int main()
 
 	auto player = engine.nexus->get_entity("Player");
 
-	if (!player.has_value())
+	if (!player->has_value())
 	{
 		log::info("could not find player");
 		return -1;
