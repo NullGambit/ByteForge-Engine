@@ -104,6 +104,18 @@ void forge::Entity::destroy()
 	m_nexus->destroy_entity(this);
 }
 
+void forge::Entity::update_dirty_array() const
+{
+	auto top_most_parent = get_top_most_parent();
+	auto &entity = top_most_parent->get_entity();
+
+	if (!entity.m_is_queued_for_update)
+	{
+		m_nexus->m_entity_dirty_table.emplace_back(std::move(top_most_parent));
+		entity.m_is_queued_for_update = true;
+	}
+}
+
 void forge::Nexus::ComponentType::update(DeltaTime delta) const
 {
 	auto *memory = mem_pool.get_memory();
@@ -349,8 +361,12 @@ void forge::Nexus::update()
 		iter->second.update(delta);
 	}
 
-	for (auto &[entity, _] : m_entities_table.front().entities)
+	for (auto &handle : m_entity_dirty_table)
 	{
+		auto &entity = handle->get_entity();
 		entity.update_hierarchy();
+		entity.m_is_queued_for_update = false;
 	}
+
+	m_entity_dirty_table.clear();
 }

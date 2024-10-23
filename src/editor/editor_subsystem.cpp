@@ -310,27 +310,25 @@ protected:
 
 			if (ImGui::CollapsingHeader("Transform"))
 			{
-				auto &transform = m_selected_entity.get_entity().get_transform();
-
 				static bool uniform_scale = true;
 
-				auto scale = transform.get_local_scale();
+				auto scale = entity.get_local_scale();
 
 				vec_drag_control("Scale", scale, &uniform_scale);
 
-				transform.set_local_scale(uniform_scale ? glm::vec3{scale[0]} : scale);
+				entity.set_local_scale(uniform_scale ? glm::vec3{scale[0]} : scale);
 
-				auto position = transform.get_local_position();
+				auto position = entity.get_local_position();
 
 				vec_drag_control("Position", position);
 
-				transform.set_local_position(position);
+				entity.set_local_position(position);
 
-				auto rotation = transform.get_local_euler_rotation();
+				auto rotation = entity.get_local_euler_rotation();
 
 				vec_drag_control("Rotation", rotation, nullptr, 0.01);
 
-				transform.set_local_rotation(rotation);
+				entity.set_local_rotation(rotation);
 			}
 
 			ImGui::Separator();

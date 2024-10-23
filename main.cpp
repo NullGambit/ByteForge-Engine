@@ -169,7 +169,7 @@ public:
 
 	void update(forge::DeltaTime delta) override
 	{
-		m_renderer->update_primitive(m_id, m_owner->get_entity().get_transform().get_model());
+		m_renderer->update_primitive(m_id, m_owner->get_entity().get_model());
 	}
 
 	void on_editor_controls()
@@ -186,12 +186,70 @@ protected:
 	{
 		m_renderer = forge::Engine::get_instance().renderer;
 
-		auto &transform = m_owner->get_entity().get_transform();
-
-		auto model = transform.get_model();
+		auto model = m_owner->get_entity().get_model();
 
 		m_id = m_renderer->create_primitive(model);
 	}
+};
+
+class CounterComponent : public forge::IComponent
+{
+public:
+
+	REGISTER_UPDATE_FUNC
+
+	void update(forge::DeltaTime delta) override
+	{
+		m_counter++;
+	}
+
+private:
+	u64 m_counter = 0;
+};
+
+class BusyWorkComponent : public forge::IComponent
+{
+public:
+
+	REGISTER_UPDATE_FUNC
+
+	void update(forge::DeltaTime delta) override
+	{
+		m_result *= glm::mat4{5.0};
+	}
+
+private:
+	glm::mat4 m_result {1.0};
+};
+
+class BusyWorkComponent2 : public forge::IComponent
+{
+public:
+
+	REGISTER_UPDATE_FUNC
+
+	void update(forge::DeltaTime delta) override
+	{
+		m_result *= glm::mat4{5.0};
+	}
+
+private:
+	glm::mat4 m_result {1.0};
+};
+
+class BusyWorkComponent3 : public forge::IComponent
+{
+public:
+
+	REGISTER_UPDATE_FUNC
+
+	void update(forge::DeltaTime delta) override
+	{
+		m_result *= glm::mat4{5.0};
+	}
+
+private:
+	glm::mat4 m_result {1.0};
 };
 
 int main()
@@ -219,6 +277,13 @@ int main()
 	entity.add_component<FlyCamera>();
 
 	entity.get_transform().set_local_position({0, 0, 5});
+
+	// constexpr auto ENTITY_COUNT = 400'000;
+	//
+	// for (auto i = 0; i < ENTITY_COUNT; i++)
+	// {
+	// 	engine.nexus->create_entity<CounterComponent, BusyWorkComponent, BusyWorkComponent2, BusyWorkComponent3>();
+	// }
 
 	engine.nexus->add_to_group("important entities", entity);
 

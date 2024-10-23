@@ -85,7 +85,7 @@ namespace forge
 			return parent * m_rotation;
 		}
 
-		inline glm::vec3 get_euler_rotation(glm::vec3 parent) const
+		inline glm::vec3 get_euler_rotation(glm::quat parent) const
 		{
 			return parent * glm::eulerAngles(m_rotation);
 		}
@@ -104,6 +104,11 @@ namespace forge
 		inline glm::mat4 get_model() const
 		{
 			return m_model;
+		}
+
+		inline bool is_dirty() const
+		{
+			return m_is_dirty;
 		}
 
 	private:

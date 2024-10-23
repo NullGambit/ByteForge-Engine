@@ -198,8 +198,135 @@ namespace forge
         [[nodiscard]]
         EntityViewHandle get_view() const;
 
-
         void destroy();
+
+        [[nodiscard]]
+        inline bool has_parent() const
+        {
+            return m_parent != nullptr;
+        }
+
+        [[nodiscard]]
+        inline EntityViewHandle get_parent() const
+        {
+            return m_parent;
+        }
+
+        [[nodiscard]]
+        inline EntityViewHandle get_top_most_parent() const
+        {
+            if (m_parent == nullptr)
+            {
+                return get_view();
+            }
+
+            return m_top_most_parent;
+        }
+
+        [[nodiscard]]
+        inline const Transform& get_top_most_parent_transform() const
+        {
+            return get_top_most_parent()->get_entity().m_transform;
+        }
+
+        [[nodiscard]]
+        inline Transform get_top_most_parent_transform()
+        {
+            return get_top_most_parent()->get_entity().m_transform;
+        }
+
+        inline void set_local_position(glm::vec3 position)
+        {
+            update_dirty_array();
+            m_transform.set_local_position(position);
+        }
+
+        inline glm::vec3 get_local_position() const
+        {
+            return m_transform.m_position;
+        }
+
+        inline void set_local_rotation(glm::vec3 euler_rotation)
+        {
+            update_dirty_array();
+            m_transform.set_local_rotation(euler_rotation);
+        }
+
+        inline void set_local_rotation(glm::quat rotation)
+        {
+            update_dirty_array();
+            m_transform.set_local_rotation(rotation);
+        }
+
+        inline glm::quat get_local_rotation() const
+        {
+            return m_transform.m_rotation;
+        }
+
+        inline glm::vec3 get_local_euler_rotation() const
+        {
+            return glm::eulerAngles(m_transform.m_rotation);
+        }
+
+        inline void set_local_scale(glm::vec3 scale)
+        {
+            update_dirty_array();
+            m_transform.set_local_scale(scale);
+        }
+
+        inline glm::vec3 get_local_scale() const
+        {
+            return m_transform.m_scale;
+        }
+
+        inline void set_position(glm::vec3 position)
+        {
+            update_dirty_array();
+            m_transform.set_position(get_top_most_parent_transform().m_position, position);
+        }
+
+        inline glm::vec3 get_position() const
+        {
+            return m_transform.get_position(get_top_most_parent_transform().m_position);
+        }
+
+        inline void set_rotation(glm::vec3 euler_rotation)
+        {
+            update_dirty_array();
+            m_transform.set_rotation(get_top_most_parent_transform().m_rotation, euler_rotation);
+        }
+
+        inline void set_rotation(glm::quat rotation)
+        {
+            update_dirty_array();
+            m_transform.set_rotation(get_top_most_parent_transform().m_rotation, rotation);
+        }
+
+        inline glm::quat get_rotation() const
+        {
+            return m_transform.get_rotation(get_top_most_parent_transform().m_rotation);
+        }
+
+        inline glm::vec3 get_euler_rotation() const
+        {
+            return m_transform.get_euler_rotation(get_top_most_parent_transform().m_rotation);
+        }
+
+        inline void set_scale(glm::vec3 scale)
+        {
+            update_dirty_array();
+            m_transform.set_rotation(get_top_most_parent_transform().m_scale, scale);
+        }
+
+        inline glm::vec3 get_scale() const
+        {
+            return m_transform.get_euler_rotation(get_top_most_parent_transform().m_scale);
+        }
+
+        inline glm::mat4 get_model() const
+        {
+            return m_transform.m_model;
+        }
 
     private:
         friend Nexus;
@@ -211,11 +338,14 @@ namespace forge
 
         HashMap<std::type_index, ComponentView> m_components;
 
-        Nexus  *m_nexus = nullptr;
+        Nexus *m_nexus = nullptr;
 
         // a view to its parent if it has any
-        EntityViewHandle m_parent {};
-        // the index of where its child is stored in the nexus's entity table
+        EntityViewHandle m_parent = nullptr;
+        // the highest parent in this hierarchy at the top level in table 0
+        // this is mostly for global transform calculations and for the entity dirty table
+        EntityViewHandle m_top_most_parent = nullptr;
+        // the index of where its child is stored in the nexus' entity table
         u32 m_children_index = 0;
         // the index of where this entity is stored within its table
         u32 m_index;
@@ -223,6 +353,8 @@ namespace forge
         u32 m_table_index;
         // an id used for comparison and verification to make sure the entity has not been changed (swapped and popped)
         EntityID m_id;
+
+        bool m_is_queued_for_update = false;
 
         [[nodiscard]]
         EntityViewHandle make_view() const
@@ -235,6 +367,9 @@ namespace forge
                 m_id
             });
         }
+
+        void update_dirty_array() const;
+
     };
 
     struct EntityEntry
@@ -474,6 +609,10 @@ namespace forge
         HashMap<std::type_index, ComponentType> m_component_table;
         HashMap<std::string, EntityViewHandle, ENABLE_TRANSPARENT_HASH> m_name_table;
         HashMap<std::string, std::vector<EntityViewHandle>, ENABLE_TRANSPARENT_HASH> m_groups;
+        // holds on to all the entities that have a dirty flag set in their hierarchy. will be cleared once updated
+        // the entity view is always the top most parent in that hierarchy. could potentially be optimized to only store
+        // the part of the hierarchy that actually needs to be updated
+        std::vector<EntityViewHandle> m_entity_dirty_table;
         std::vector<std::type_index> m_update_table;
         // stores an array of all entity arrays in the nexus including nested array of entities (child entities)
         std::vector<EntitiesTableEntry> m_entities_table;
@@ -547,6 +686,7 @@ namespace forge
         }
 
         entity.m_parent = get_view();
+        entity.m_top_most_parent = get_top_most_parent();
         entity.m_nexus = m_nexus;
         entity.m_table_index = m_children_index;
         entity.m_index = index;
