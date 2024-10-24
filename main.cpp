@@ -177,6 +177,11 @@ public:
 		ImGui::Text("render id: %d", m_id);
 	}
 
+	~PrimitiveRendererComponent() override
+	{
+		m_renderer->destroy_primitive(m_id);
+	}
+
 private:
 	u32 m_id;
 	forge::OglRenderer *m_renderer;
@@ -189,6 +194,16 @@ protected:
 		auto model = m_owner->get_entity().get_model();
 
 		m_id = m_renderer->create_primitive(model);
+	}
+
+	void on_disabled() override
+	{
+		m_renderer->primitive_set_hidden(m_id, true);
+	}
+
+	void on_enabled() override
+	{
+		m_renderer->primitive_set_hidden(m_id, false);
 	}
 };
 

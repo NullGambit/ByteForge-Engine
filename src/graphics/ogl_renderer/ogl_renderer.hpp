@@ -50,6 +50,8 @@ namespace forge
 
 		void destroy_primitive(u32 id);
 
+		void primitive_set_hidden(u32 id, bool value);
+
 		// allows for manually adding a command that will be run the next frame
 		void add_command(CommandBuffer<>::Callback &&command)
 		{
@@ -77,7 +79,10 @@ namespace forge
 		struct PrimitiveRenderData
 		{
 			glm::mat4 model;
+			// if false this entry is freed
 			bool is_valid = true;
+			// if false this primitive should not be drawn
+			bool is_hidden = false;
 		};
 
 		std::vector<PrimitiveRenderData> m_cube_positions;

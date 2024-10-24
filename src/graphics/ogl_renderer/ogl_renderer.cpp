@@ -105,9 +105,9 @@ void forge::OglRenderer::update()
 
 	glBindVertexArray(m_cube_vao);
 
-	for (const auto &[model, is_valid] : m_cube_positions)
+	for (const auto &[model, is_valid, is_hidden] : m_cube_positions)
 	{
-		if (is_valid)
+		if (is_valid && !is_hidden)
 		{
 			m_tri_shader.set("pvm", m_pv * model);
 
@@ -171,6 +171,11 @@ void forge::OglRenderer::update_primitive(u32 id, glm::mat4 updated_model)
 void forge::OglRenderer::destroy_primitive(u32 id)
 {
 	m_cube_positions[id].is_valid = false;
+}
+
+void forge::OglRenderer::primitive_set_hidden(u32 id, bool value)
+{
+	m_cube_positions[id].is_hidden = value;
 }
 
 void forge::OglRenderer::handle_framebuffer_resize(int width, int height)
