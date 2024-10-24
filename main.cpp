@@ -282,7 +282,8 @@ int main()
 	//
 	// for (auto i = 0; i < ENTITY_COUNT; i++)
 	// {
-	// 	engine.nexus->create_entity<CounterComponent, BusyWorkComponent, BusyWorkComponent2, BusyWorkComponent3>();
+	// 	auto name = "Entity_" + std::to_string(i);
+	// 	engine.nexus->create_entity<CounterComponent, BusyWorkComponent, BusyWorkComponent2, BusyWorkComponent3>(name);
 	// }
 
 	engine.nexus->add_to_group("important entities", entity);

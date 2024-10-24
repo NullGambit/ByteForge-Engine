@@ -612,6 +612,7 @@ namespace forge
         // holds on to all the entities that have a dirty flag set in their hierarchy. will be cleared once updated
         // the entity view is always the top most parent in that hierarchy. could potentially be optimized to only store
         // the part of the hierarchy that actually needs to be updated
+        mutable std::mutex m_dirty_table_mutex;
         std::vector<EntityViewHandle> m_entity_dirty_table;
         std::vector<std::type_index> m_update_table;
         // stores an array of all entity arrays in the nexus including nested array of entities (child entities)

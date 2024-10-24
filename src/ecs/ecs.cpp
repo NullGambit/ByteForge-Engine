@@ -1,5 +1,6 @@
 #include "ecs.hpp"
 
+#include <mutex>
 #include <sys/mman.h>
 
 #include "core/engine.hpp"
@@ -106,12 +107,14 @@ void forge::Entity::destroy()
 
 void forge::Entity::update_dirty_array() const
 {
+	std::scoped_lock lock {m_nexus->m_dirty_table_mutex};
+
 	auto top_most_parent = get_top_most_parent();
 	auto &entity = top_most_parent->get_entity();
 
 	if (!entity.m_is_queued_for_update)
 	{
-		m_nexus->m_entity_dirty_table.emplace_back(std::move(top_most_parent));
+		m_nexus->m_entity_dirty_table.emplace_back(top_most_parent);
 		entity.m_is_queued_for_update = true;
 	}
 }
@@ -135,10 +138,12 @@ void forge::Nexus::ComponentType::update(DeltaTime delta) const
 
 std::string forge::Nexus::init()
 {
-	// m_entities.reserve(1000);
-
 	// construct global entities vector
 	m_entities_table.emplace_back();
+
+	// m_entities_table.front().entities.reserve(sizeof(Entity) * 10'000);
+	//
+	// m_entities_table.reserve(sizeof(EntitiesTableEntry) * 4098);
 
 	return {};
 }
@@ -361,12 +366,17 @@ void forge::Nexus::update()
 		iter->second.update(delta);
 	}
 
-	for (auto &handle : m_entity_dirty_table)
+	if (!m_entity_dirty_table.empty())
 	{
-		auto &entity = handle->get_entity();
-		entity.update_hierarchy();
-		entity.m_is_queued_for_update = false;
-	}
+		std::scoped_lock lock {m_dirty_table_mutex};
 
-	m_entity_dirty_table.clear();
+		for (auto &handle : m_entity_dirty_table)
+		{
+			auto &entity = handle->get_entity();
+			entity.update_hierarchy();
+			entity.m_is_queued_for_update = false;
+		}
+
+		m_entity_dirty_table.clear();
+	}
 }
