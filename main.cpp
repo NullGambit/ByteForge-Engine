@@ -8,6 +8,7 @@
 #include "framework/input.hpp"
 #include "src/util/types.hpp"
 #include "graphics/ogl_renderer/ogl_renderer.hpp"
+#include "util/random.hpp"
 
 class SpinCamera final : public forge::IComponent
 {
@@ -155,10 +156,12 @@ private:
 class Test : public forge::IComponent
 {
 public:
-	float x = 10;
-	float y = 20;
+	float f1 = 10;
+	float f2 = 20;
+	int integer = 500;
+	std::string string;
 
-	EXPORT_FIELDS(x, y);
+	EXPORT_FIELDS(f1, f2, integer, string);
 };
 
 class PrimitiveRendererComponent : public forge::IComponent
@@ -220,6 +223,94 @@ public:
 
 private:
 	u64 m_counter = 0;
+};
+
+class ClusteredRenderingComponent : public forge::IComponent
+{
+public:
+
+	struct ClusterEntry
+	{
+		u32 id;
+		glm::mat4 model;
+	};
+
+	REGISTER_UPDATE_FUNC
+
+	void update(forge::DeltaTime delta) override
+	{
+		if (m_last_mesh_count != m_mesh_count)
+		{
+			if (m_last_mesh_count < m_mesh_count)
+			{
+				add_meshes(m_mesh_count - m_last_mesh_count);
+			}
+		}
+
+		m_last_mesh_count = m_mesh_count;
+	}
+
+	~ClusteredRenderingComponent() override
+	{
+		for (auto &entry : m_meshes)
+		{
+			m_renderer->destroy_primitive(entry.id);
+		}
+	}
+
+	EXPORT_FIELDS(m_mesh_count);
+
+private:
+	std::vector<ClusterEntry> m_meshes;
+	int m_mesh_count = 1;
+	int m_last_mesh_count = m_mesh_count;
+	forge::OglRenderer *m_renderer;
+
+protected:
+	void on_enter() override
+	{
+		m_renderer = forge::Engine::get_instance().renderer;
+
+		add_meshes(m_mesh_count);
+	}
+
+	void on_disabled() override
+	{
+		set_all_hidden(true);
+	}
+
+	void on_enabled() override
+	{
+		set_all_hidden(false);
+	}
+
+private:
+
+	void set_all_hidden(bool value)
+	{
+		for (auto &entry : m_meshes)
+		{
+			m_renderer->primitive_set_hidden(entry.id, value);
+		}
+	}
+
+	void add_meshes(int count)
+	{
+		glm::mat4 model {1.0};
+
+		for (auto i = 0; i < count; i++)
+		{
+			auto primitive_model = glm::translate(model, util::rand_vec3(-10, 10));
+
+			primitive_model = glm::scale(primitive_model, glm::vec3{util::rand_float(0.1, 2)});
+
+			primitive_model = glm::rotate(primitive_model, util::rand_float(0, 1), normalize(util::rand_vec3(-360, 360)));
+
+			auto id = m_renderer->create_primitive(primitive_model);
+
+			m_meshes.emplace_back(id, model);
+		}
+	}
 };
 
 class BusyWorkComponent : public forge::IComponent
@@ -287,9 +378,10 @@ int main()
 	engine.nexus->register_component<Test>();
 	engine.nexus->register_component<SpinCamera>();
 	engine.nexus->register_component<PrimitiveRendererComponent>();
+	engine.nexus->register_component<ClusteredRenderingComponent>();
 
 	auto &entity = engine.nexus->create_entity("Player");
-	entity.add_component<FlyCamera>();
+	entity.add_component<SpinCamera>();
 
 	entity.get_transform().set_local_position({0, 0, 5});
 
@@ -305,7 +397,7 @@ int main()
 
 	entity.emplace_child<Test>("Child");
 
-	engine.nexus->create_entity<PrimitiveRendererComponent>("David john smith");
+	engine.nexus->create_entity<ClusteredRenderingComponent>("David john smith");
 
 	auto &john = engine.nexus->create_entity("john allen");
 

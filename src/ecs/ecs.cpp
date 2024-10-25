@@ -325,6 +325,11 @@ void forge::Nexus::destroy_entity(Entity* entity)
 
 u8* forge::Nexus::add_component(Entity *entity, std::type_index index)
 {
+	if (entity->m_components.contains(index))
+	{
+		return nullptr;
+	}
+
 	auto &ct = m_component_table[index];
 
 	auto [ptr, offset] = ct.mem_pool.allocate(true);

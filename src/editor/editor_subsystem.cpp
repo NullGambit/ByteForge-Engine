@@ -271,7 +271,7 @@ protected:
 
 	template<class T>
 	void vec_drag_control(std::string_view label, T &values, bool *uniform = nullptr,
-		float speed = 1, float min_steps = 0, float max_steps = 0)
+		float speed = 0.01, float min_steps = 0, float max_steps = 0)
 	{
 		auto *ptr = glm::value_ptr(values);
 		vec_drag_control(label, ptr, sizeof(T) / sizeof(ptr[0]), uniform, speed, min_steps, max_steps);
@@ -326,7 +326,7 @@ protected:
 
 				auto rotation = entity.get_local_euler_rotation();
 
-				vec_drag_control("Rotation", rotation, nullptr, 0.01);
+				vec_drag_control("Rotation", rotation);
 
 				entity.set_local_rotation(rotation);
 			}
@@ -385,12 +385,25 @@ protected:
 
 						std::replace(formatted.begin(), formatted.end(), '_', ' ');
 
-						if (value.index() == 0)
+						std::visit(util::overload
 						{
-							auto *f_value = std::get<0>(value);
-
-							ImGui::DragFloat(formatted.data(), f_value);
-						}
+							[&formatted](float *value)
+							{
+								ImGui::DragFloat(formatted.data(), value);
+							},
+							[&formatted](double *value)
+							{
+								ImGui::DragFloat(formatted.data(), (float*)value);
+							},
+							[&formatted](int *value)
+							{
+								ImGui::DragInt(formatted.data(), value);
+							},
+							[&formatted](std::string *value)
+							{
+								ImGui::InputText(formatted.data(), value);
+							},
+						}, value);
 					}
 
 					ImGui::TreePop();
