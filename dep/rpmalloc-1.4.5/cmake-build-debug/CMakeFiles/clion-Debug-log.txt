@@ -1,0 +1,4 @@
+/home/arian/.local/share/JetBrains/Toolbox/apps/clion/bin/cmake/linux/x64/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/home/arian/.local/share/JetBrains/Toolbox/apps/clion/bin/ninja/linux/x64/ninja -DCMAKE_C_COMPILER=/bin/gcc -DCMAKE_CXX_COMPILER=/bin/g++ -G Ninja -S /home/arian/Downloads/rpmalloc-1.4.5 -B /home/arian/Downloads/rpmalloc-1.4.5/cmake-build-debug
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/arian/Downloads/rpmalloc-1.4.5/cmake-build-debug
