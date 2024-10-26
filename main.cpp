@@ -3,11 +3,12 @@
 #include <numeric>
 
 #include "glm/glm.hpp"
-#include "core/engine.hpp"
 #include "core/logging.hpp"
 #include "framework/input.hpp"
 #include "src/util/types.hpp"
+#include "core/engine.hpp"
 #include "graphics/ogl_renderer/ogl_renderer.hpp"
+#include "memory/arena_allocator.hpp"
 #include "util/random.hpp"
 
 class SpinCamera final : public forge::IComponent
@@ -22,21 +23,21 @@ public:
 	{
 		auto &engine = forge::Engine::get_instance();
 
-		auto runtime = forge::Engine::get_instance().get_engine_runtime() * m_speed;
-		auto camera_x = glm::sin(runtime) * m_radius;
-		auto camera_z = glm::cos(runtime) * m_radius;
+		auto runtime = forge::Engine::get_instance().get_engine_runtime() * speed;
 
-		camera.look_at({camera_x, m_height, camera_z}, {});
+		auto camera_x = glm::sin(runtime) * radius;
+		auto camera_z = glm::cos(runtime) * radius;
+
+		camera.look_at({camera_x, height, camera_z}, {});
 
 		engine.renderer->update_pv(camera.pv());
 	}
 
-	EXPORT_FIELDS(m_speed, m_radius, m_height);
+	EXPORT_FIELDS(speed, radius, height);
 
-private:
-	float m_speed = 0.5;
-	float m_radius = 10;
-	float m_height = 0.0f;
+	float speed = 0.5;
+	float radius = 10;
+	float height = 0.0f;
 };
 
 class FlyCamera final : public forge::IComponent
@@ -160,8 +161,15 @@ public:
 	float f2 = 20;
 	int integer = 500;
 	std::string string;
+	forge::ButtonField test_button
+	{
+		[]
+		{
+			log::info("button pressed");
+		}
+	};
 
-	EXPORT_FIELDS(f1, f2, integer, string);
+	EXPORT_FIELDS(f1, f2, integer, test_button);
 };
 
 class PrimitiveRendererComponent : public forge::IComponent
@@ -381,17 +389,12 @@ int main()
 	engine.nexus->register_component<ClusteredRenderingComponent>();
 
 	auto &entity = engine.nexus->create_entity("Player");
-	entity.add_component<SpinCamera>();
+
+	auto *spin_camera = entity.add_component<SpinCamera>();
+
+	spin_camera->radius = 30;
 
 	entity.get_transform().set_local_position({0, 0, 5});
-
-	// constexpr auto ENTITY_COUNT = 400'000;
-	//
-	// for (auto i = 0; i < ENTITY_COUNT; i++)
-	// {
-	// 	auto name = "Entity_" + std::to_string(i);
-	// 	engine.nexus->create_entity<CounterComponent, BusyWorkComponent, BusyWorkComponent2, BusyWorkComponent3>(name);
-	// }
 
 	engine.nexus->add_to_group("important entities", entity);
 
@@ -415,6 +418,14 @@ int main()
 		log::info("could not find player");
 		return -1;
 	}
+
+	// constexpr auto ENTITY_COUNT = 400'000;
+	//
+	// for (auto i = 0; i < ENTITY_COUNT; i++)
+	// {
+	// 	auto name = "Entity_" + std::to_string(i);
+	// 	engine.nexus->create_entity<CounterComponent, BusyWorkComponent, BusyWorkComponent2, BusyWorkComponent3>(name);
+	// }
 
 	engine.run();
 

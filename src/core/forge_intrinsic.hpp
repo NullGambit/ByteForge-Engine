@@ -1,5 +1,10 @@
 #pragma once
 
+// to ensure rp malloc overrides all new and delete operators
+#include <rpmalloc/rpnew.h>
+
+// defs that are intrinsic to the byte forge engine and will automatically be included in the build system
+
 typedef unsigned char u8;
 typedef signed char i8;
 typedef signed short int i16;
@@ -22,3 +27,5 @@ __extension__ typedef unsigned long long int u64;
 #define ENUM(...)
 #define PROPERTY(...)
 #define FUNCTION(...)
+
+#define GLOBAL_ALLOC_SIZE GB(12)

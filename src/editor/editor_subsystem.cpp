@@ -177,6 +177,13 @@ protected:
 				ImGui::EndTabItem();
 			}
 
+			if (ImGui::BeginTabItem("Engine"))
+			{
+				ImGui::DragFloat("Time scale", &engine.time_scale, 0.1);
+
+				ImGui::EndTabItem();
+			}
+
 			ImGui::EndTabBar();
 		}
 	}
@@ -402,6 +409,15 @@ protected:
 							[&formatted](std::string *value)
 							{
 								ImGui::InputText(formatted.data(), value);
+							},
+							[&formatted](forge::ButtonField *value)
+							{
+								auto button_name = value->name.empty() ? formatted : value->name;
+
+								if (ImGui::Button(button_name.data()))
+								{
+									value->callback();
+								}
 							},
 						}, value);
 					}

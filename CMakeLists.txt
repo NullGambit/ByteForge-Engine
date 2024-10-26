@@ -16,11 +16,13 @@ include_directories(
         dep/unordered_dense/include/
         dep/glfw-3.3-stable/include/
         dep/glad/include/
+        dep/rpmalloc-1.4.5
         dep)
 
 add_subdirectory(dep/glfw-3.3-stable/)
 add_subdirectory(dep/imgui)
 add_subdirectory(dep/glm)
+add_subdirectory(dep/rpmalloc-1.4.5)
 
 add_executable(ByteForge_Engine main.cpp
         dep/glad/include/glad/glad.h
@@ -67,7 +69,7 @@ add_executable(ByteForge_Engine main.cpp
         src/graphics/image/stb_image.hpp
         src/graphics/image/stb_image.cpp
         src/graphics/image/image.cpp
-        src/core/type_def.hpp
+        src/core/forge_intrinsic.hpp
         src/system/virtual_memory.hpp
         src/system/linux/linux_virtual_memory.cpp
         src/system/linux/linux_virtual_memory.hpp
@@ -86,8 +88,14 @@ add_executable(ByteForge_Engine main.cpp
         src/editor/editor_subsystem.cpp
         src/editor/editor_subsystem.hpp
         src/ecs/transform.hpp
+        src/memory/arena_allocator.cpp
+        src/memory/arena_allocator.hpp
+        src/memory/mem_utils.hpp
+        src/system/system_info.hpp
+        src/system/linux/linux_system_info.cpp
+        src/system/linux/linux_system_info.hpp
 )
 
-target_compile_options(ByteForge_Engine PRIVATE -include ${CMAKE_SOURCE_DIR}/src/core/type_def.hpp)
+target_compile_options(ByteForge_Engine PRIVATE -include ${CMAKE_SOURCE_DIR}/src/core/forge_intrinsic.hpp)
 
-target_link_libraries(ByteForge_Engine glfw ${OPENGL_LIBRARIES} IMGUI glm)
+target_link_libraries(ByteForge_Engine glfw ${OPENGL_LIBRARIES} IMGUI glm rpmalloc)

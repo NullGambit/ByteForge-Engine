@@ -182,7 +182,7 @@ bool forge::Window::open(std::string_view name, int width, int height)
 	glfwSetKeyCallback(m_handle, on_key_callback);
 	glfwSetCursorPosCallback(m_handle, on_mouse_callback);
 	glfwSetScrollCallback(m_handle, on_scroll_callback);
-	glfwSwapInterval(0);
+	glfwSwapInterval(1);
 
 	return true;
 }

@@ -18,7 +18,9 @@
 #include "transform.hpp"
 #include "util/types.hpp"
 
-#define ECS_MAX_MAPPED_MEMORY GB(8)
+// the maximum amount of virtual memory that will be used for each component
+// TODO: this can be fine tuned to allow components to specify how much maximum memory they'll need
+#define ECS_MAX_MAPPED_MEMORY MB(48)
 
 namespace forge
 {
@@ -86,7 +88,22 @@ namespace forge
 
     using OnComponentDestroy = Signal<void()>;
 
-    using FieldVar = std::variant<float*, double*, int*, std::string*>;
+    struct ButtonField
+    {
+        std::string_view name;
+        std::function<void()> callback;
+
+        ButtonField(std::string_view name, std::function<void()> callback) :
+            name(name),
+            callback(callback)
+        {}
+
+        ButtonField(std::function<void()> callback) :
+            callback(callback)
+        {}
+    };
+
+    using FieldVar = std::variant<float*, double*, int*, std::string*, ButtonField*>;
 
     struct ComponentField
     {

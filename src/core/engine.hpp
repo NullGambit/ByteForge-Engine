@@ -6,6 +6,7 @@
 
 #include "isub_system.hpp"
 #include "ecs/ecs.hpp"
+#include "memory/arena_allocator.hpp"
 #include "system/fs_monitor.hpp"
 #include "system/window.hpp"
 #include "system/window_sub_system.hpp"
@@ -14,6 +15,7 @@ namespace forge
 {
 	class OglRenderer;
 }
+
 
 namespace forge
 {
@@ -80,6 +82,8 @@ namespace forge
 		FsMonitor *fs_monitor;
 		// TODO: create some sort of window factory class that will create windows and will swap their buffers in the main loop
 		Window window;
+		DeltaTime time_scale = 1.0;
+
 	private:
 		std::vector<std::unique_ptr<ISubSystem>> m_subsystems;
 		EngineInitOptions m_init_options;

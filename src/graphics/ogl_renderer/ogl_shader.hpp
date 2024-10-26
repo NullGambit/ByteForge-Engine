@@ -7,7 +7,7 @@
 #include <variant>
 
 #include "container/map.hpp"
-#include "core/type_def.hpp"
+#include "core/forge_intrinsic.hpp"
 #include "glm/glm.hpp"
 
 namespace forge

@@ -15,6 +15,7 @@
 #include "gui/imgui_subsystem.hpp"
 #include "util/types.hpp"
 
+
 forge::Engine::Engine()
 {
 	window_sub_system = add_subsystem<WindowSubSystem>();
@@ -106,6 +107,7 @@ void forge::Engine::run()
 		auto current_time = get_engine_runtime();
 
 		m_delta_time = current_time - m_previous_time;
+		m_delta_time *= time_scale;
 		m_previous_time = current_time;
 		m_fps = 1 / m_delta_time;
 

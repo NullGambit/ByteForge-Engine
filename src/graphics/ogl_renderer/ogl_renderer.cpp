@@ -17,7 +17,6 @@
 
 #define SHADER_PATH "./assets/shaders/"
 
-
 std::string forge::OglRenderer::init()
 {
 	auto ok = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);

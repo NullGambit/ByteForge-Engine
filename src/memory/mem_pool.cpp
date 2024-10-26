@@ -1,22 +1,20 @@
 #include "mem_pool.hpp"
 
 #include <cassert>
+#include <unistd.h>
 #include <sys/mman.h>
+#include <rpmalloc/rpmalloc.h>
 
+#include "mem_utils.hpp"
 #include "../fmt/fmt.hpp"
 #include "system/virtual_memory.hpp"
-
+#include "system/system_info.hpp"
 
 bool forge::MemPool::init(size_t element_size, size_t map_size)
 {
-	m_map_size = map_size;
+	m_map_size = align_to(map_size, get_page_size());
 
 	m_memory = virtual_alloc(map_size);
-
-	if (m_memory == MAP_FAILED)
-	{
-		return false;
-	}
 
 	m_element_size = element_size;
 	m_offset = 0;
