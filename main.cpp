@@ -176,13 +176,6 @@ class PrimitiveRendererComponent : public forge::IComponent
 {
 public:
 
-	REGISTER_UPDATE_FUNC
-
-	void update(forge::DeltaTime delta) override
-	{
-		m_renderer->update_primitive(m_id, m_owner->get_entity().get_model());
-	}
-
 	void on_editor_controls()
 	{
 		ImGui::Text("render id: %d", m_id);
@@ -191,20 +184,29 @@ public:
 	~PrimitiveRendererComponent() override
 	{
 		m_renderer->destroy_primitive(m_id);
+		m_owner->get_entity().on_entity_transform_updated.disconnect(m_on_update_connection);
 	}
 
 private:
 	u32 m_id;
 	forge::OglRenderer *m_renderer;
+	forge::ConnectionID m_on_update_connection;
 
 protected:
 	void on_enter() override
 	{
 		m_renderer = forge::Engine::get_instance().renderer;
 
-		auto model = m_owner->get_entity().get_model();
+		auto &entity = m_owner->get_entity();
+		auto model = entity.get_model();
 
 		m_id = m_renderer->create_primitive(model);
+
+		m_on_update_connection = entity.on_entity_transform_updated.connect(
+		[&renderer = m_renderer, &id = m_id](const forge::Transform &transform)
+		{
+			renderer->update_primitive(id, transform.get_model());
+		});
 	}
 
 	void on_disabled() override

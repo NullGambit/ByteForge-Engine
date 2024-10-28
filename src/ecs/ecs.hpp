@@ -149,6 +149,8 @@ namespace forge
     {
     public:
 
+        Signal<void(const Transform&)> on_entity_transform_updated;
+
         template<class T>
         T* add_component();
 

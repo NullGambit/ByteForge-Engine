@@ -84,6 +84,8 @@ void forge::Entity::update_hierarchy()
 		m_transform.m_model = m_transform.compute_local_transform();
 	}
 
+	on_entity_transform_updated(m_transform);
+
 	if (m_children_index == 0)
 	{
 		return;

@@ -1,8 +1,6 @@
 #pragma once
 
 #include <functional>
-#include <mutex>
-#include <shared_mutex>
 
 namespace forge
 {
@@ -16,6 +14,25 @@ namespace forge
     class Signal;
 
     using ConnectionID = u32;
+
+    template<class R, class ...A>
+    class ScopedConnection
+    {
+    public:
+
+        ScopedConnection() = default;
+
+        ScopedConnection(ConnectionID id, Signal<R(A...)> *signal) :
+            m_id(id),
+            m_signal(signal)
+        {}
+
+        ~ScopedConnection();
+
+    private:
+        ConnectionID m_id;
+        Signal<R(A...)> *m_signal = nullptr;
+    };
 
     template<class R, class ...A>
     class Delegate
@@ -91,10 +108,20 @@ namespace forge
             return connect_implementation(Delegate{ fn });
         }
 
+        template<class Obj, IsFunction Fn>
+        ScopedConnection<R, A...> scoped_connect(Obj *obj, Fn fn)
+        {
+            return {connect_implementation(Delegate{ obj, fn }), this};
+        }
+
+        template<IsFunction Fn>
+        ScopedConnection<R, A...> scoped_connect(Fn fn)
+        {
+            return {connect_implementation(Delegate{ fn }), this};
+        }
+
         void disconnect(ConnectionID id)
         {
-            std::scoped_lock lock { m_mutex };
-
             auto &[delegate, _] = m_connections[id];
 
             delegate.m_is_alive = false;
@@ -109,8 +136,6 @@ namespace forge
 
         void operator()(A ...a) const
         {
-            std::shared_lock lock { m_mutex };
-
             for (const auto &[delegate, _] : m_connections)
             {
                 if (delegate.is_active && delegate.m_is_alive)
@@ -122,8 +147,6 @@ namespace forge
 
         std::vector<R> call_with_return_values(A ...a) const
         {
-            std::shared_lock lock { m_mutex };
-
             std::vector<R> values;
 
             values.reserve(m_connections.size());
@@ -140,14 +163,11 @@ namespace forge
         }
 
     private:
-        mutable std::shared_mutex m_mutex;
         std::vector<Connection> m_connections;
         u32 m_free_slot = NO_FREE_SLOTS;
 
         ConnectionID connect_implementation(Delegate &&delegate)
         {
-            std::scoped_lock lock { m_mutex };
-
             // get index from a free slot if it exists
             if (m_free_slot != NO_FREE_SLOTS)
             {
@@ -171,4 +191,13 @@ namespace forge
             return index;
         }
     };
+
+    template<class R, class ... A>
+    ScopedConnection<R, A...>::~ScopedConnection()
+    {
+        if (m_signal)
+        {
+            m_signal->disconnect(m_id);
+        }
+    }
 }
