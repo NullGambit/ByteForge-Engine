@@ -101,7 +101,7 @@
 #endif
 #ifndef ENABLE_OVERRIDE
 //! Override standard library malloc/free and new/delete entry points
-#define ENABLE_OVERRIDE           0
+#define ENABLE_OVERRIDE           1
 #endif
 #ifndef ENABLE_PRELOAD
 //! Support preloading

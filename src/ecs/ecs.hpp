@@ -371,6 +371,8 @@ namespace forge
         // an id used for comparison and verification to make sure the entity has not been changed (swapped and popped)
         EntityID m_id;
 
+        // Signal<void(Transform&)> m_on_transform_updated;
+
         bool m_is_queued_for_update = false;
 
         [[nodiscard]]
@@ -410,7 +412,7 @@ namespace forge
         struct ComponentType
         {
             MemPool mem_pool;
-            HashMap<size_t, OnComponentDestroy> destroy_signals;
+            // HashMap<size_t, OnComponentDestroy> destroy_signals;
             bool is_component = false;
 
             void free(size_t offset_to_free)
@@ -660,27 +662,27 @@ namespace forge
             return nullptr;
         }
 
-        if (on_destroy.has_value())
-        {
-            auto ct_iter = m_nexus->m_component_table.find(typeid(T));
-            auto offset = iter->second.offset;
-
-            if (ct_iter != m_nexus->m_component_table.end())
-            {
-                auto &ct = ct_iter->second;
-
-                auto destroy_iter = ct.destroy_signals.find(offset);
-                auto &signal = destroy_iter->second;
-
-                if (destroy_iter == ct.destroy_signals.end())
-                {
-                    auto emplaced = ct.destroy_signals.emplace(offset, OnComponentDestroy());
-                    signal = emplaced.first->second;
-                }
-
-                signal.connect(on_destroy.value());
-            }
-        }
+        // if (on_destroy.has_value())
+        // {
+        //     auto ct_iter = m_nexus->m_component_table.find(typeid(T));
+        //     auto offset = iter->second.offset;
+        //
+        //     if (ct_iter != m_nexus->m_component_table.end())
+        //     {
+        //         auto &ct = ct_iter->second;
+        //
+        //         auto destroy_iter = ct.destroy_signals.find(offset);
+        //         auto &signal = destroy_iter->second;
+        //
+        //         if (destroy_iter == ct.destroy_signals.end())
+        //         {
+        //             auto emplaced = ct.destroy_signals.emplace(offset, OnComponentDestroy());
+        //             signal = emplaced.first->second;
+        //         }
+        //
+        //         signal.connect(on_destroy.value());
+        //     }
+        // }
 
         return (T*)iter->second.pointer;
     }

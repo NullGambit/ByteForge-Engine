@@ -1,6 +1,8 @@
 #pragma once
+
 #include <functional>
-#include <list>
+#include <mutex>
+#include <shared_mutex>
 
 namespace forge
 {
@@ -13,14 +15,16 @@ namespace forge
     template<class T>
     class Signal;
 
+    using ConnectionID = u32;
+
     template<class R, class ...A>
-    class Connection
+    class Delegate
     {
     public:
         bool is_active = true;
 
         template<class Obj, IsFunction Fn>
-        Connection(Obj *obj, Fn fn)
+        Delegate(Obj *obj, Fn fn)
         {
             m_delegate = [obj, fn](A ...a)
             {
@@ -29,7 +33,7 @@ namespace forge
         }
 
         template<IsFunction Fn>
-        explicit Connection(Fn fn)
+        explicit Delegate(Fn fn)
         {
             m_delegate = [fn](A ...a)
             {
@@ -44,7 +48,7 @@ namespace forge
 
         bool is_alive() const
         {
-            return m_alive;
+            return m_is_alive;
         }
 
     private:
@@ -52,70 +56,83 @@ namespace forge
 
         std::function<R(A...)> m_delegate;
 
-        bool m_alive = true;
-        typename std::list<Connection>::iterator m_iter;
+        bool m_is_alive = true;
+        u32 m_index;
     };
 
     template<class R, class ...A>
     class Signal<R(A...)>
     {
     public:
-        using connection_t = Connection<R, A...>;
+        using Delegate = Delegate<R, A...>;
+
+    private:
+        // value used to represent that there is no free slot index here
+        static constexpr u32 NO_FREE_SLOTS = std::numeric_limits<u32>::max();
+
+        struct Connection
+        {
+            Delegate delegate;
+            // previous free slot in connection list
+            u32 previous_free_slot = NO_FREE_SLOTS;
+        };
+
+    public:
 
         template<class Obj, IsFunction Fn>
-        connection_t* connect(Obj *obj, Fn fn)
+        ConnectionID connect(Obj *obj, Fn fn)
         {
-            auto &iter = m_connections.emplace_back(obj, fn);
-
-            iter.m_iter = --m_connections.end();
-
-            return &m_connections.back();
+            return connect_implementation(Delegate{ obj, fn });
         }
 
         template<IsFunction Fn>
-        connection_t* connect(Fn fn)
+        ConnectionID connect(Fn fn)
         {
-            auto &iter = m_connections.emplace_back(fn);
-
-            iter.m_iter = --m_connections.end();
-
-            return &m_connections.back();
+            return connect_implementation(Delegate{ fn });
         }
 
-        void disconnect(connection_t *connection)
+        void disconnect(ConnectionID id)
         {
-            if (!connection->m_alive)
+            std::scoped_lock lock { m_mutex };
+
+            auto &[delegate, _] = m_connections[id];
+
+            delegate.m_is_alive = false;
+
+            if (m_free_slot != NO_FREE_SLOTS)
             {
-                return;
+                m_connections[m_free_slot].previous_free_slot = m_free_slot;
             }
 
-            connection->m_alive = false;
-
-            m_connections.erase(connection->m_iter);
+            m_free_slot = id;
         }
 
         void operator()(A ...a) const
         {
-            for (const auto &connection : m_connections)
+            std::shared_lock lock { m_mutex };
+
+            for (const auto &[delegate, _] : m_connections)
             {
-                if (connection.is_active)
+                if (delegate.is_active && delegate.m_is_alive)
                 {
-                    connection(a...);
+                    delegate(a...);
                 }
             }
         }
 
-        std::vector<R> call_with_values(A ...a) const
+        std::vector<R> call_with_return_values(A ...a) const
         {
+            std::shared_lock lock { m_mutex };
+
             std::vector<R> values;
 
             values.reserve(m_connections.size());
 
-            for (const auto &connection : m_connections)
+            for (const auto &[delegate, _] : m_connections)
             {
-                if (connection.is_active)
+                if (delegate.is_active && delegate.m_is_alive)
                 {
-                    values.emplace_back(connection(a...));
+                    values.emplace_back(delegate(a...));
                 }
             }
 
@@ -123,6 +140,35 @@ namespace forge
         }
 
     private:
-        std::list<Connection<R, A...>> m_connections;
+        mutable std::shared_mutex m_mutex;
+        std::vector<Connection> m_connections;
+        u32 m_free_slot = NO_FREE_SLOTS;
+
+        ConnectionID connect_implementation(Delegate &&delegate)
+        {
+            std::scoped_lock lock { m_mutex };
+
+            // get index from a free slot if it exists
+            if (m_free_slot != NO_FREE_SLOTS)
+            {
+                auto &[free_delegate, previous_free_slot] = m_connections[m_free_slot];
+
+                free_delegate = std::move(delegate);
+
+                auto index = m_free_slot;
+
+                m_free_slot = previous_free_slot;
+
+                return index;
+            }
+
+            auto index = m_connections.size();
+
+            auto &iter = m_connections.emplace_back(std::forward<Delegate>(delegate));
+
+            iter.delegate.m_index = index;
+
+            return index;
+        }
     };
 }

@@ -10,5 +10,8 @@ Below the name will be a name of the platform where it is already implemented.
 ### VirtualMemory
 * Linux
 
+### System info
+* Linux
+
 ### Rendering
 * OpenGL 4.6
