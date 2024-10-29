@@ -154,7 +154,7 @@ private:
 	glm::vec2 m_last_mouse_coords = forge::get_mouse_coords();
 };
 
-class Test : public forge::IComponent
+class ExportFieldTestComponent : public forge::IComponent
 {
 public:
 	float f1 = 10;
@@ -176,12 +176,12 @@ public:
 		}
 	};
 
-	static void on_watched_field_changed(forge::FieldVar field)
+	void on_watched_field_changed(forge::FieldVar field)
 	{
-		std::cout << "field changed" << '\n';
+		std::cout << "field changed to " << *std::get<int*>(field) << '\n';
 	}
 
-	forge::WatchedField watched_field {&watched_int, on_watched_field_changed};
+	forge::WatchedField watched_field = WATCH_FIELD(&watched_int, &ExportFieldTestComponent::on_watched_field_changed);
 
 	EXPORT_FIELDS(
 		&f1, &f2, &integer,
@@ -204,13 +204,19 @@ public:
 		m_owner->get_entity().on_entity_transform_updated.disconnect(m_on_update_connection);
 	}
 
-	EXPORT_FIELDS(forge::ColorField("yes", &m_material.color));
+	EXPORT_FIELDS(&m_color);
 
 private:
 	u32 m_id;
 	forge::OglRenderer *m_renderer;
 	forge::ConnectionID m_on_update_connection;
 	forge::Material m_material;
+	forge::WatchedField m_color = WATCH_FIELD(COLOR_FIELD(&m_material.color), &PrimitiveRendererComponent::on_color_changed);
+
+	void on_color_changed(forge::FieldVar field)
+	{
+		m_renderer->update_primitive_material(m_id, m_material);
+	}
 
 protected:
 	void on_enter() override
@@ -238,6 +244,7 @@ protected:
 	{
 		m_renderer->primitive_set_hidden(m_id, false);
 	}
+
 };
 
 class CounterComponent : public forge::IComponent
@@ -405,7 +412,7 @@ int main()
 	}
 
 	engine.nexus->register_component<FlyCamera>();
-	engine.nexus->register_component<Test>();
+	engine.nexus->register_component<ExportFieldTestComponent>();
 	engine.nexus->register_component<SpinCamera>();
 	engine.nexus->register_component<PrimitiveRendererComponent>();
 	engine.nexus->register_component<ClusteredRenderingComponent>();
@@ -420,7 +427,7 @@ int main()
 
 	engine.nexus->add_to_group("important entities", entity);
 
-	entity.emplace_child<Test>("Child");
+	entity.emplace_child<ExportFieldTestComponent>("Child");
 
 	engine.nexus->create_entity<PrimitiveRendererComponent>("David john smith");
 

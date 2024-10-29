@@ -55,6 +55,8 @@ namespace forge
 
 		void update_primitive(u32 id, PrimitiveModel primitive);
 
+		void update_primitive_material(u32 id, Material material);
+
 		void destroy_primitive(u32 id);
 
 		void primitive_set_hidden(u32 id, bool value);

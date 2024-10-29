@@ -50,7 +50,7 @@ namespace forge
         }
 
         template<IsFunction Fn>
-        explicit Delegate(Fn fn)
+        Delegate(Fn fn)
         {
             m_delegate = [fn](A ...a)
             {

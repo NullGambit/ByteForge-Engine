@@ -40,13 +40,17 @@ namespace forge
 
 	using BaseFieldVar = std::variant<BASE_FIELD_VAR_SET>;
 
-	struct WatchedField
-	{
-		std::variant<BASE_FIELD_VAR_SET, WatchedField*> field;
-		std::function<void(std::variant<BASE_FIELD_VAR_SET, WatchedField*>)> on_changed;
-	};
+	struct WatchedField;
 
 	using FieldVar = std::variant<BASE_FIELD_VAR_SET, WatchedField*>;
+
+	struct WatchedField
+	{
+		FieldVar field;
+		Delegate<void, FieldVar> on_changed;
+	};
+
+#define WATCH_FIELD(field, method) forge::WatchedField{field, forge::Delegate<void, forge::FieldVar>(this, method)}
 
 	struct ComponentField
 	{

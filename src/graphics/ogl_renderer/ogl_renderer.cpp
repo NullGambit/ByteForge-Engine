@@ -168,6 +168,11 @@ void forge::OglRenderer::update_primitive(u32 id, PrimitiveModel primitive)
 	m_cube_positions[id].primitive = primitive;
 }
 
+void forge::OglRenderer::update_primitive_material(u32 id, Material material)
+{
+	m_cube_positions[id].primitive.material = material;
+}
+
 void forge::OglRenderer::destroy_primitive(u32 id)
 {
 	m_cube_positions[id].is_valid = false;
