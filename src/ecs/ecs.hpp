@@ -14,6 +14,8 @@
 #include "core/isub_system.hpp"
 
 // should get included as a part of ecs.hpp. don't remove this.
+#include "component_field.hpp"
+#include "ecs_views.hpp"
 #include "macro_warcrimes.hpp"
 #include "transform.hpp"
 #include "util/types.hpp"
@@ -37,46 +39,6 @@ namespace forge
     };
 
     using DeltaTime = float;
-    using EntityID = u32;
-
-    class Nexus;
-    class Entity;
-
-    struct ComponentView
-    {
-        size_t offset;
-        uint8_t *pointer;
-    };
-
-    struct EntityView
-    {
-        static constexpr auto NO_INDEX = std::numeric_limits<u32>::max();
-
-        Nexus *nexus;
-        u32 index = NO_INDEX;
-        u32 table;
-        EntityID id;
-
-        Entity& get_entity();
-
-        // verifies that this entity points to the same entity the view was taken from and that it still exists in the table
-        [[nodiscard]]
-        bool is_entity_valid();
-
-        // equivalent to doing a null check on an entity pointer
-        [[nodiscard]]
-        inline bool has_value() const
-        {
-            return index != NO_INDEX;
-        }
-
-        bool operator==(const EntityView &b) const
-        {
-            return index == b.index && table == b.table && id == b.id;
-        }
-    };
-
-    using EntityViewHandle = std::shared_ptr<EntityView>;
 
     struct EntityEntry;
 
@@ -87,29 +49,6 @@ namespace forge
     };
 
     using OnComponentDestroy = Signal<void()>;
-
-    struct ButtonField
-    {
-        std::string_view name;
-        std::function<void()> callback;
-
-        ButtonField(std::string_view name, std::function<void()> callback) :
-            name(name),
-            callback(callback)
-        {}
-
-        ButtonField(std::function<void()> callback) :
-            callback(callback)
-        {}
-    };
-
-    using FieldVar = std::variant<float*, double*, int*, std::string*, ButtonField*>;
-
-    struct ComponentField
-    {
-        std::string_view name;
-        FieldVar var;
-    };
 
     class IComponent
     {

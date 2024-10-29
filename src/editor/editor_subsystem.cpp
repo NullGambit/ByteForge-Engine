@@ -284,6 +284,90 @@ protected:
 		vec_drag_control(label, ptr, sizeof(T) / sizeof(ptr[0]), uniform, speed, min_steps, max_steps);
 	}
 
+	bool render_field(std::string_view name, forge::FieldVar &value)
+	{
+		auto format_field = [](std::string_view name)
+		{
+			// will likely start with an & because of taking the member address
+			auto offset = name.starts_with('&');
+			auto formatted = std::string{name.substr(offset)};
+
+			if (formatted.starts_with("m_"))
+			{
+				formatted.erase(formatted.begin(), formatted.begin()+2);
+			}
+
+			return formatted;
+		};
+
+		auto formatted = format_field(name);
+
+		std::replace(formatted.begin(), formatted.end(), '_', ' ');
+
+		return std::visit(util::overload
+		{
+			[&formatted](float *value)
+			{
+				return ImGui::DragFloat(formatted.data(), value);
+			},
+			[&formatted](double *value)
+			{
+				return ImGui::DragFloat(formatted.data(), (float*)value);
+			},
+			[&formatted](int *value)
+			{
+				return ImGui::DragInt(formatted.data(), value);
+			},
+			[&formatted](std::string *value)
+			{
+				return ImGui::InputText(formatted.data(), value);
+			},
+			[&formatted](forge::ButtonField *value)
+			{
+				auto button_name = value->name.empty() ? formatted : value->name;
+
+				if (ImGui::Button(button_name.data()))
+				{
+					value->callback();
+					return true;
+				}
+
+				return false;
+			},
+			[&formatted](glm::vec4 *value)
+			{
+				return ImGui::DragFloat4(formatted.data(), glm::value_ptr(*value));
+			},
+			[&formatted](glm::vec3 *value)
+			{
+				return ImGui::DragFloat3(formatted.data(), glm::value_ptr(*value));
+			},
+			[&formatted](glm::vec2 *value)
+			{
+				return ImGui::DragFloat2(formatted.data(), glm::value_ptr(*value));
+			},
+			[&formatted](glm::quat *value)
+			{
+				return ImGui::DragFloat4(formatted.data(), glm::value_ptr(*value));
+			},
+			[&format_field](forge::ColorField value)
+			{
+				return ImGui::ColorEdit4(format_field(value.name).data(), glm::value_ptr(*value.rgba));
+			},
+			[&](forge::WatchedField *value)
+			{
+				auto field_changed = render_field(formatted, value->field);
+
+				if (field_changed)
+				{
+					value->on_changed(value->field);
+				}
+
+				return field_changed;
+			},
+		}, value);
+	}
+
 	void draw_right_side()
 	{
 		if (show_window && m_selected_entity.has_value())
@@ -383,43 +467,7 @@ protected:
 
 					for (auto &[name, value] : component->export_fields())
 					{
-						auto formatted = std::string{name};
-
-						if (formatted.starts_with("m_"))
-						{
-							formatted.erase(formatted.begin(), formatted.begin()+2);
-						}
-
-						std::replace(formatted.begin(), formatted.end(), '_', ' ');
-
-						std::visit(util::overload
-						{
-							[&formatted](float *value)
-							{
-								ImGui::DragFloat(formatted.data(), value);
-							},
-							[&formatted](double *value)
-							{
-								ImGui::DragFloat(formatted.data(), (float*)value);
-							},
-							[&formatted](int *value)
-							{
-								ImGui::DragInt(formatted.data(), value);
-							},
-							[&formatted](std::string *value)
-							{
-								ImGui::InputText(formatted.data(), value);
-							},
-							[&formatted](forge::ButtonField *value)
-							{
-								auto button_name = value->name.empty() ? formatted : value->name;
-
-								if (ImGui::Button(button_name.data()))
-								{
-									value->callback();
-								}
-							},
-						}, value);
+						render_field(name, value);
 					}
 
 					ImGui::TreePop();

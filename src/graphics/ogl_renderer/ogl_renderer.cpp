@@ -43,7 +43,7 @@ std::string forge::OglRenderer::init()
 		return "engine shader path does not exist";
 	}
 
-	C(m_tri_shader.compile({SHADER_PATH"triangles.frag", SHADER_PATH"triangles.vert"}));
+	C(m_forward_shader.compile({SHADER_PATH"forward_lighting.frag", SHADER_PATH"forward_lighting.vert"}));
 
 #undef C
 
@@ -100,15 +100,16 @@ void forge::OglRenderer::update()
 
 	m_cube_texture.bind();
 
-	m_tri_shader.use();
+	m_forward_shader.use();
 
 	glBindVertexArray(m_cube_vao);
 
-	for (const auto &[model, is_valid, is_hidden] : m_cube_positions)
+	for (const auto &[primitive, is_valid, is_hidden] : m_cube_positions)
 	{
 		if (is_valid && !is_hidden)
 		{
-			m_tri_shader.set("pvm", m_pv * model);
+			m_forward_shader.set("pvm", m_pv * primitive.model);
+			m_forward_shader.set("material_color", primitive.material.color);
 
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 
@@ -150,21 +151,21 @@ glm::vec3 forge::OglRenderer::get_clear_color()
 	return out;
 }
 
-u32 forge::OglRenderer::create_primitive(glm::mat4 model)
+u32 forge::OglRenderer::create_primitive(PrimitiveModel primitive)
 {
 	auto id = get_free_rdi();
 
 	auto &data = m_cube_positions[id];
 
-	data.model = model;
+	data.primitive = primitive;
 	data.is_valid = true;
 
 	return id;
 }
 
-void forge::OglRenderer::update_primitive(u32 id, glm::mat4 updated_model)
+void forge::OglRenderer::update_primitive(u32 id, PrimitiveModel primitive)
 {
-	m_cube_positions[id].model = updated_model;
+	m_cube_positions[id].primitive = primitive;
 }
 
 void forge::OglRenderer::destroy_primitive(u32 id)

@@ -74,7 +74,6 @@ namespace forge
         std::function<R(A...)> m_delegate;
 
         bool m_is_alive = true;
-        u32 m_index;
     };
 
     template<class R, class ...A>
@@ -185,8 +184,6 @@ namespace forge
             auto index = m_connections.size();
 
             auto &iter = m_connections.emplace_back(std::forward<Delegate>(delegate));
-
-            iter.delegate.m_index = index;
 
             return index;
         }

@@ -9,6 +9,16 @@
 
 void set_dracula_theme()
 {
+	auto &io = ImGui::GetIO();
+
+	io.FontDefault = io.Fonts->AddFontFromFileTTF("./assets/fonts/Ruda/static/Ruda-Black.ttf", 12);
+
+	io.Fonts->AddFontFromFileTTF("./assets/fonts/Ruda/static/Ruda-Bold.ttf", 10);
+	io.Fonts->AddFontFromFileTTF("./assets/fonts/Ruda/static/Ruda-Bold.ttf", 14);
+	io.Fonts->AddFontFromFileTTF("./assets/fonts/Ruda/static/Ruda-Bold.ttf", 18);
+
+	io.Fonts->Build();
+
 	auto &colors = ImGui::GetStyle().Colors;
 
 	colors[ImGuiCol_WindowBg] = ImVec4{0.1f, 0.1f, 0.13f, 1.0f};
@@ -82,7 +92,7 @@ void set_dracula_theme()
 	style.ScrollbarRounding = 9;
 	style.WindowRounding = 7;
 	style.GrabRounding = 3;
-	style.FrameRounding = 3;
+	style.FrameRounding = 8;
 	style.PopupRounding = 4;
 	style.ChildRounding = 4;
 }

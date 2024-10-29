@@ -33,7 +33,7 @@ public:
 		engine.renderer->update_pv(camera.pv());
 	}
 
-	EXPORT_FIELDS(speed, radius, height);
+	EXPORT_FIELDS(&speed, &radius, &height);
 
 	float speed = 0.5;
 	float radius = 10;
@@ -142,9 +142,9 @@ public:
 	}
 
 	EXPORT_FIELDS(
-		m_speed,
-		m_boost_speed,
-		m_mouse_sensitivity);
+		&m_speed,
+		&m_boost_speed,
+		&m_mouse_sensitivity);
 
 private:
 	float m_speed = 1;
@@ -161,6 +161,13 @@ public:
 	float f2 = 20;
 	int integer = 500;
 	std::string string;
+	glm::vec4 vec4;
+	glm::vec3 vec3;
+	glm::vec2 vec2;
+	glm::quat quat;
+	glm::vec4 color;
+	int watched_int;
+
 	forge::ButtonField test_button
 	{
 		[]
@@ -169,7 +176,17 @@ public:
 		}
 	};
 
-	EXPORT_FIELDS(f1, f2, integer, test_button);
+	static void on_watched_field_changed(forge::FieldVar field)
+	{
+		std::cout << "field changed" << '\n';
+	}
+
+	forge::WatchedField watched_field {&watched_int, on_watched_field_changed};
+
+	EXPORT_FIELDS(
+		&f1, &f2, &integer,
+		&test_button, COLOR_FIELD(&color), &watched_field,
+		&vec4, &vec3, &vec2, &quat);
 };
 
 class PrimitiveRendererComponent : public forge::IComponent
@@ -187,10 +204,13 @@ public:
 		m_owner->get_entity().on_entity_transform_updated.disconnect(m_on_update_connection);
 	}
 
+	EXPORT_FIELDS(forge::ColorField("yes", &m_material.color));
+
 private:
 	u32 m_id;
 	forge::OglRenderer *m_renderer;
 	forge::ConnectionID m_on_update_connection;
+	forge::Material m_material;
 
 protected:
 	void on_enter() override
@@ -200,12 +220,12 @@ protected:
 		auto &entity = m_owner->get_entity();
 		auto model = entity.get_model();
 
-		m_id = m_renderer->create_primitive(model);
+		m_id = m_renderer->create_primitive({model});
 
 		m_on_update_connection = entity.on_entity_transform_updated.connect(
-		[&renderer = m_renderer, &id = m_id](const forge::Transform &transform)
+		[&renderer = m_renderer, &id = m_id, &material = m_material](const forge::Transform &transform)
 		{
-			renderer->update_primitive(id, transform.get_model());
+			renderer->update_primitive(id, {transform.get_model(), material});
 		});
 	}
 
@@ -268,7 +288,7 @@ public:
 		}
 	}
 
-	EXPORT_FIELDS(m_mesh_count);
+	EXPORT_FIELDS(&m_mesh_count);
 
 private:
 	std::vector<ClusterEntry> m_meshes;
@@ -316,7 +336,7 @@ private:
 
 			primitive_model = glm::rotate(primitive_model, util::rand_float(0, 1), normalize(util::rand_vec3(-360, 360)));
 
-			auto id = m_renderer->create_primitive(primitive_model);
+			auto id = m_renderer->create_primitive({primitive_model});
 
 			m_meshes.emplace_back(id, model);
 		}
@@ -394,7 +414,7 @@ int main()
 
 	auto *spin_camera = entity.add_component<SpinCamera>();
 
-	spin_camera->radius = 30;
+	// spin_camera->radius = 30;
 
 	entity.get_transform().set_local_position({0, 0, 5});
 
@@ -402,7 +422,7 @@ int main()
 
 	entity.emplace_child<Test>("Child");
 
-	engine.nexus->create_entity<ClusteredRenderingComponent>("David john smith");
+	engine.nexus->create_entity<PrimitiveRendererComponent>("David john smith");
 
 	auto &john = engine.nexus->create_entity("john allen");
 

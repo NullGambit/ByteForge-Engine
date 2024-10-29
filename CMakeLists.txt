@@ -94,6 +94,10 @@ add_executable(ByteForge_Engine main.cpp
         src/system/system_info.hpp
         src/system/linux/linux_system_info.cpp
         src/system/linux/linux_system_info.hpp
+        src/ecs/component_field.hpp
+        src/ecs/ecs_views.cpp
+        src/ecs/ecs_views.hpp
+        src/graphics/material.hpp
 )
 
 target_compile_options(ByteForge_Engine PRIVATE -include ${CMAKE_SOURCE_DIR}/src/core/forge_intrinsic.hpp)

@@ -7,6 +7,7 @@
 #include "concurrency/command_buffer.hpp"
 #include "core/isub_system.hpp"
 #include "graphics/camera.hpp"
+#include "graphics/material.hpp"
 
 class GLFWwindow;
 
@@ -15,6 +16,12 @@ namespace forge
 	struct RenderStatistics
 	{
 		u32 draw_calls;
+	};
+
+	struct PrimitiveModel
+	{
+		glm::mat4 model;
+		Material material;
 	};
 
 	class OglRenderer final : public ISubSystem
@@ -44,9 +51,9 @@ namespace forge
 			return m_statistics;
 		}
 
-		u32 create_primitive(glm::mat4 model = {1.0});
+		u32 create_primitive(PrimitiveModel primitive);
 
-		void update_primitive(u32 id, glm::mat4 updated_model);
+		void update_primitive(u32 id, PrimitiveModel primitive);
 
 		void destroy_primitive(u32 id);
 
@@ -69,7 +76,7 @@ namespace forge
 	private:
 		bool m_draw_wireframe = false;
 		uint32_t m_cube_vao;
-		OglShader m_tri_shader;
+		OglShader m_forward_shader;
 		OglTexture m_cube_texture;
 		OglTexture m_face_texture;
 		GLFWwindow *m_worker_window = nullptr;
@@ -78,7 +85,7 @@ namespace forge
 
 		struct PrimitiveRenderData
 		{
-			glm::mat4 model;
+			PrimitiveModel primitive;
 			// if false this entry is freed
 			bool is_valid = true;
 			// if false this primitive should not be drawn
