@@ -4,6 +4,7 @@
 
 #include "ogl_shader.hpp"
 #include "ogl_texture.hpp"
+#include "render_resource.hpp"
 #include "concurrency/command_buffer.hpp"
 #include "core/isub_system.hpp"
 #include "graphics/camera.hpp"
@@ -55,11 +56,13 @@ namespace forge
 
 		void update_primitive(u32 id, PrimitiveModel primitive);
 
-		void update_primitive_material(u32 id, Material material);
+		void update_primitive_material(u32 id, Material &material);
 
 		void destroy_primitive(u32 id);
 
 		void primitive_set_hidden(u32 id, bool value);
+
+		void destroy_texture(std::string_view path);
 
 		// allows for manually adding a command that will be run the next frame
 		void add_command(CommandBuffer<>::Callback &&command)
@@ -79,11 +82,10 @@ namespace forge
 		bool m_draw_wireframe = false;
 		uint32_t m_cube_vao;
 		OglShader m_forward_shader;
-		OglTexture m_cube_texture;
-		OglTexture m_face_texture;
 		GLFWwindow *m_worker_window = nullptr;
 		CommandBuffer<> m_command_buffer;
 		RenderStatistics m_statistics;
+		RenderResource<OglTexture> m_texture_resource;
 
 		struct PrimitiveRenderData
 		{
@@ -92,6 +94,7 @@ namespace forge
 			bool is_valid = true;
 			// if false this primitive should not be drawn
 			bool is_hidden = false;
+			OglTexture *diffuse_texture;
 		};
 
 		std::vector<PrimitiveRenderData> m_cube_positions;

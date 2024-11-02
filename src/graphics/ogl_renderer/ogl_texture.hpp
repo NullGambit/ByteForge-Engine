@@ -23,6 +23,9 @@ namespace forge
 	struct OglTexture
 	{
 		bool load(std::string_view path, TextureOptions options = {});
+
+		~OglTexture();
+
 		void destroy();
 
 		void bind(int unit = 0);

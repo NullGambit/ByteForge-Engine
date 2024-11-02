@@ -75,7 +75,10 @@ std::string forge::OglRenderer::init()
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 5, (void*)(3 * sizeof(f32)));
 	glEnableVertexAttribArray(1);
 
-	m_cube_texture.load("assets/textures/smoking_rat.png");
+	m_texture_resource.on_resource_init = [](std::string_view path, OglTexture *texture)
+	{
+		texture->load(path);
+	};
 
 	glEnable(GL_MULTISAMPLE);
 	glEnable(GL_DEPTH_TEST);
@@ -98,18 +101,17 @@ void forge::OglRenderer::update()
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	m_cube_texture.bind();
-
 	m_forward_shader.use();
 
 	glBindVertexArray(m_cube_vao);
 
-	for (const auto &[primitive, is_valid, is_hidden] : m_cube_positions)
+	for (const auto &data : m_cube_positions)
 	{
-		if (is_valid && !is_hidden)
+		if (data.is_valid && !data.is_hidden)
 		{
-			m_forward_shader.set("pvm", m_pv * primitive.model);
-			m_forward_shader.set("material_color", primitive.material.color);
+			data.diffuse_texture->bind();
+			m_forward_shader.set("pvm", m_pv * data.primitive.model);
+			m_forward_shader.set("material_color", data.primitive.material.color);
 
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 
@@ -160,6 +162,8 @@ u32 forge::OglRenderer::create_primitive(PrimitiveModel primitive)
 	data.primitive = primitive;
 	data.is_valid = true;
 
+	data.diffuse_texture = &m_texture_resource.add(primitive.material.diffuse.path);
+
 	return id;
 }
 
@@ -168,19 +172,34 @@ void forge::OglRenderer::update_primitive(u32 id, PrimitiveModel primitive)
 	m_cube_positions[id].primitive = primitive;
 }
 
-void forge::OglRenderer::update_primitive_material(u32 id, Material material)
+void forge::OglRenderer::update_primitive_material(u32 id, Material &material)
 {
-	m_cube_positions[id].primitive.material = material;
+	auto &data = m_cube_positions[id];
+
+	if (data.primitive.material.diffuse.path != material.diffuse.path)
+	{
+		m_texture_resource.remove(data.primitive.material.diffuse.path);
+		m_texture_resource.add(material.diffuse.path);
+	}
+
+	data.primitive.material = material;
 }
 
 void forge::OglRenderer::destroy_primitive(u32 id)
 {
-	m_cube_positions[id].is_valid = false;
+	auto &data = m_cube_positions[id];
+	data.is_valid = false;
+	m_texture_resource.remove(data.primitive.material.diffuse.path);
 }
 
 void forge::OglRenderer::primitive_set_hidden(u32 id, bool value)
 {
 	m_cube_positions[id].is_hidden = value;
+}
+
+void forge::OglRenderer::destroy_texture(std::string_view path)
+{
+	m_texture_resource.remove(path);
 }
 
 void forge::OglRenderer::handle_framebuffer_resize(int width, int height)

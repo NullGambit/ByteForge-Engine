@@ -42,11 +42,17 @@ bool forge::OglTexture::load(std::string_view path, TextureOptions options)
 	return true;
 }
 
+forge::OglTexture::~OglTexture()
+{
+	destroy();
+}
+
 void forge::OglTexture::destroy()
 {
 	if (m_id > 0)
 	{
 		glDeleteTextures(1, &m_id);
+		m_id = 0;
 	}
 }
 

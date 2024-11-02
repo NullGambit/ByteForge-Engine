@@ -98,6 +98,7 @@ add_executable(ByteForge_Engine main.cpp
         src/ecs/ecs_views.cpp
         src/ecs/ecs_views.hpp
         src/graphics/material.hpp
+        src/graphics/ogl_renderer/render_resource.hpp
 )
 
 target_compile_options(ByteForge_Engine PRIVATE -include ${CMAKE_SOURCE_DIR}/src/core/forge_intrinsic.hpp)

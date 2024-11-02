@@ -204,16 +204,32 @@ public:
 		m_owner->get_entity().on_entity_transform_updated.disconnect(m_on_update_connection);
 	}
 
-	EXPORT_FIELDS(&m_color);
+	void set_diffuse_texture(std::string_view path)
+	{
+		if (!m_material.diffuse.path.empty())
+		{
+			m_renderer->destroy_texture(m_material.diffuse.path);
+		}
+
+		m_material.diffuse.path = path;
+
+		m_renderer->update_primitive_material(m_id, m_material);
+	}
+
+	EXPORT_FIELDS(&m_color, &m_set_diffuse_button);
 
 private:
 	u32 m_id;
 	forge::OglRenderer *m_renderer;
 	forge::ConnectionID m_on_update_connection;
 	forge::Material m_material;
+	forge::ButtonField m_set_diffuse_button {[&]
+	{
+		set_diffuse_texture("assets/textures/wall.jpg");
+	}};
 	forge::WatchedField m_color = WATCH_FIELD(COLOR_FIELD(&m_material.color), &PrimitiveRendererComponent::on_color_changed);
 
-	void on_color_changed(forge::FieldVar field)
+	void on_color_changed(forge::FieldVar _)
 	{
 		m_renderer->update_primitive_material(m_id, m_material);
 	}
@@ -429,7 +445,11 @@ int main()
 
 	entity.emplace_child<ExportFieldTestComponent>("Child");
 
-	engine.nexus->create_entity<PrimitiveRendererComponent>("David john smith");
+	auto &david = engine.nexus->create_entity("David john smith");
+
+	auto *primitive = david.add_component<PrimitiveRendererComponent>();
+
+	primitive->set_diffuse_texture("assets/textures/smoking_rat.png");
 
 	auto &john = engine.nexus->create_entity("john allen");
 
