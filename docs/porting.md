@@ -5,13 +5,16 @@ this document tracks things that need to be implemented on other platforms for a
 Below the name will be a name of the platform where it is already implemented.
 
 ### FSMonitor
-* Linux 
+* `Linux`
 
 ### VirtualMemory
-* Linux
+* `Linux`
 
 ### System info
-* Linux
+* `Linux`
 
 ### Rendering
-* OpenGL 4.6
+* `OpenGL 4.6`
+
+## Native Dialogs
+* `Linux` through kdialog and zenity

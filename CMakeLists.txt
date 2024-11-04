@@ -99,6 +99,10 @@ add_executable(ByteForge_Engine main.cpp
         src/ecs/ecs_views.hpp
         src/graphics/material.hpp
         src/graphics/ogl_renderer/render_resource.hpp
+        src/system/native_dialog.hpp
+        src/system/linux/linux_native_dialog.cpp
+        src/system/linux/linux_native_dialog.hpp
+        src/util/defer.hpp
 )
 
 target_compile_options(ByteForge_Engine PRIVATE -include ${CMAKE_SOURCE_DIR}/src/core/forge_intrinsic.hpp)

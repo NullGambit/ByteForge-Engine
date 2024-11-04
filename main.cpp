@@ -10,6 +10,7 @@
 #include "graphics/ogl_renderer/ogl_renderer.hpp"
 #include "memory/arena_allocator.hpp"
 #include "util/random.hpp"
+#include "system/native_dialog.hpp"
 
 class SpinCamera final : public forge::IComponent
 {
@@ -225,7 +226,17 @@ private:
 	forge::Material m_material;
 	forge::ButtonField m_set_diffuse_button {[&]
 	{
-		set_diffuse_texture("assets/textures/wall.jpg");
+		auto file_paths = forge::native_file_dialog({
+			.root = "./assets/",
+			.allow_multiple = false,
+			.allowed_mimes = "image/png image/jpeg"});
+
+		if (file_paths.empty())
+		{
+			return;
+		}
+
+		set_diffuse_texture(file_paths.front());
 	}};
 	forge::WatchedField m_color = WATCH_FIELD(COLOR_FIELD(&m_material.color), &PrimitiveRendererComponent::on_color_changed);
 
