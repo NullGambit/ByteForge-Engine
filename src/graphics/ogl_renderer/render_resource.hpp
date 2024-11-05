@@ -1,4 +1,5 @@
 #pragma once
+#include "core/logging.hpp"
 
 namespace forge
 {
@@ -8,10 +9,12 @@ namespace forge
 	public:
 
 		typedef void(*OnResourceInit)(std::string_view, T*);
+		typedef void(*OnResourceDeInit)(T*);
 
 		OnResourceInit on_resource_init;
+		OnResourceDeInit on_resource_deinit;
 
-		T* get(std::string_view id)
+		T get(std::string_view id)
 		{
 			auto iter = m_resources.find(id);
 
@@ -23,7 +26,7 @@ namespace forge
 			return &iter->second.first;
 		}
 
-		T& add(std::string_view id)
+		T add(std::string_view id)
 		{
 			auto iter = m_resources.find(id);
 
@@ -44,6 +47,11 @@ namespace forge
 
 		void remove(std::string_view id)
 		{
+			if (id.empty())
+			{
+				return;
+			}
+
 			auto iter = m_resources.find(id);
 
 			if (iter == m_resources.end())
@@ -59,9 +67,7 @@ namespace forge
 			}
 		}
 
-
-
 	private:
-		HashMap<std::string, std::pair<T, i32>, ENABLE_TRANSPARENT_HASH> m_resources;
+		std::unordered_map<std::string, std::pair<T, i32>, ENABLE_TRANSPARENT_HASH> m_resources;
 	};
 }

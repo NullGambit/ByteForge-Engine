@@ -23,7 +23,7 @@ namespace forge
 	struct PrimitiveModel
 	{
 		glm::mat4 model;
-		Material material;
+		Material material {};
 	};
 
 	class OglRenderer final : public ISubSystem
@@ -65,6 +65,12 @@ namespace forge
 
 		void destroy_texture(std::string_view path);
 
+		void update_light(glm::vec3 position, glm::vec3 color)
+		{
+			m_light_color = color;
+			m_light_position = position;
+		}
+
 		// allows for manually adding a command that will be run the next frame
 		void add_command(CommandBuffer<>::Callback &&command)
 		{
@@ -87,6 +93,8 @@ namespace forge
 		CommandBuffer<> m_command_buffer;
 		RenderStatistics m_statistics;
 		RenderResource<OglTexture> m_texture_resource;
+		glm::vec3 m_light_position {};
+		glm::vec3 m_light_color {1.0};
 
 		struct PrimitiveRenderData
 		{
@@ -95,7 +103,7 @@ namespace forge
 			bool is_valid = true;
 			// if false this primitive should not be drawn
 			bool is_hidden = false;
-			OglTexture *diffuse_texture;
+			OglTexture diffuse_texture;
 		};
 
 		std::vector<PrimitiveRenderData> m_cube_positions;

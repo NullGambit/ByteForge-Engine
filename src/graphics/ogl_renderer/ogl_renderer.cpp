@@ -4,6 +4,7 @@
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <utility>
 
 #include "gl_buffers.hpp"
 #include "ogl_shader.hpp"
@@ -62,6 +63,11 @@ std::string forge::OglRenderer::init()
 		texture->load(path);
 	};
 
+	m_texture_resource.on_resource_deinit = [](OglTexture *texture)
+	{
+		texture->destroy();
+	};
+
 	glEnable(GL_MULTISAMPLE);
 	glEnable(GL_DEPTH_TEST);
 
@@ -90,17 +96,24 @@ void forge::OglRenderer::update()
 
 	glBindVertexArray(m_cube_buffers.vao);
 
-	for (const auto &data : m_cube_positions)
+	for (auto &data : m_cube_positions)
 	{
 		if (data.is_valid && !data.is_hidden)
 		{
-			data.diffuse_texture->bind();
+			data.diffuse_texture.bind();
+
 			m_forward_shader.set("pvm", m_pv * data.primitive.model);
+			m_forward_shader.set("model", data.primitive.model);
 			m_forward_shader.set("material_color", data.primitive.material.color);
+			m_forward_shader.set("light_position", m_light_position);
+			m_forward_shader.set("light_color", m_light_color);
 
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 
 			m_statistics.draw_calls++;
+
+
+			data.diffuse_texture.unbind();
 		}
 	}
 
@@ -147,25 +160,30 @@ u32 forge::OglRenderer::create_primitive(PrimitiveModel primitive)
 	data.primitive = primitive;
 	data.is_valid = true;
 
-	data.diffuse_texture = &m_texture_resource.add(primitive.material.diffuse.path);
+	if (!primitive.material.diffuse.path.empty())
+	{
+		data.diffuse_texture = m_texture_resource.add(primitive.material.diffuse.path);
+	}
 
 	return id;
 }
 
 void forge::OglRenderer::update_primitive(u32 id, PrimitiveModel primitive)
 {
-	m_cube_positions[id].primitive = primitive;
+	m_cube_positions[id].primitive = std::move(primitive);
+
+	// update_primitive_material(id, primitive.material);
 }
 
 void forge::OglRenderer::update_primitive_material(u32 id, Material &material)
 {
 	auto &data = m_cube_positions[id];
 
-	if (data.primitive.material.diffuse.path != material.diffuse.path)
-	{
-		m_texture_resource.remove(data.primitive.material.diffuse.path);
-		m_texture_resource.add(material.diffuse.path);
-	}
+	auto &diffuse_path = data.primitive.material.diffuse.path;
+
+	m_texture_resource.remove(diffuse_path);
+
+	data.diffuse_texture = m_texture_resource.add(material.diffuse.path);
 
 	data.primitive.material = material;
 }

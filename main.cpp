@@ -37,7 +37,7 @@ public:
 	EXPORT_FIELDS(&speed, &radius, &height);
 
 	float speed = 0.5;
-	float radius = 10;
+	float radius = 5;
 	float height = 0.0f;
 };
 
@@ -422,6 +422,25 @@ private:
 	glm::mat4 m_result {1.0};
 };
 
+class TempLightComponent : public forge::IComponent
+{
+public:
+
+	REGISTER_UPDATE_FUNC
+
+	void update(forge::DeltaTime delta) override
+	{
+		auto *renderer = forge::Engine::get_instance().renderer;
+
+		renderer->update_light(m_owner->get_entity().get_position(), glm::vec3{m_color});
+	}
+
+	EXPORT_FIELDS(COLOR_FIELD(&m_color));
+
+private:
+	glm::vec4 m_color {1.0};
+};
+
 int main()
 {
 	auto &engine = forge::Engine::get_instance();
@@ -443,41 +462,27 @@ int main()
 	engine.nexus->register_component<SpinCamera>();
 	engine.nexus->register_component<PrimitiveRendererComponent>();
 	engine.nexus->register_component<ClusteredRenderingComponent>();
+	engine.nexus->register_component<TempLightComponent>();
 
-	auto &entity = engine.nexus->create_entity("Player");
+	auto &player = engine.nexus->create_entity<SpinCamera>("Player");
 
-	auto *spin_camera = entity.add_component<SpinCamera>();
+	player.get_transform().set_local_position({0, 0, 5});
 
-	// spin_camera->radius = 30;
+	player.emplace_child<ExportFieldTestComponent>("Child");
 
-	entity.get_transform().set_local_position({0, 0, 5});
+	auto &cube = engine.nexus->create_entity("Cube");
 
-	engine.nexus->add_to_group("important entities", entity);
-
-	entity.emplace_child<ExportFieldTestComponent>("Child");
-
-	auto &david = engine.nexus->create_entity("David john smith");
-
-	auto *primitive = david.add_component<PrimitiveRendererComponent>();
+	auto *primitive = cube.add_component<PrimitiveRendererComponent>();
 
 	primitive->set_diffuse_texture("assets/textures/smoking_rat.png");
 
-	auto &john = engine.nexus->create_entity("john allen");
+	auto &light = engine.nexus->create_entity<TempLightComponent>("Light");
 
-	engine.nexus->add_to_group("important entities", john);
+	light.set_local_position(glm::vec3{2, 1, -2});
 
-	engine.nexus->destroy_entity(&john);
+	auto *light_renderer = light.add_component<PrimitiveRendererComponent>();
 
-	engine.nexus->create_entity("johnny");
-	engine.nexus->create_entity("D");
-
-	auto player = engine.nexus->get_entity("Player");
-
-	if (!player->has_value())
-	{
-		log::info("could not find player");
-		return -1;
-	}
+	light_renderer->set_diffuse_texture("./assets/textures/wall.jpg");
 
 	// constexpr auto ENTITY_COUNT = 400'000;
 	//

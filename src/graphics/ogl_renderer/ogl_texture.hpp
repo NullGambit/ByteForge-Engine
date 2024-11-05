@@ -5,7 +5,7 @@
 
 namespace forge
 {
-	enum class TextureWrap
+	enum class TextureWrap : u16
 	{
 		Repeat = GL_REPEAT,
 		Mirror = GL_MIRRORED_REPEAT,
@@ -16,19 +16,19 @@ namespace forge
 	struct TextureOptions
 	{
 		uint32_t target = GL_TEXTURE_2D;
-		bool flip_on_load = false;
 		TextureWrap wrap_mode = TextureWrap::Repeat;
+		bool flip_on_load = false;
 	};
 
 	struct OglTexture
 	{
 		bool load(std::string_view path, TextureOptions options = {});
 
-		~OglTexture();
-
 		void destroy();
 
 		void bind(int unit = 0);
+
+		void unbind();
 
 		[[nodiscard]]
 		u32 get_id() const
@@ -38,7 +38,7 @@ namespace forge
 
 	private:
 		TextureOptions m_options;
-		u32 m_id;
+		u32 m_id = UINT32_MAX;
 	};
 }
 

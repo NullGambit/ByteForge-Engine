@@ -42,11 +42,6 @@ bool forge::OglTexture::load(std::string_view path, TextureOptions options)
 	return true;
 }
 
-forge::OglTexture::~OglTexture()
-{
-	destroy();
-}
-
 void forge::OglTexture::destroy()
 {
 	if (m_id > 0)
@@ -58,6 +53,16 @@ void forge::OglTexture::destroy()
 
 void forge::OglTexture::bind(int unit)
 {
+	if (m_id == UINT32_MAX)
+	{
+		return;
+	}
+
 	glActiveTexture(GL_TEXTURE0 + unit);
 	glBindTexture(m_options.target, m_id);
+}
+
+void forge::OglTexture::unbind()
+{
+	glBindTexture(m_options.target, 0);
 }
