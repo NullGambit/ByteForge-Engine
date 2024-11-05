@@ -5,6 +5,7 @@
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "gl_buffers.hpp"
 #include "ogl_shader.hpp"
 #include "fmt/fmt.hpp"
 #include "glad/glad.h"
@@ -47,33 +48,14 @@ std::string forge::OglRenderer::init()
 
 #undef C
 
-	constexpr auto MAX_CUBES = 1200;
-
-	f32 batched_cubes[sizeof(CUBE_VERTS) * MAX_CUBES];
-	i32 batch_offset = 0;
-
-	for (auto i = 0; i < MAX_CUBES; i++)
-	{
-		memcpy(batched_cubes + batch_offset, CUBE_VERTS, sizeof(CUBE_VERTS));
-		batch_offset += sizeof(CUBE_VERTS);
-	}
-
-	uint32_t vbo, ebo;
-
-	glGenVertexArrays(1, &m_cube_vao);
-	glGenBuffers(1, &vbo);
-	glGenBuffers(1, &ebo);
-
-	glBindVertexArray(m_cube_vao);
-
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(CUBE_VERTS), CUBE_VERTS, GL_STATIC_DRAW);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(f32) * 5, (void*)0);
-	glEnableVertexAttribArray(0);
-
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 5, (void*)(3 * sizeof(f32)));
-	glEnableVertexAttribArray(1);
+	m_cube_buffers = GlBufferBuilder()
+		.start()
+		.stride(sizeof(f32) * 8)
+		.vbo(std::span{CUBE_VERTS, sizeof(CUBE_VERTS)})
+		.attr(3)
+		.attr(3)
+		.attr(2)
+		.finish();
 
 	m_texture_resource.on_resource_init = [](std::string_view path, OglTexture *texture)
 	{
@@ -82,6 +64,9 @@ std::string forge::OglRenderer::init()
 
 	glEnable(GL_MULTISAMPLE);
 	glEnable(GL_DEPTH_TEST);
+
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
 
 	srand(time(0));
 
@@ -103,7 +88,7 @@ void forge::OglRenderer::update()
 
 	m_forward_shader.use();
 
-	glBindVertexArray(m_cube_vao);
+	glBindVertexArray(m_cube_buffers.vao);
 
 	for (const auto &data : m_cube_positions)
 	{

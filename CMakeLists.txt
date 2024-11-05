@@ -103,6 +103,8 @@ add_executable(ByteForge_Engine main.cpp
         src/system/linux/linux_native_dialog.cpp
         src/system/linux/linux_native_dialog.hpp
         src/util/defer.hpp
+        src/fmt/fmt.cpp
+        src/graphics/ogl_renderer/gl_buffers.cpp
 )
 
 target_compile_options(ByteForge_Engine PRIVATE -include ${CMAKE_SOURCE_DIR}/src/core/forge_intrinsic.hpp)

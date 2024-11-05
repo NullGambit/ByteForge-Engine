@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <functional>
 
+#include "gl_buffers.hpp"
 #include "ogl_shader.hpp"
 #include "ogl_texture.hpp"
 #include "render_resource.hpp"
@@ -80,7 +81,7 @@ namespace forge
 
 	private:
 		bool m_draw_wireframe = false;
-		uint32_t m_cube_vao;
+		GlBuffers m_cube_buffers;
 		OglShader m_forward_shader;
 		GLFWwindow *m_worker_window = nullptr;
 		CommandBuffer<> m_command_buffer;

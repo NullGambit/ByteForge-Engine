@@ -45,17 +45,19 @@ namespace fmt
     constexpr inline std::string string_of(const T& value)
     {
         // if not a number or a bool or a char convert it to a string
-        if constexpr(std::is_arithmetic_v<T>
-                && !std::is_same_v<T, bool>
-                && !std::is_same_v<T, char>)
+        if constexpr (std::is_arithmetic_v<T> && !std::is_same_v<T, bool> && !std::is_same_v<T, char>)
+        {
             return std::to_string(value);
+        }
         // if not null and can construct a string
-        else if constexpr(
-                std::is_constructible_v<std::string, T>
-                && !std::is_same_v<T, std::nullptr_t>)
+        else if constexpr (std::is_constructible_v<std::string, T> && !std::is_same_v<T, std::nullptr_t>)
+        {
             return std::string{value};
+        }
         else
+        {
             return fmt::to_string(value);
+        }
     }
 
     template<class A, class B>
@@ -67,12 +69,14 @@ namespace fmt
     template<is_iterable T>
     std::string to_string(const T& container)
     {
-        if(container.empty())
+        if (container.empty())
+        {
             return "[]";
+        }
 
         std::string result;
 
-        if(container.size() == 1)
+        if (container.size() == 1)
         {
             result += "[ " + string_of(*container.begin()) + " ]";
             return result;
@@ -84,47 +88,31 @@ namespace fmt
 
         current++;
 
-        for(; current != container.end(); current++)
+        for (; current != container.end(); current++)
+        {
             result += ", " + string_of(*current);
+        }
 
         result += " ]";
 
         return result;
     }
 
+    std::string do_format(std::string_view fmt, const std::string &buffer);
+
     template<class... A>
     std::string format(std::string_view fmt, A&&... a)
     {
-        if constexpr(sizeof...(a) == 0)
+        if constexpr (sizeof...(a) == 0)
             return fmt.data();
 
-        std::string buffer;
+        thread_local std::string buffer;
 
         ((buffer += string_of(a) + '\0'), ...);
 
-        std::string output;
-        size_t offset{};
+        auto output = do_format(fmt, buffer);
 
-        for(size_t i = 0; i < fmt.size(); i++)
-        {
-            if(fmt[i] == '{')
-            {
-                if(fmt[++i] == '{')
-                    goto concat;
-
-                for(char c = buffer[offset++]; c; c = buffer[offset++])
-                {
-                    output += c;
-                }
-
-                while(i < fmt.size() && fmt[i] != '}')
-                    i++;
-                continue;
-            }
-
-            concat:
-            output += fmt[i];
-        }
+        buffer.clear();
 
         return output;
     }
