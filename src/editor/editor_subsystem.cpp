@@ -318,6 +318,10 @@ protected:
 			{
 				return ImGui::DragInt(formatted.data(), value);
 			},
+			[&formatted](bool *value)
+			{
+				return ImGui::Checkbox(formatted.data(), value);
+			},
 			[&formatted](std::string *value)
 			{
 				return ImGui::InputText(formatted.data(), value);
@@ -330,6 +334,19 @@ protected:
 				{
 					value->callback();
 					return true;
+				}
+
+				return false;
+			},
+			[](forge::FieldSeperator value)
+			{
+				if (value.name.empty())
+				{
+					ImGui::Separator();
+				}
+				else
+				{
+					ImGui::SeparatorText(value.name.data());
 				}
 
 				return false;

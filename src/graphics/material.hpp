@@ -18,7 +18,7 @@ namespace forge
 	{
 		std::string path;
 		float scale = 1;
-		bool enabled = true;
+		bool enabled = false;
 	};
 
 	struct Material

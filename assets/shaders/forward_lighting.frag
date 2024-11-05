@@ -7,6 +7,7 @@ in vec3 frag_position;
 
 uniform sampler2D texture_sample;
 uniform vec4 material_color;
+uniform bool enable_diffuse;
 
 uniform vec3 light_position;
 uniform vec3 light_color;
@@ -21,7 +22,13 @@ void main()
     float diffuse_factor = max(dot(normalize(normal), light_direction), 0.0);
     vec3 diffuse = diffuse_factor * light_color;
 
-    vec4 object_color = texture(texture_sample, tex_coords) * material_color;
+    vec4 object_color = material_color;
+
+    if (enable_diffuse)
+    {
+        object_color *= texture(texture_sample, tex_coords);
+    }
+
     vec3 result = (ambient + diffuse)  * object_color.rgb;
 
     FragColor = vec4(result, object_color.a);

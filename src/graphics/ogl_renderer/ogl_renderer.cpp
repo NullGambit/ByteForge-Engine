@@ -105,6 +105,7 @@ void forge::OglRenderer::update()
 			m_forward_shader.set("pvm", m_pv * data.primitive.model);
 			m_forward_shader.set("model", data.primitive.model);
 			m_forward_shader.set("material_color", data.primitive.material.color);
+			m_forward_shader.set("enable_diffuse", data.primitive.material.diffuse.enabled);
 			m_forward_shader.set("light_position", m_light_position);
 			m_forward_shader.set("light_color", m_light_color);
 

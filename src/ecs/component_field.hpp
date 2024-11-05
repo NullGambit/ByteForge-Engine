@@ -30,12 +30,17 @@ namespace forge
 		glm::vec4 *rgba;
 	};
 
+	struct FieldSeperator
+	{
+		std::string_view name;
+	};
+
 #define COLOR_FIELD(field) forge::ColorField(#field, field)
 
 #define BASE_FIELD_VAR_SET \
-	float*, double*, int*,	\
+	float*, double*, int*, bool*,	\
 	std::string*,			\
-	ButtonField*, ColorField,\
+	ButtonField*, ColorField, FieldSeperator,\
 	glm::vec4*, glm::vec3*, glm::vec2*, glm::quat* \
 
 	using BaseFieldVar = std::variant<BASE_FIELD_VAR_SET>;

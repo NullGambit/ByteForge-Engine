@@ -17,6 +17,6 @@ void main()
     gl_Position = pvm * position;
 
     tex_coords      = a_tex_coords;
-    normal          = a_normal;
+    normal          = mat3(transpose(inverse(model))) * a_normal;
     frag_position   = vec3(model * position);
 }

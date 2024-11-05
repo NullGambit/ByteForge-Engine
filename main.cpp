@@ -161,6 +161,7 @@ public:
 	float f1 = 10;
 	float f2 = 20;
 	int integer = 500;
+	bool boolean = false;
 	std::string string;
 	glm::vec4 vec4;
 	glm::vec3 vec3;
@@ -185,8 +186,11 @@ public:
 	forge::WatchedField watched_field = WATCH_FIELD(&watched_int, &ExportFieldTestComponent::on_watched_field_changed);
 
 	EXPORT_FIELDS(
-		&f1, &f2, &integer,
+		forge::FieldSeperator{"primitives"},
+		&f1, &f2, &integer, &boolean,
+		forge::FieldSeperator{"controls"},
 		&test_button, COLOR_FIELD(&color), &watched_field,
+		forge::FieldSeperator{"linear algebra"},
 		&vec4, &vec3, &vec2, &quat);
 };
 
@@ -213,11 +217,15 @@ public:
 		}
 
 		m_material.diffuse.path = path;
+		m_material.diffuse.enabled = true;
 
 		m_renderer->update_primitive_material(m_id, m_material);
 	}
 
-	EXPORT_FIELDS(&m_color, &m_set_diffuse_button);
+	EXPORT_FIELDS(
+		&m_color,
+		forge::FieldSeperator{"Diffuse texture"},
+		&m_set_diffuse_button, &m_enable_diffuse);
 
 private:
 	u32 m_id;
@@ -239,6 +247,7 @@ private:
 		set_diffuse_texture(file_paths.front());
 	}};
 	forge::WatchedField m_color = WATCH_FIELD(COLOR_FIELD(&m_material.color), &PrimitiveRendererComponent::on_color_changed);
+	forge::WatchedField m_enable_diffuse = WATCH_FIELD(&m_material.diffuse.enabled, &PrimitiveRendererComponent::on_color_changed);
 
 	void on_color_changed(forge::FieldVar _)
 	{
@@ -482,7 +491,7 @@ int main()
 
 	auto *light_renderer = light.add_component<PrimitiveRendererComponent>();
 
-	light_renderer->set_diffuse_texture("./assets/textures/wall.jpg");
+	// light_renderer->set_diffuse_texture("./assets/textures/wall.jpg");
 
 	// constexpr auto ENTITY_COUNT = 400'000;
 	//
