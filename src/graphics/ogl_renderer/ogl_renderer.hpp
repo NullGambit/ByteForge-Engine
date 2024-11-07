@@ -57,6 +57,8 @@ namespace forge
 
 		void update_primitive(u32 id, PrimitiveModel primitive);
 
+		void update_primitive_model(u32 id, glm::mat4 model);
+
 		void update_primitive_material(u32 id, Material &material);
 
 		void destroy_primitive(u32 id);
@@ -103,13 +105,16 @@ namespace forge
 			bool is_valid = true;
 			// if false this primitive should not be drawn
 			bool is_hidden = false;
-			OglTexture diffuse_texture;
+
+			TextureList<OglTexture> textures;
 		};
 
 		std::vector<PrimitiveRenderData> m_cube_positions;
 		glm::mat4 m_pv;
 
 		void handle_framebuffer_resize(int width, int height);
+
+		void set_textures(PrimitiveRenderData &data, Material &material);
 
 		u32 get_free_rdi();
 	};

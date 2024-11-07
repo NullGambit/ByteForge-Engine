@@ -100,12 +100,14 @@ void forge::OglRenderer::update()
 	{
 		if (data.is_valid && !data.is_hidden)
 		{
-			data.diffuse_texture.bind();
+			auto &diffuse_texture = data.textures[TextureType::Diffuse];
+
+			diffuse_texture.bind();
 
 			m_forward_shader.set("pvm", m_pv * data.primitive.model);
 			m_forward_shader.set("model", data.primitive.model);
 			m_forward_shader.set("material_color", data.primitive.material.color);
-			m_forward_shader.set("enable_diffuse", data.primitive.material.diffuse.enabled);
+			m_forward_shader.set("enable_diffuse", data.primitive.material.textures[TextureType::Diffuse].enabled);
 			m_forward_shader.set("light_position", m_light_position);
 			m_forward_shader.set("light_color", m_light_color);
 
@@ -113,8 +115,7 @@ void forge::OglRenderer::update()
 
 			m_statistics.draw_calls++;
 
-
-			data.diffuse_texture.unbind();
+			diffuse_texture.unbind();
 		}
 	}
 
@@ -161,10 +162,7 @@ u32 forge::OglRenderer::create_primitive(PrimitiveModel primitive)
 	data.primitive = primitive;
 	data.is_valid = true;
 
-	if (!primitive.material.diffuse.path.empty())
-	{
-		data.diffuse_texture = m_texture_resource.add(primitive.material.diffuse.path);
-	}
+	set_textures(data, primitive.material);
 
 	return id;
 }
@@ -176,15 +174,16 @@ void forge::OglRenderer::update_primitive(u32 id, PrimitiveModel primitive)
 	// update_primitive_material(id, primitive.material);
 }
 
+void forge::OglRenderer::update_primitive_model(u32 id, glm::mat4 model)
+{
+	m_cube_positions[id].primitive.model = model;
+}
+
 void forge::OglRenderer::update_primitive_material(u32 id, Material &material)
 {
 	auto &data = m_cube_positions[id];
 
-	auto &diffuse_path = data.primitive.material.diffuse.path;
-
-	m_texture_resource.remove(diffuse_path);
-
-	data.diffuse_texture = m_texture_resource.add(material.diffuse.path);
+	set_textures(data, material);
 
 	data.primitive.material = material;
 }
@@ -193,7 +192,14 @@ void forge::OglRenderer::destroy_primitive(u32 id)
 {
 	auto &data = m_cube_positions[id];
 	data.is_valid = false;
-	m_texture_resource.remove(data.primitive.material.diffuse.path);
+
+	for (auto &texture : data.primitive.material.textures)
+	{
+		if (texture.enabled)
+		{
+			m_texture_resource.remove(texture.path);
+		}
+	}
 }
 
 void forge::OglRenderer::primitive_set_hidden(u32 id, bool value)
@@ -212,6 +218,22 @@ void forge::OglRenderer::handle_framebuffer_resize(int width, int height)
 	{
 		glViewport(0, 0, width, height);
 	});
+}
+
+void forge::OglRenderer::set_textures(PrimitiveRenderData& data, Material& material)
+{
+	for (auto i = 0; i < material.textures.size(); i++)
+	{
+		auto &texture = material.textures[i];
+		auto &current_texture = data.primitive.material.textures[i];
+
+		if (texture.enabled && texture.path != current_texture.path)
+		{
+			m_texture_resource.remove(texture.path);
+
+			data.textures[i] = m_texture_resource.add(texture.path);
+		}
+	}
 }
 
 u32 forge::OglRenderer::get_free_rdi()

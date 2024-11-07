@@ -14,6 +14,9 @@ namespace forge
 		};
 	}
 
+	template<class T>
+	using TextureList = std::array<T, TextureType::Max>;
+
 	struct Texture
 	{
 		std::string path;
@@ -24,7 +27,6 @@ namespace forge
 	struct Material
 	{
 		glm::vec4 color {1.0};
-		// std::array<Texture, TextureType::Max> textures;
-		Texture diffuse;
+		TextureList<Texture> textures;
 	};
 }

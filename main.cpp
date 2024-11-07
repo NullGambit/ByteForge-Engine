@@ -209,15 +209,22 @@ public:
 		m_owner->get_entity().on_entity_transform_updated.disconnect(m_on_update_connection);
 	}
 
-	void set_diffuse_texture(std::string_view path)
+	void set_texture(std::string_view path, u32 type)
 	{
-		if (!m_material.diffuse.path.empty())
+		if (type >= forge::TextureType::Max)
 		{
-			m_renderer->destroy_texture(m_material.diffuse.path);
+			return;
 		}
 
-		m_material.diffuse.path = path;
-		m_material.diffuse.enabled = true;
+		auto &texture = m_material.textures[type];
+
+		if (texture.path.empty())
+		{
+			m_renderer->destroy_texture(texture.path);
+		}
+
+		texture.path = path;
+		texture.enabled = true;
 
 		m_renderer->update_primitive_material(m_id, m_material);
 	}
@@ -244,10 +251,14 @@ private:
 			return;
 		}
 
-		set_diffuse_texture(file_paths.front());
+		set_texture(file_paths.front(), forge::TextureType::Diffuse);
 	}};
-	forge::WatchedField m_color = WATCH_FIELD(COLOR_FIELD(&m_material.color), &PrimitiveRendererComponent::on_color_changed);
-	forge::WatchedField m_enable_diffuse = WATCH_FIELD(&m_material.diffuse.enabled, &PrimitiveRendererComponent::on_color_changed);
+
+	forge::WatchedField m_color = WATCH_FIELD(COLOR_FIELD(&m_material.color),
+		&PrimitiveRendererComponent::on_color_changed);
+
+	forge::WatchedField m_enable_diffuse = WATCH_FIELD(&m_material.textures[forge::TextureType::Diffuse].enabled,
+		&PrimitiveRendererComponent::on_color_changed);
 
 	void on_color_changed(forge::FieldVar _)
 	{
@@ -483,7 +494,7 @@ int main()
 
 	auto *primitive = cube.add_component<PrimitiveRendererComponent>();
 
-	primitive->set_diffuse_texture("assets/textures/smoking_rat.png");
+	primitive->set_texture("assets/textures/smoking_rat.png", forge::TextureType::Diffuse);
 
 	auto &light = engine.nexus->create_entity<TempLightComponent>("Light");
 
