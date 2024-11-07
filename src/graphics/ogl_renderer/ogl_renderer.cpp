@@ -19,6 +19,9 @@
 
 #define SHADER_PATH "./assets/shaders/"
 
+#define CAMERA_POOL_SIZE sizeof(forge::Camera) * 16
+#define RENDER_DATA_POOL_SIZE MB(2048)
+
 std::string forge::OglRenderer::init()
 {
 	auto ok = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
@@ -74,14 +77,14 @@ std::string forge::OglRenderer::init()
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 
-	srand(time(0));
+	m_camera_pool.init<Camera>(CAMERA_POOL_SIZE);
 
-	auto &window = Engine::get_instance().window;
+	// default camera
+	auto [ptr, _] = m_camera_pool.emplace<Camera>();
 
-	auto win_size = window.get_size();
+	m_active_camera = ptr;
 
-	// set default projection view matrix
-	m_pv = glm::perspective(glm::radians(65.0f), (float)win_size.x / win_size.y, 0.1f, 1000.0f);
+	m_render_data_pool.init<PrimitiveRenderData>(RENDER_DATA_POOL_SIZE);
 
 	return {};
 }
@@ -96,17 +99,26 @@ void forge::OglRenderer::update()
 
 	glBindVertexArray(m_cube_buffers.vao);
 
-	for (auto &data : m_cube_positions)
+	for (auto i = 0; i < m_render_data_pool.get_length(); i++)
 	{
-		if (data.is_valid && !data.is_hidden)
+		auto &data = *m_render_data_pool.get_from_index<PrimitiveRenderData>(i);
+
+		if (data.is_valid && !data.primitive.is_hidden)
 		{
 			auto &diffuse_texture = data.textures[TextureType::Diffuse];
 
 			diffuse_texture.bind();
 
-			m_forward_shader.set("pvm", m_pv * data.primitive.model);
-			m_forward_shader.set("model", data.primitive.model);
+			const auto &model = data.primitive.m_model;
+
+			auto pvm = m_active_camera->get_projection() * m_active_camera->get_view() * model;
+
+			m_forward_shader.set("pvm", pvm);
+			m_forward_shader.set("model", model);
+			m_forward_shader.set("view_position", m_active_camera->get_position());
+			m_forward_shader.set("normal_matrix", data.primitive.m_normal_matrix);
 			m_forward_shader.set("material_color", data.primitive.material.color);
+			m_forward_shader.set("specular_strength", data.primitive.material.specular_strength);
 			m_forward_shader.set("enable_diffuse", data.primitive.material.textures[TextureType::Diffuse].enabled);
 			m_forward_shader.set("light_position", m_light_position);
 			m_forward_shader.set("light_color", m_light_color);
@@ -153,47 +165,50 @@ glm::vec3 forge::OglRenderer::get_clear_color()
 	return out;
 }
 
-u32 forge::OglRenderer::create_primitive(PrimitiveModel primitive)
+std::pair<forge::Camera*, u32> forge::OglRenderer::create_camera()
 {
-	auto id = get_free_rdi();
+	if (m_camera_pool.get_offset() >= CAMERA_POOL_SIZE)
+	{
+		return {nullptr, UINT32_MAX};
+	}
 
-	auto &data = m_cube_positions[id];
-
-	data.primitive = primitive;
-	data.is_valid = true;
-
-	set_textures(data, primitive.material);
-
-	return id;
+	return m_render_data_pool.emplace<Camera>();
 }
 
-void forge::OglRenderer::update_primitive(u32 id, PrimitiveModel primitive)
+void forge::OglRenderer::destroy_camera(u32 id)
 {
-	m_cube_positions[id].primitive = std::move(primitive);
-
-	// update_primitive_material(id, primitive.material);
+	m_camera_pool.free(id, false);
 }
 
-void forge::OglRenderer::update_primitive_model(u32 id, glm::mat4 model)
+void forge::OglRenderer::set_active_camera(Camera* camera)
 {
-	m_cube_positions[id].primitive.model = model;
+	m_active_camera = camera;
 }
 
-void forge::OglRenderer::update_primitive_material(u32 id, Material &material)
+forge::Camera* forge::OglRenderer::get_active_camera()
 {
-	auto &data = m_cube_positions[id];
+	return m_active_camera;
+}
 
-	set_textures(data, material);
+forge::PrimitiveModel* forge::OglRenderer::create_primitive(glm::mat4 model)
+{
+	auto [ptr, id] = m_render_data_pool.allocate(true);
 
-	data.primitive.material = material;
+	auto *data = (PrimitiveRenderData*)ptr;
+
+	data->primitive = PrimitiveModel {model};
+	data->primitive.m_id = id;
+	data->is_valid = true;
+
+	return &data->primitive;
 }
 
 void forge::OglRenderer::destroy_primitive(u32 id)
 {
-	auto &data = m_cube_positions[id];
-	data.is_valid = false;
+	auto *data = m_render_data_pool.get<PrimitiveRenderData>(id);
+	data->is_valid = false;
 
-	for (auto &texture : data.primitive.material.textures)
+	for (auto &texture : data->primitive.material.textures)
 	{
 		if (texture.enabled)
 		{
@@ -202,14 +217,16 @@ void forge::OglRenderer::destroy_primitive(u32 id)
 	}
 }
 
-void forge::OglRenderer::primitive_set_hidden(u32 id, bool value)
-{
-	m_cube_positions[id].is_hidden = value;
-}
-
 void forge::OglRenderer::destroy_texture(std::string_view path)
 {
 	m_texture_resource.remove(path);
+}
+
+void forge::OglRenderer::create_texture(u32 id, std::string_view path, u32 type)
+{
+	auto *data = m_render_data_pool.get<PrimitiveRenderData>(id);
+
+	data->textures[type] = m_texture_resource.add(path);
 }
 
 void forge::OglRenderer::handle_framebuffer_resize(int width, int height)
@@ -220,33 +237,3 @@ void forge::OglRenderer::handle_framebuffer_resize(int width, int height)
 	});
 }
 
-void forge::OglRenderer::set_textures(PrimitiveRenderData& data, Material& material)
-{
-	for (auto i = 0; i < material.textures.size(); i++)
-	{
-		auto &texture = material.textures[i];
-		auto &current_texture = data.primitive.material.textures[i];
-
-		if (texture.enabled && texture.path != current_texture.path)
-		{
-			m_texture_resource.remove(texture.path);
-
-			data.textures[i] = m_texture_resource.add(texture.path);
-		}
-	}
-}
-
-u32 forge::OglRenderer::get_free_rdi()
-{
-	for (u32 i = 0; i < m_cube_positions.size(); i++)
-	{
-		if (!m_cube_positions[i].is_valid)
-		{
-			return i;
-		}
-	}
-
-	m_cube_positions.emplace_back();
-
-	return m_cube_positions.size() - 1;
-}

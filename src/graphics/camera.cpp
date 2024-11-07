@@ -44,8 +44,13 @@ void forge::Camera::set_bounds(float near, float far)
 	set_projection();
 }
 
-void forge::Camera::set_projection()
+void forge::Camera::set_projection(CameraProjectionMode mode)
 {
+	if (mode != m_projection_mode)
+	{
+		m_projection_mode = mode;
+	}
+
 	if (m_projection_mode == CameraProjectionMode::Perspective)
 	{
 		auto &window = Engine::get_instance().window;

@@ -12,7 +12,6 @@
 
 bool forge::MemPool::init(size_t element_size, size_t map_size)
 {
-	m_map_size = align_to(map_size, get_page_size());
 
 	m_memory = virtual_alloc(map_size);
 

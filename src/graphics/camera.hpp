@@ -122,7 +122,7 @@ namespace forge
 			return pv() * model;
 		}
 
-		void set_projection();
+		void set_projection(CameraProjectionMode mode = CameraProjectionMode::Perspective);
 
 	private:
 		glm::mat4 m_view {};

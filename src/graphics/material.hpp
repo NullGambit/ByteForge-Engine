@@ -28,5 +28,6 @@ namespace forge
 	{
 		glm::vec4 color {1.0};
 		TextureList<Texture> textures;
+		float specular_strength = 0.1;
 	};
 }

@@ -18,20 +18,26 @@ public:
 
 	REGISTER_UPDATE_FUNC
 
-	forge::Camera camera {forge::CameraProjectionMode::Perspective};
+	forge::Camera *camera = nullptr;
 
 	void update(forge::DeltaTime delta) override
 	{
-		auto &engine = forge::Engine::get_instance();
+		if (is_key_pressed(forge::Key::Space))
+		{
+			m_is_paused = !m_is_paused;
+		}
+
+		if (m_is_paused)
+		{
+			return;
+		}
 
 		auto runtime = forge::Engine::get_instance().get_engine_runtime() * speed;
 
 		auto camera_x = glm::sin(runtime) * radius;
 		auto camera_z = glm::cos(runtime) * radius;
 
-		camera.look_at({camera_x, height, camera_z}, {});
-
-		engine.renderer->update_pv(camera.pv());
+		camera->look_at({camera_x, height, camera_z}, {});
 	}
 
 	EXPORT_FIELDS(&speed, &radius, &height);
@@ -39,6 +45,30 @@ public:
 	float speed = 0.5;
 	float radius = 5;
 	float height = 0.0f;
+
+private:
+
+	bool m_is_paused = false;
+
+	u32 m_camera_id;
+
+protected:
+
+	void on_enter() override
+	{
+		auto *renderer = forge::Engine::get_instance().renderer;
+
+		auto [ptr, id] = renderer->create_camera();
+
+		assert(ptr != nullptr);
+
+		camera = ptr;
+		m_camera_id = id;
+
+		camera->set_projection(forge::CameraProjectionMode::Perspective);
+
+		renderer->set_active_camera(camera);
+	}
 };
 
 class FlyCamera final : public forge::IComponent
@@ -47,7 +77,7 @@ public:
 
 	REGISTER_UPDATE_FUNC
 
-	forge::Camera camera {forge::CameraProjectionMode::Perspective};
+	forge::Camera *camera = nullptr;
 
 	void update(forge::DeltaTime delta) override
 	{
@@ -61,9 +91,8 @@ public:
 			handle_look();
 		}
 
-		auto position = camera.get_position();
-		camera.look_at(position, position + camera.front_dir);
-		engine.renderer->update_pv(camera.pv());
+		auto position = camera->get_position();
+		camera->look_at(position, position + camera->front_dir);
 	}
 
 	void handle_look()
@@ -80,12 +109,12 @@ public:
 
 		offset *= m_mouse_sensitivity;
 
-		camera.yaw	 += offset.x;
-		camera.pitch += offset.y;
+		camera->yaw	 += offset.x;
+		camera->pitch += offset.y;
 
-		camera.pitch = glm::clamp(camera.pitch, -90.0f, 90.0f);
+		camera->pitch = glm::clamp(camera->pitch, -90.0f, 90.0f);
 
-		camera.set_direction();
+		camera->set_direction();
 	}
 
 	bool is_cursor_active() const
@@ -123,22 +152,22 @@ public:
 
 		if (is_key_held(forge::Key::W))
 		{
-			position += speed * camera.front_dir;
+			position += speed * camera->front_dir;
 		}
 		else if (is_key_held(forge::Key::S))
 		{
-			position -= speed * camera.front_dir;
+			position -= speed * camera->front_dir;
 		}
 		else if (is_key_held(forge::Key::D))
 		{
-			position += speed * camera.get_right();
+			position += speed * camera->get_right();
 		}
 		else if (is_key_held(forge::Key::A))
 		{
-			position += speed * camera.get_left();
+			position += speed * camera->get_left();
 		}
 
-		camera.set_position(position);
+		camera->set_position(position);
 		transform.set_local_position(position);
 	}
 
@@ -153,6 +182,25 @@ private:
 	float m_mouse_sensitivity = 0.1;
 	bool m_pan_mode = false;
 	glm::vec2 m_last_mouse_coords = forge::get_mouse_coords();
+	u32 m_camera_id;
+
+protected:
+
+	void on_enter() override
+	{
+		auto *renderer = forge::Engine::get_instance().renderer;
+
+		auto [ptr, id] = renderer->create_camera();
+
+		assert(ptr != nullptr);
+
+		camera = ptr;
+		m_camera_id = id;
+
+		camera->set_projection(forge::CameraProjectionMode::Perspective);
+
+		renderer->set_active_camera(camera);
+	}
 };
 
 class ExportFieldTestComponent : public forge::IComponent
@@ -200,12 +248,11 @@ public:
 
 	void on_editor_controls()
 	{
-		ImGui::Text("render id: %d", m_id);
 	}
 
 	~PrimitiveRendererComponent() override
 	{
-		m_renderer->destroy_primitive(m_id);
+		m_renderer->destroy_primitive(m_data->get_id());
 		m_owner->get_entity().on_entity_transform_updated.disconnect(m_on_update_connection);
 	}
 
@@ -216,7 +263,7 @@ public:
 			return;
 		}
 
-		auto &texture = m_material.textures[type];
+		auto &texture = m_data->material.textures[type];
 
 		if (texture.path.empty())
 		{
@@ -226,19 +273,19 @@ public:
 		texture.path = path;
 		texture.enabled = true;
 
-		m_renderer->update_primitive_material(m_id, m_material);
+		m_renderer->create_texture(m_data->get_id(), path, type);
 	}
 
 	EXPORT_FIELDS(
-		&m_color,
+		COLOR_FIELD(&m_data->material.color),
+		&m_data->material.specular_strength,
 		forge::FieldSeperator{"Diffuse texture"},
-		&m_set_diffuse_button, &m_enable_diffuse);
+		&m_set_diffuse_button, &m_data->material.textures[forge::TextureType::Diffuse].enabled);
 
 private:
-	u32 m_id;
+	forge::PrimitiveModel *m_data;
 	forge::OglRenderer *m_renderer;
 	forge::ConnectionID m_on_update_connection;
-	forge::Material m_material;
 	forge::ButtonField m_set_diffuse_button {[&]
 	{
 		auto file_paths = forge::native_file_dialog({
@@ -254,17 +301,6 @@ private:
 		set_texture(file_paths.front(), forge::TextureType::Diffuse);
 	}};
 
-	forge::WatchedField m_color = WATCH_FIELD(COLOR_FIELD(&m_material.color),
-		&PrimitiveRendererComponent::on_color_changed);
-
-	forge::WatchedField m_enable_diffuse = WATCH_FIELD(&m_material.textures[forge::TextureType::Diffuse].enabled,
-		&PrimitiveRendererComponent::on_color_changed);
-
-	void on_color_changed(forge::FieldVar _)
-	{
-		m_renderer->update_primitive_material(m_id, m_material);
-	}
-
 protected:
 	void on_enter() override
 	{
@@ -273,23 +309,23 @@ protected:
 		auto &entity = m_owner->get_entity();
 		auto model = entity.get_model();
 
-		m_id = m_renderer->create_primitive({model});
+		m_data = m_renderer->create_primitive(model);
 
 		m_on_update_connection = entity.on_entity_transform_updated.connect(
-		[&renderer = m_renderer, &id = m_id, &material = m_material](const forge::Transform &transform)
+		[&data = m_data](const forge::Transform &transform)
 		{
-			renderer->update_primitive(id, {transform.get_model(), material});
+			data->update_model(transform.get_model());
 		});
 	}
 
 	void on_disabled() override
 	{
-		m_renderer->primitive_set_hidden(m_id, true);
+		m_data->is_hidden = true;
 	}
 
 	void on_enabled() override
 	{
-		m_renderer->primitive_set_hidden(m_id, false);
+		m_data->is_hidden = false;
 	}
 
 };
@@ -321,26 +357,26 @@ public:
 
 	REGISTER_UPDATE_FUNC
 
-	void update(forge::DeltaTime delta) override
-	{
-		if (m_last_mesh_count != m_mesh_count)
-		{
-			if (m_last_mesh_count < m_mesh_count)
-			{
-				add_meshes(m_mesh_count - m_last_mesh_count);
-			}
-		}
-
-		m_last_mesh_count = m_mesh_count;
-	}
-
-	~ClusteredRenderingComponent() override
-	{
-		for (auto &entry : m_meshes)
-		{
-			m_renderer->destroy_primitive(entry.id);
-		}
-	}
+	// void update(forge::DeltaTime delta) override
+	// {
+	// 	if (m_last_mesh_count != m_mesh_count)
+	// 	{
+	// 		if (m_last_mesh_count < m_mesh_count)
+	// 		{
+	// 			add_meshes(m_mesh_count - m_last_mesh_count);
+	// 		}
+	// 	}
+	//
+	// 	m_last_mesh_count = m_mesh_count;
+	// }
+	//
+	// ~ClusteredRenderingComponent() override
+	// {
+	// 	for (auto &entry : m_meshes)
+	// 	{
+	// 		m_renderer->destroy_primitive(entry.id);
+	// 	}
+	// }
 
 	EXPORT_FIELDS(&m_mesh_count);
 
@@ -351,50 +387,50 @@ private:
 	forge::OglRenderer *m_renderer;
 
 protected:
-	void on_enter() override
-	{
-		m_renderer = forge::Engine::get_instance().renderer;
-
-		add_meshes(m_mesh_count);
-	}
-
-	void on_disabled() override
-	{
-		set_all_hidden(true);
-	}
-
-	void on_enabled() override
-	{
-		set_all_hidden(false);
-	}
+	// void on_enter() override
+	// {
+	// 	m_renderer = forge::Engine::get_instance().renderer;
+	//
+	// 	add_meshes(m_mesh_count);
+	// }
+	//
+	// void on_disabled() override
+	// {
+	// 	set_all_hidden(true);
+	// }
+	//
+	// void on_enabled() override
+	// {
+	// 	set_all_hidden(false);
+	// }
 
 private:
 
-	void set_all_hidden(bool value)
-	{
-		for (auto &entry : m_meshes)
-		{
-			m_renderer->primitive_set_hidden(entry.id, value);
-		}
-	}
-
-	void add_meshes(int count)
-	{
-		glm::mat4 model {1.0};
-
-		for (auto i = 0; i < count; i++)
-		{
-			auto primitive_model = glm::translate(model, util::rand_vec3(-10, 10));
-
-			primitive_model = glm::scale(primitive_model, glm::vec3{util::rand_float(0.1, 2)});
-
-			primitive_model = glm::rotate(primitive_model, util::rand_float(0, 1), normalize(util::rand_vec3(-360, 360)));
-
-			auto id = m_renderer->create_primitive({primitive_model});
-
-			m_meshes.emplace_back(id, model);
-		}
-	}
+	// void set_all_hidden(bool value)
+	// {
+	// 	for (auto &entry : m_meshes)
+	// 	{
+	// 		m_renderer->primitive_set_hidden(entry.id, value);
+	// 	}
+	// }
+	//
+	// void add_meshes(int count)
+	// {
+	// 	glm::mat4 model {1.0};
+	//
+	// 	for (auto i = 0; i < count; i++)
+	// 	{
+	// 		auto primitive_model = glm::translate(model, util::rand_vec3(-10, 10));
+	//
+	// 		primitive_model = glm::scale(primitive_model, glm::vec3{util::rand_float(0.1, 2)});
+	//
+	// 		primitive_model = glm::rotate(primitive_model, util::rand_float(0, 1), normalize(util::rand_vec3(-360, 360)));
+	//
+	// 		auto id = m_renderer->create_primitive({primitive_model});
+	//
+	// 		m_meshes.emplace_back(id, model);
+	// 	}
+	// }
 };
 
 class BusyWorkComponent : public forge::IComponent

@@ -9,6 +9,7 @@ out vec3 frag_position;
 
 uniform mat4 pvm;
 uniform mat4 model;
+uniform mat4 normal_matrix;
 
 void main()
 {
@@ -17,6 +18,6 @@ void main()
     gl_Position = pvm * position;
 
     tex_coords      = a_tex_coords;
-    normal          = mat3(transpose(inverse(model))) * a_normal;
+    normal          = mat3(normal_matrix) * a_normal;
     frag_position   = vec3(model * position);
 }

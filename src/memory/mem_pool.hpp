@@ -77,6 +77,28 @@ namespace forge
 
 		void reset(bool destroy = true);
 
+		inline u8* get(size_t offset)
+		{
+			return m_memory + offset;
+		}
+
+		template<class T>
+		inline T* get(size_t offset)
+		{
+			return (T*)get(offset);
+		}
+
+		inline u8* get_from_index(size_t index)
+		{
+			return m_memory + m_element_size * index;
+		}
+
+		template<class T>
+		inline T* get_from_index(size_t index)
+		{
+			return (T*)get_from_index(index);
+		}
+
 		inline size_t get_length() const
 		{
 			return m_length;

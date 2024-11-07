@@ -10,6 +10,7 @@
 #include "core/isub_system.hpp"
 #include "graphics/camera.hpp"
 #include "graphics/material.hpp"
+#include "memory/mem_pool.hpp"
 
 class GLFWwindow;
 
@@ -20,10 +21,40 @@ namespace forge
 		u32 draw_calls;
 	};
 
+	class OglRenderer;
+
 	struct PrimitiveModel
 	{
-		glm::mat4 model;
-		Material material {};
+		Material material;
+
+		// if false this primitive should not be drawn
+		bool is_hidden = false;
+
+		PrimitiveModel() = default;
+
+		PrimitiveModel(glm::mat4 model, Material material = {}) :
+			material(material)
+		{
+			update_model(model);
+		}
+
+		void update_model(const glm::mat4 &model)
+		{
+			m_model = model;
+			m_normal_matrix = glm::transpose(glm::inverse(model));
+		}
+
+		u32 get_id() const
+		{
+			return m_id;
+		}
+
+	private:
+		friend OglRenderer;
+
+		glm::mat4 m_normal_matrix;
+		glm::mat4 m_model;
+		u32 m_id;
 	};
 
 	class OglRenderer final : public ISubSystem
@@ -53,19 +84,21 @@ namespace forge
 			return m_statistics;
 		}
 
-		u32 create_primitive(PrimitiveModel primitive);
+		std::pair<Camera*, u32> create_camera();
 
-		void update_primitive(u32 id, PrimitiveModel primitive);
+		void destroy_camera(u32 id);
 
-		void update_primitive_model(u32 id, glm::mat4 model);
+		void set_active_camera(Camera *camera);
 
-		void update_primitive_material(u32 id, Material &material);
+		Camera* get_active_camera();
+
+		PrimitiveModel* create_primitive(glm::mat4 model = {});
 
 		void destroy_primitive(u32 id);
 
-		void primitive_set_hidden(u32 id, bool value);
-
 		void destroy_texture(std::string_view path);
+
+		void create_texture(u32 id, std::string_view path, u32 type);
 
 		void update_light(glm::vec3 position, glm::vec3 color)
 		{
@@ -79,14 +112,6 @@ namespace forge
 			m_command_buffer.emplace(std::forward<CommandBuffer<>::Callback>(command));
 		}
 
-		inline void update_pv(const glm::mat4 &pv)
-		{
-			m_command_buffer.emplace([pv, &this_pv = m_pv]
-			{
-				this_pv = pv;
-			});
-		}
-
 	private:
 		bool m_draw_wireframe = false;
 		GlBuffers m_cube_buffers;
@@ -98,25 +123,21 @@ namespace forge
 		glm::vec3 m_light_position {};
 		glm::vec3 m_light_color {1.0};
 
+		Camera *m_active_camera;
+
+		MemPool m_camera_pool;
+		MemPool m_render_data_pool;
+
 		struct PrimitiveRenderData
 		{
 			PrimitiveModel primitive;
 			// if false this entry is freed
 			bool is_valid = true;
-			// if false this primitive should not be drawn
-			bool is_hidden = false;
 
 			TextureList<OglTexture> textures;
 		};
 
-		std::vector<PrimitiveRenderData> m_cube_positions;
-		glm::mat4 m_pv;
-
 		void handle_framebuffer_resize(int width, int height);
-
-		void set_textures(PrimitiveRenderData &data, Material &material);
-
-		u32 get_free_rdi();
 	};
 
 }
