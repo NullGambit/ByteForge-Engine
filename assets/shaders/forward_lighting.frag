@@ -5,40 +5,61 @@ in vec3 normal;
 in vec2 tex_coords;
 in vec3 frag_position;
 
-uniform sampler2D texture_sample;
-uniform vec4 material_color;
-uniform float specular_strength;
-uniform bool enable_diffuse;
+struct Texture
+{
+    sampler2D texture;
+    bool enabled;
+    float scale;
+};
+
+struct Material
+{
+    Texture diffuse;
+    Texture specular;
+    Texture emissive;
+    float ambient;
+    float shininess;
+};
+
+uniform Material material;
 
 uniform vec3 light_position;
 uniform vec3 light_color;
 
 uniform vec3 view_position;
 
+vec4 get_texture(Texture t, vec4 default_value)
+{
+    if (t.enabled)
+    {
+        return texture(t.texture, tex_coords * t.scale);
+    }
+    else
+    {
+        return default_value;
+    }
+}
+
 void main()
 {
-    float ambient_factor = 0.1;
-    vec3 ambient = ambient_factor * light_color;
+    vec4 object_color = get_texture(material.diffuse, vec4(1.0));
+
+    vec3 ambient = 0.1 * object_color.rgb * light_color;
 
     vec3 light_direction = normalize(light_position - frag_position);
 
     float diffuse_factor = max(dot(normalize(normal), light_direction), 0.0);
-    vec3 diffuse = diffuse_factor * light_color;
+    vec3 diffuse = (diffuse_factor * object_color.rgb) * light_color;
 
     vec3 view_direction = normalize(view_position - frag_position);
     vec3 reflection_direction = reflect(-light_direction, normal);
 
-    float specular_factor = pow(max(dot(view_direction, reflection_direction), 0.0), 32);
-    vec3 specular = specular_factor * specular_strength * light_color;
+    float specular_factor = pow(max(dot(view_direction, reflection_direction), 0.0), material.shininess);
+    vec3 specular = (specular_factor * get_texture(material.specular, vec4(1.0)).rgb) * light_color;
 
-    vec4 object_color = material_color;
+    vec3 emissive = get_texture(material.emissive, vec4(0.0)).rgb;
 
-    if (enable_diffuse)
-    {
-        object_color *= texture(texture_sample, tex_coords);
-    }
+    vec3 result = ambient + diffuse + specular + emissive;
 
-    vec3 result = (ambient + diffuse + specular)  * object_color.rgb;
-
-    FragColor = vec4(result, object_color.a);
+    FragColor = vec4(result.rgb, object_color.a);
 }

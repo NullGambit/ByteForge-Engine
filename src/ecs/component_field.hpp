@@ -27,7 +27,7 @@ namespace forge
 	struct ColorField
 	{
 		std::string_view name;
-		glm::vec4 *rgba;
+		std::variant<glm::vec3*, glm::vec4*> color_value;
 	};
 
 	struct FieldSeperator
@@ -40,7 +40,7 @@ namespace forge
 #define BASE_FIELD_VAR_SET \
 	float*, double*, int*, bool*,	\
 	std::string*,			\
-	ButtonField*, ColorField, FieldSeperator,\
+	ButtonField, ColorField, FieldSeperator,\
 	glm::vec4*, glm::vec3*, glm::vec2*, glm::quat* \
 
 	using BaseFieldVar = std::variant<BASE_FIELD_VAR_SET>;

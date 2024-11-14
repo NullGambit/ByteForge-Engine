@@ -3,6 +3,8 @@
 #include <imgui.h>
 #include "misc/cpp/imgui_stdlib.h"
 #include <imgui_internal.h>
+#include <ranges>
+#include <bits/ranges_algo.h>
 #include <glm/gtc/type_ptr.hpp>
 
 #include "core/engine.hpp"
@@ -284,10 +286,26 @@ protected:
 		vec_drag_control(label, ptr, sizeof(T) / sizeof(ptr[0]), uniform, speed, min_steps, max_steps);
 	}
 
-	bool render_field(std::string_view name, forge::FieldVar &value)
+	static u32 find_last_member_index(std::string_view name)
+	{
+		for (auto i = name.size(); auto c : std::ranges::reverse_view(name))
+		{
+			if (c == '.' || c == '>')
+			{
+				return i;
+			}
+
+			i--;
+		}
+
+		return 0;
+	}
+
+	bool render_field(std::string_view name, forge::FieldVar &value, u32 id)
 	{
 		auto format_field = [](std::string_view name)
 		{
+			name = name.substr(find_last_member_index(name));
 			// will likely start with an & because of taking the member address
 			auto offset = name.starts_with('&');
 			auto formatted = std::string{name.substr(offset)};
@@ -304,7 +322,9 @@ protected:
 
 		std::replace(formatted.begin(), formatted.end(), '_', ' ');
 
-		return std::visit(util::overload
+		ImGui::PushID(id);
+
+		auto out = std::visit(util::overload
 		{
 			[&formatted](float *value)
 			{
@@ -326,13 +346,13 @@ protected:
 			{
 				return ImGui::InputText(formatted.data(), value);
 			},
-			[&formatted](forge::ButtonField *value)
+			[&formatted](forge::ButtonField &value)
 			{
-				auto button_name = value->name.empty() ? formatted : value->name;
+				auto button_name = value.name.empty() ? formatted : value.name;
 
 				if (ImGui::Button(button_name.data()))
 				{
-					value->callback();
+					value.callback();
 					return true;
 				}
 
@@ -369,11 +389,18 @@ protected:
 			},
 			[&format_field](forge::ColorField value)
 			{
-				return ImGui::ColorEdit4(format_field(value.name).data(), glm::value_ptr(*value.rgba));
+				if (value.color_value.index() == 0)
+				{
+					return ImGui::ColorEdit3(format_field(value.name).data(), glm::value_ptr(*std::get<0>(value.color_value)));
+				}
+				else
+				{
+					return ImGui::ColorEdit4(format_field(value.name).data(), glm::value_ptr(*std::get<1>(value.color_value)));
+				}
 			},
 			[&](forge::WatchedField *value)
 			{
-				auto field_changed = render_field(formatted, value->field);
+				auto field_changed = render_field(formatted, value->field, id++);
 
 				if (field_changed)
 				{
@@ -383,6 +410,10 @@ protected:
 				return field_changed;
 			},
 		}, value);
+
+		ImGui::PopID();
+
+		return out;
 	}
 
 	void draw_right_side()
@@ -461,7 +492,7 @@ protected:
 				ImGui::EndPopup();
 			}
 
-			for (auto &[index, view] : entity.get_components())
+			for (auto i = 0; auto &[index, view] : entity.get_components())
 			{
 				auto *component = (IComponent*)view.pointer;
 
@@ -484,7 +515,7 @@ protected:
 
 					for (auto &[name, value] : component->export_fields())
 					{
-						render_field(name, value);
+						render_field(name, value, i++);
 					}
 
 					ImGui::TreePop();

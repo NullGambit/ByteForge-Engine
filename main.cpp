@@ -218,11 +218,11 @@ public:
 	glm::vec4 color;
 	int watched_int;
 
-	forge::ButtonField test_button
+	forge::ButtonField test_button =
 	{
 		[]
 		{
-			log::info("button pressed");
+			std::cout << "Button pressed\n";
 		}
 	};
 
@@ -237,7 +237,7 @@ public:
 		forge::FieldSeperator{"primitives"},
 		&f1, &f2, &integer, &boolean,
 		forge::FieldSeperator{"controls"},
-		&test_button, COLOR_FIELD(&color), &watched_field,
+		test_button, COLOR_FIELD(&color), &watched_field,
 		forge::FieldSeperator{"linear algebra"},
 		&vec4, &vec3, &vec2, &quat);
 };
@@ -276,11 +276,39 @@ public:
 		m_renderer->create_texture(m_data->get_id(), path, type);
 	}
 
-	EXPORT_FIELDS(
-		COLOR_FIELD(&m_data->material.color),
-		&m_data->material.specular_strength,
-		forge::FieldSeperator{"Diffuse texture"},
-		&m_set_diffuse_button, &m_data->material.textures[forge::TextureType::Diffuse].enabled);
+	std::vector<forge::ComponentField> export_fields() override
+	{
+		std::vector<forge::ComponentField> out;
+
+		out.emplace_back<forge::ComponentField>(FIELD_ENTRY(&m_data->material.shininess));
+
+		for (auto type = 0; auto &texture : m_data->material.textures)
+		{
+			out.emplace_back<forge::ComponentField>(FIELD_ENTRY(forge::FieldSeperator{forge::TextureType::to_string(type)}));
+			out.emplace_back<forge::ComponentField>({"Set texture", forge::ButtonField{
+				[&comp = *this, type]
+				{
+					auto file_paths = forge::native_file_dialog({
+					.root = "./assets/",
+					.allow_multiple = false,
+					.allowed_mimes = "image/png image/jpeg"});
+
+					if (file_paths.empty())
+					{
+						return;
+					}
+
+					comp.set_texture(file_paths.front(), type);
+				}
+			}});
+			out.emplace_back<forge::ComponentField>(FIELD_ENTRY(&texture.scale));
+			out.emplace_back<forge::ComponentField>(FIELD_ENTRY(&texture.enabled));
+
+			type++;
+		}
+
+		return out;
+	}
 
 private:
 	forge::PrimitiveModel *m_data;
@@ -530,7 +558,9 @@ int main()
 
 	auto *primitive = cube.add_component<PrimitiveRendererComponent>();
 
-	primitive->set_texture("assets/textures/smoking_rat.png", forge::TextureType::Diffuse);
+	primitive->set_texture("assets/textures/container2.png", forge::TextureType::Diffuse);
+	primitive->set_texture("assets/textures/container2_specular.png", forge::TextureType::Specular);
+	primitive->set_texture("assets/textures/matrix.jpg", forge::TextureType::Emissive);
 
 	auto &light = engine.nexus->create_entity<TempLightComponent>("Light");
 

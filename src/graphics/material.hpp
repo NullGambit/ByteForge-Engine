@@ -5,13 +5,24 @@ namespace forge
 {
 	namespace TextureType
 	{
-		enum TEXTURE_TYPE
+		enum TEXTURE_TYPE : u8
 		{
 			Diffuse,
 			Specular,
 			Emissive,
 			Max,
 		};
+
+		inline std::string_view to_string(u8 type)
+		{
+			switch (type)
+			{
+				case Diffuse: return "diffuse";
+				case Specular: return "specular";
+				case Emissive: return "emissive";
+				default: return "";
+			}
+		}
 	}
 
 	template<class T>
@@ -26,8 +37,10 @@ namespace forge
 
 	struct Material
 	{
-		glm::vec4 color {1.0};
 		TextureList<Texture> textures;
-		float specular_strength = 0.1;
+		glm::vec3 specular {0.5};
+		glm::vec3 diffuse {1.0};
+		float ambient;
+		float shininess = 16;
 	};
 }

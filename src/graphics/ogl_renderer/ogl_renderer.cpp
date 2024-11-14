@@ -105,10 +105,6 @@ void forge::OglRenderer::update()
 
 		if (data.is_valid && !data.primitive.is_hidden)
 		{
-			auto &diffuse_texture = data.textures[TextureType::Diffuse];
-
-			diffuse_texture.bind();
-
 			const auto &model = data.primitive.m_model;
 
 			auto pvm = m_active_camera->get_projection() * m_active_camera->get_view() * model;
@@ -117,17 +113,48 @@ void forge::OglRenderer::update()
 			m_forward_shader.set("model", model);
 			m_forward_shader.set("view_position", m_active_camera->get_position());
 			m_forward_shader.set("normal_matrix", data.primitive.m_normal_matrix);
-			m_forward_shader.set("material_color", data.primitive.material.color);
-			m_forward_shader.set("specular_strength", data.primitive.material.specular_strength);
-			m_forward_shader.set("enable_diffuse", data.primitive.material.textures[TextureType::Diffuse].enabled);
 			m_forward_shader.set("light_position", m_light_position);
 			m_forward_shader.set("light_color", m_light_color);
+
+			auto &material = data.primitive.material;
+
+			m_forward_shader.set("material.shininess", material.shininess);
+			m_forward_shader.set("material.ambient", material.ambient);
+
+			for (auto i = 0; auto &texture : material.textures)
+			{
+				static char name_buffer[48] = "material.";
+				constexpr auto start_offset = sizeof("material.")-1;
+
+				data.textures[i].bind(i);
+
+				auto field_name = TextureType::to_string(i);
+
+				strcpy(name_buffer + start_offset, field_name.data());
+
+				auto last_offset = start_offset + field_name.size();
+
+				name_buffer[last_offset] = '.';
+				name_buffer[++last_offset] = '\0';
+
+				strcpy(name_buffer + last_offset, "texture");
+
+				m_forward_shader.set(name_buffer, i);
+
+				strcpy(name_buffer + last_offset, "enabled");
+
+				m_forward_shader.set(name_buffer, texture.enabled);
+
+				strcpy(name_buffer + last_offset, "scale");
+
+				m_forward_shader.set(name_buffer, texture.scale);
+
+				i++;
+			}
 
 			glDrawArrays(GL_TRIANGLES, 0, 36);
 
 			m_statistics.draw_calls++;
-
-			diffuse_texture.unbind();
 		}
 	}
 
