@@ -17,8 +17,6 @@
 #include "util/macros.hpp"
 #include "util/random.hpp"
 
-#define SHADER_PATH "./assets/shaders/"
-
 #define CAMERA_POOL_SIZE sizeof(forge::Camera) * 16
 #define RENDER_DATA_POOL_SIZE MB(2048)
 
@@ -43,12 +41,14 @@ std::string forge::OglRenderer::init()
 #define C(expr) \
 	if (!(expr)) return "could not load or compile builtin shader" \
 
-	if (!std::filesystem::exists(SHADER_PATH))
+	auto shader_path = std::string{m_arg_config.shader_path};
+
+	if (!std::filesystem::exists(shader_path))
 	{
 		return "engine shader path does not exist";
 	}
 
-	C(m_forward_shader.compile({SHADER_PATH"forward_lighting.frag", SHADER_PATH"forward_lighting.vert"}));
+	C(m_forward_shader.compile({shader_path + "forward_lighting.frag", shader_path + "forward_lighting.vert"}));
 
 #undef C
 
@@ -164,6 +164,12 @@ void forge::OglRenderer::update()
 
 void forge::OglRenderer::shutdown()
 {}
+
+void forge::OglRenderer::receive_cmd_args(ArgParser &parser)
+{
+	parser.add("shader_path", &m_arg_config.shader_path,
+		{.description = "the path where the target shaders are located in", .group = "rendering"});
+}
 
 void forge::OglRenderer::start_tick()
 {

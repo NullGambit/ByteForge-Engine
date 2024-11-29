@@ -1,14 +1,21 @@
 #include "arg_parser.hpp"
 
+#include <iostream>
+
 #include "core/logging.hpp"
 #include "util/types.hpp"
 
-// --shader_path ./assets/shaders/ positional_a --window_width 1920 positional_b --window_height 1080 --do_stuff
 std::string forge::ArgParser::parse(std::span<const char*> args)
 {
 	for (auto i = 0; i < args.size(); i++)
 	{
 		std::string_view arg = args[i];
+
+		if (arg == "--help" || arg == "-h")
+		{
+			output_help();
+			return "h";
+		}
 
 		auto starts_with_prefix = arg.starts_with(m_prefix);
 		auto starts_with_alias  = arg.starts_with(m_alias_prefix);
@@ -23,7 +30,9 @@ std::string forge::ArgParser::parse(std::span<const char*> args)
 
 			if (!opt && m_strict)
 			{
-				return fmt::format("no flag named {} exists did you mean {}", name, find_partial_match(name));
+				auto partial_match = find_partial_match(name);
+				return fmt::format("no flag named {} {}", name,
+					partial_match.empty() ? "" : fmt::format("did you mean {}", partial_match));
 			}
 
 			auto storage = opt.value();
@@ -121,4 +130,52 @@ std::string_view forge::ArgParser::find_partial_match(std::string_view name)
 	}
 
 	return highest_match.first;
+}
+
+void forge::ArgParser::output_help() const
+{
+	HashMap<std::string_view, std::vector<std::string_view>> groups;
+
+	for (auto &[flag, data] : m_args)
+	{
+		auto iter = groups.find(data.meta.group);
+
+		if (iter == groups.end())
+		{
+			iter = groups.emplace(data.meta.group, std::vector<std::string_view>{}).first;
+		}
+
+		iter->second.emplace_back(flag);
+	}
+
+	for (auto &[group, flag_names] : groups)
+	{
+		if (group.empty())
+		{
+			group = "general";
+		}
+
+		std::cout << "\n\n======== " << group << " ========\n\n";
+
+		for (auto &flag : flag_names)
+		{
+			auto &data = m_args.find(flag)->second;
+
+			std::cout << m_prefix << flag;
+
+			if (!data.meta.alias.empty())
+			{
+				std::cout << " " << m_alias_prefix << data.meta.alias;
+			}
+
+			std::cout << " <" << get_arg_value_string(data.value.index()) << ">";
+
+			if (!data.meta.description.empty())
+			{
+				std::cout << " " << data.meta.description;
+			}
+
+			std::cout << '\n';
+		}
+	}
 }

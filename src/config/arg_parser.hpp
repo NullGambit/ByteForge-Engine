@@ -8,7 +8,7 @@ namespace forge
 {
 	namespace ArgValueType
 	{
-		enum
+		enum ARG_VALUE_TYPE
 		{
 			Int,
 			Float,
@@ -17,25 +17,40 @@ namespace forge
 		};
 	}
 
+	inline std::string_view get_arg_value_string(u32 type)
+	{
+		using namespace ArgValueType;
+
+		switch (type)
+		{
+			case Int: return "number";
+			case Float: return "decimal";
+			case String: return "text";
+			case Bool: return "bool";
+			default: return "?";
+		}
+	}
+
 	using ArgValue = std::variant<i32*, f32*, std::string_view*, bool*>;
 
 	struct ArgMeta
 	{
 		std::string_view alias;
 		std::string_view description;
+		std::string_view group;
+	};
+
+	struct ArgData
+	{
+		ArgValue value;
+		ArgMeta meta;
 	};
 
 	class ArgParser
 	{
-		struct ArgData
-		{
-			ArgValue value;
-			ArgMeta meta;
-		};
-
 	public:
-
-		ArgParser(std::string_view prefix = "--", std::string_view alias_prefix = "-", bool strict = true) :
+		ArgParser(std::string_view prefix = "--", std::string_view alias_prefix = "-"
+			, bool strict = true) :
 			m_strict(strict),
 			m_prefix(prefix),
 			m_alias_prefix(alias_prefix)
@@ -55,7 +70,7 @@ namespace forge
 
 			if (!meta.alias.empty())
 			{
-				m_args.emplace(meta.alias, data);
+				m_alias_table.emplace(meta.alias, data);
 			}
 
 			return *this;
@@ -88,5 +103,7 @@ namespace forge
 		std::optional<ArgValue> find_arg_value(std::string_view name, bool use_alias_table = false);
 
 		std::string_view find_partial_match(std::string_view name);
+
+		void output_help() const;
 	};
 }

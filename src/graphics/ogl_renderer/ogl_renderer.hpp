@@ -16,6 +16,11 @@ class GLFWwindow;
 
 namespace forge
 {
+	struct OglRendererArgConfig
+	{
+		std::string_view shader_path = "./assets/shaders/";
+	};
+
 	struct RenderStatistics
 	{
 		u32 draw_calls;
@@ -64,6 +69,8 @@ namespace forge
 		void update() override;
 		void shutdown() override;
 		bool is_critical() override { return true; }
+
+		void receive_cmd_args(ArgParser &parser) override;
 
 		// SubSystemThreadMode get_thread_mode() override
 		// {
@@ -122,6 +129,8 @@ namespace forge
 		RenderResource<OglTexture> m_texture_resource;
 		glm::vec3 m_light_position {};
 		glm::vec3 m_light_color {1.0};
+
+		OglRendererArgConfig m_arg_config;
 
 		Camera *m_active_camera;
 

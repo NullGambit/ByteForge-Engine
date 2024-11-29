@@ -521,82 +521,65 @@ struct MyArgs
 };
 
 
-int main(int argc, char **argv)
+int main(int argc, const char **argv)
 {
-	MyArgs args {};
+	auto &engine = forge::Engine::get_instance();
 
-	std::array arg_value = {"-ww", "1920", "positional_a", "--window_hoight", "--window_height", "1080", "--some_name", "john", "--my_bool"};
-
-	forge::ArgParser arg_parser;
-
-	auto result = arg_parser
-		.add("window_width", &args.window_width, {.alias = "ww", .description = "sets the window_width"})
-		.add("window_height", &args.window_height, {.alias = "wh", .description = "sets the window_height"})
-		.add("some_name", &args.some_name)
-		.add("my_bool", &args.my_bool)
-		.parse(std::span{arg_value});
-
-	if (!result.empty())
+	auto result = engine.init(std::span{argv, (size_t)argc},
 	{
-		log::fatal(result);
+		.window_title = "ByteForge Engine",
+		.window_width = 1920,
+		.window_height = 1080,
+		.log_flags =  log::LogTime
+	});
+
+	if (result == forge::EngineInitResult::HaltWithNoError)
+	{
+		return 0;
+	}
+	if (result != forge::EngineInitResult::Ok)
+	{
 		return -1;
 	}
 
-	log::info("{} {} {} {} {}", args.window_width, args.window_height, args.some_name, args.my_bool, arg_parser.get_positional(0));
+	engine.nexus->register_component<FlyCamera>();
+	engine.nexus->register_component<ExportFieldTestComponent>();
+	engine.nexus->register_component<SpinCamera>();
+	engine.nexus->register_component<PrimitiveRendererComponent>();
+	engine.nexus->register_component<ClusteredRenderingComponent>();
+	engine.nexus->register_component<TempLightComponent>();
 
-	// auto &engine = forge::Engine::get_instance();
+	auto &player = engine.nexus->create_entity<SpinCamera>("Player");
+
+	player.get_transform().set_local_position({0, 0, 5});
+
+	player.emplace_child<ExportFieldTestComponent>("Child");
+
+	auto &cube = engine.nexus->create_entity("Cube");
+
+	auto *primitive = cube.add_component<PrimitiveRendererComponent>();
+
+	primitive->set_texture("assets/textures/container2.png", forge::TextureType::Diffuse);
+	primitive->set_texture("assets/textures/container2_specular.png", forge::TextureType::Specular);
+	primitive->set_texture("assets/textures/matrix.jpg", forge::TextureType::Emissive);
+
+	auto &light = engine.nexus->create_entity<TempLightComponent>("Light");
+
+	light.set_local_position(glm::vec3{2, 1, -2});
+
+	auto *light_renderer = light.add_component<PrimitiveRendererComponent>();
+
+	// light_renderer->set_diffuse_texture("./assets/textures/wall.jpg");
+
+	// constexpr auto ENTITY_COUNT = 400'000;
 	//
-	// auto ok = engine.init(
+	// for (auto i = 0; i < ENTITY_COUNT; i++)
 	// {
-	// 	.window_title = "ByteForge Engine",
-	// 	.window_width = 1920,
-	// 	.window_height = 1080,
-	// 	.log_flags =  log::LogTime
-	// });
-	//
-	// if (!ok)
-	// {
-	// 	return -1;
+	// 	auto name = "Entity_" + std::to_string(i);
+	// 	engine.nexus->create_entity<CounterComponent, BusyWorkComponent, BusyWorkComponent2, BusyWorkComponent3>(name);
 	// }
-	//
-	// engine.nexus->register_component<FlyCamera>();
-	// engine.nexus->register_component<ExportFieldTestComponent>();
-	// engine.nexus->register_component<SpinCamera>();
-	// engine.nexus->register_component<PrimitiveRendererComponent>();
-	// engine.nexus->register_component<ClusteredRenderingComponent>();
-	// engine.nexus->register_component<TempLightComponent>();
-	//
-	// auto &player = engine.nexus->create_entity<SpinCamera>("Player");
-	//
-	// player.get_transform().set_local_position({0, 0, 5});
-	//
-	// player.emplace_child<ExportFieldTestComponent>("Child");
-	//
-	// auto &cube = engine.nexus->create_entity("Cube");
-	//
-	// auto *primitive = cube.add_component<PrimitiveRendererComponent>();
-	//
-	// primitive->set_texture("assets/textures/container2.png", forge::TextureType::Diffuse);
-	// primitive->set_texture("assets/textures/container2_specular.png", forge::TextureType::Specular);
-	// primitive->set_texture("assets/textures/matrix.jpg", forge::TextureType::Emissive);
-	//
-	// auto &light = engine.nexus->create_entity<TempLightComponent>("Light");
-	//
-	// light.set_local_position(glm::vec3{2, 1, -2});
-	//
-	// auto *light_renderer = light.add_component<PrimitiveRendererComponent>();
-	//
-	// // light_renderer->set_diffuse_texture("./assets/textures/wall.jpg");
-	//
-	// // constexpr auto ENTITY_COUNT = 400'000;
-	// //
-	// // for (auto i = 0; i < ENTITY_COUNT; i++)
-	// // {
-	// // 	auto name = "Entity_" + std::to_string(i);
-	// // 	engine.nexus->create_entity<CounterComponent, BusyWorkComponent, BusyWorkComponent2, BusyWorkComponent3>(name);
-	// // }
-	//
-	// engine.run();
-	//
-	// engine.shutdown();
+
+	engine.run();
+
+	engine.shutdown();
 }

@@ -5,6 +5,7 @@
 #include <thread>
 
 #include "isub_system.hpp"
+#include "config/arg_parser.hpp"
 #include "ecs/ecs.hpp"
 #include "memory/arena_allocator.hpp"
 #include "system/fs_monitor.hpp"
@@ -16,7 +17,6 @@ namespace forge
 	class OglRenderer;
 }
 
-
 namespace forge
 {
 	struct EngineInitOptions
@@ -27,6 +27,15 @@ namespace forge
 		uint8_t log_flags;
 		std::string_view log_file;
 		std::string_view log_time_fmt;
+		ArgParser *arg_parser = nullptr;
+	};
+
+	enum class EngineInitResult
+	{
+		Ok,
+		HaltWithNoError,
+		ArgParserError,
+		SubsystemInitError,
 	};
 
 	class Engine
@@ -44,7 +53,7 @@ namespace forge
 
 		void quit();
 
-		bool init(const EngineInitOptions &options);
+		EngineInitResult init(std::span<const char*> sys_args, const EngineInitOptions &options);
 
 		void run();
 

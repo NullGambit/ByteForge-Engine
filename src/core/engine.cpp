@@ -33,11 +33,37 @@ void forge::Engine::quit()
 
 // TODO: currently if a user subsystem is added it will be added before the builtin subsystems which might not be desired behavior
 // TODO: find some way to defer initialization to a later point
-bool forge::Engine::init(const EngineInitOptions &options)
+forge::EngineInitResult forge::Engine::init(std::span<const char*> sys_args, const EngineInitOptions &options)
 {
 	m_init_options = options;
 
 	init_logger();
+
+	ArgParser default_parser;
+
+	ArgParser *parser = options.arg_parser;
+
+	if (parser == nullptr)
+	{
+		parser = &default_parser;
+	}
+
+	for (const auto &subsystem : m_subsystems)
+	{
+		subsystem->receive_cmd_args(*parser);
+	}
+
+	auto result = parser->parse(sys_args);
+
+	if (result == "h")
+	{
+		return EngineInitResult::HaltWithNoError;
+	}
+	if (!result.empty())
+	{
+		log::fatal(result);
+		return EngineInitResult::ArgParserError;
+	}
 
 	std::set<std::type_index> initialized_dependencies;
 
@@ -46,7 +72,7 @@ bool forge::Engine::init(const EngineInitOptions &options)
 		if (subsystem == nullptr)
 		{
 			fmt::println("invalid subsystem found");
-			return false;
+			return EngineInitResult::SubsystemInitError;
 		}
 
 		auto &subsystem_type = typeid(*subsystem);
@@ -65,7 +91,7 @@ bool forge::Engine::init(const EngineInitOptions &options)
 
 				if (subsystem->is_critical())
 				{
-					return false;
+					return EngineInitResult::SubsystemInitError;
 				}
 
 				skip = true;
@@ -85,7 +111,7 @@ bool forge::Engine::init(const EngineInitOptions &options)
 
 			if (subsystem->is_critical())
 			{
-				return false;
+				return EngineInitResult::SubsystemInitError;
 			}
 		}
 		else
@@ -95,7 +121,7 @@ bool forge::Engine::init(const EngineInitOptions &options)
 		}
 	}
 
-	return true;
+	return EngineInitResult::Ok;
 }
 
 void forge::Engine::run()

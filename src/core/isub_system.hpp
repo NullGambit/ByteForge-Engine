@@ -5,7 +5,7 @@
 #include <typeindex>
 #include <vector>
 
-#include "fmt/fmt.hpp"
+#include "config/arg_parser.hpp"
 
 namespace forge
 {
@@ -28,6 +28,9 @@ namespace forge
 		virtual std::string init() = 0;
 		virtual void shutdown() = 0;
 		virtual void update() = 0;
+
+		// allows for subsystems to add their own flags to the command line parser for per subsystem configuration
+		virtual void receive_cmd_args(ArgParser &parser) {}
 
 		// dependencies must be initialized otherwise this subsystem won't get initialized
 		virtual std::vector<std::type_index> get_dependencies() { return {}; }
