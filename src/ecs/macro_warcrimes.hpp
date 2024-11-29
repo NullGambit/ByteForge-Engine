@@ -2,7 +2,7 @@
 
 // what have i done...
 
-#define FIELD_ENTRY(field) {#field, field}
+#define FIELD_ENTRY(field) forge::ComponentField{#field, field}
 
 #define EXPAND_FIELD_1(field) FIELD_ENTRY(field)
 #define EXPAND_FIELD_2(field1, field2) FIELD_ENTRY(field1), FIELD_ENTRY(field2)

@@ -85,7 +85,7 @@ private:
 			return;
 		}
 
-		std::string message = fmt::format(fmt, std::forward<A>(a)...);
+		auto message = fmt::format(fmt, std::forward<A>(a)...);
 
 		auto time_str_value = m_flags & LogTime ? time_str() : "";
 
@@ -107,21 +107,19 @@ private:
 		fwrite(data.data(), 1, data.size(), file);
     }
 
-    static std::string time_str()
+    static char* time_str()
     {
-        time_t tt;
-        tm *info;
-
-        static constexpr int MAX_LEN = 18;
-
-        std::string buff;
-        buff.resize(MAX_LEN);
+		time_t tt;
 
         time(&tt);
 
-        info = localtime(&tt);
+        auto *info = localtime(&tt);
 
-        strftime(buff.data(), MAX_LEN, m_time_fmt.data(), info);
+		static constexpr int MAX_LEN = 18;
+
+		thread_local char buff[MAX_LEN];
+
+        strftime(buff, MAX_LEN, m_time_fmt.data(), info);
 
         return buff;
     }

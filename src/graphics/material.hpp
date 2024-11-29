@@ -30,17 +30,13 @@ namespace forge
 
 	struct Texture
 	{
-		std::string path;
 		float scale = 1;
+		float strength = 1.0;
 		bool enabled = false;
 	};
 
 	struct Material
 	{
 		TextureList<Texture> textures;
-		glm::vec3 specular {0.5};
-		glm::vec3 diffuse {1.0};
-		float ambient;
-		float shininess = 16;
 	};
 }

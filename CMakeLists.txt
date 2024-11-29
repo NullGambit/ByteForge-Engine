@@ -10,6 +10,7 @@ endif()
 add_compile_definitions(GLM_ENABLE_EXPERIMENTAL)
 
 #set(CMAKE_CXX_FLAGS "-fconstexpr-depth=4096")
+#set(CMAKE_CXX_FLAGS "-fsanitize=address")
 
 include_directories(
         src/
@@ -105,6 +106,8 @@ add_executable(ByteForge_Engine main.cpp
         src/util/defer.hpp
         src/fmt/fmt.cpp
         src/graphics/ogl_renderer/gl_buffers.cpp
+        src/config/arg_parser.cpp
+        src/config/arg_parser.hpp
 )
 
 target_compile_options(ByteForge_Engine PRIVATE -include ${CMAKE_SOURCE_DIR}/src/core/forge_intrinsic.hpp)

@@ -128,13 +128,19 @@ namespace forge
 		MemPool m_camera_pool;
 		MemPool m_render_data_pool;
 
+		struct TextureData
+		{
+			OglTexture texture;
+			std::string_view path;
+		};
+
 		struct PrimitiveRenderData
 		{
 			PrimitiveModel primitive;
 			// if false this entry is freed
 			bool is_valid = true;
 
-			TextureList<OglTexture> textures;
+			TextureList<TextureData> textures;
 		};
 
 		void handle_framebuffer_resize(int width, int height);

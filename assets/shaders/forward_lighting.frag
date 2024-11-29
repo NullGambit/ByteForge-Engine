@@ -9,6 +9,7 @@ struct Texture
 {
     sampler2D texture;
     bool enabled;
+    float strength;
     float scale;
 };
 
@@ -17,8 +18,6 @@ struct Material
     Texture diffuse;
     Texture specular;
     Texture emissive;
-    float ambient;
-    float shininess;
 };
 
 uniform Material material;
@@ -54,10 +53,10 @@ void main()
     vec3 view_direction = normalize(view_position - frag_position);
     vec3 reflection_direction = reflect(-light_direction, normal);
 
-    float specular_factor = pow(max(dot(view_direction, reflection_direction), 0.0), material.shininess);
+    float specular_factor = pow(max(dot(view_direction, reflection_direction), 0.0), material.specular.strength);
     vec3 specular = (specular_factor * get_texture(material.specular, vec4(1.0)).rgb) * light_color;
 
-    vec3 emissive = get_texture(material.emissive, vec4(0.0)).rgb;
+    vec3 emissive = get_texture(material.emissive, vec4(0.0)).rgb * material.emissive.strength;
 
     vec3 result = ambient + diffuse + specular + emissive;
 

@@ -50,6 +50,7 @@ namespace forge
 
     using OnComponentDestroy = Signal<void()>;
 
+
     class IComponent
     {
     public:

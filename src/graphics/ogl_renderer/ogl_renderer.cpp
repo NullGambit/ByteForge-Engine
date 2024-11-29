@@ -118,15 +118,12 @@ void forge::OglRenderer::update()
 
 			auto &material = data.primitive.material;
 
-			m_forward_shader.set("material.shininess", material.shininess);
-			m_forward_shader.set("material.ambient", material.ambient);
-
 			for (auto i = 0; auto &texture : material.textures)
 			{
 				static char name_buffer[48] = "material.";
 				constexpr auto start_offset = sizeof("material.")-1;
 
-				data.textures[i].bind(i);
+				data.textures[i].texture.bind(i);
 
 				auto field_name = TextureType::to_string(i);
 
@@ -148,6 +145,10 @@ void forge::OglRenderer::update()
 				strcpy(name_buffer + last_offset, "scale");
 
 				m_forward_shader.set(name_buffer, texture.scale);
+
+				strcpy(name_buffer + last_offset, "strength");
+
+				m_forward_shader.set(name_buffer, texture.strength);
 
 				i++;
 			}
@@ -235,12 +236,9 @@ void forge::OglRenderer::destroy_primitive(u32 id)
 	auto *data = m_render_data_pool.get<PrimitiveRenderData>(id);
 	data->is_valid = false;
 
-	for (auto &texture : data->primitive.material.textures)
+	for (auto &texture_data : data->textures)
 	{
-		if (texture.enabled)
-		{
-			m_texture_resource.remove(texture.path);
-		}
+		m_texture_resource.remove(texture_data.path);
 	}
 }
 
@@ -252,8 +250,15 @@ void forge::OglRenderer::destroy_texture(std::string_view path)
 void forge::OglRenderer::create_texture(u32 id, std::string_view path, u32 type)
 {
 	auto *data = m_render_data_pool.get<PrimitiveRenderData>(id);
+	auto &texture_data = data->textures[type];
 
-	data->textures[type] = m_texture_resource.add(path);
+	if (!texture_data.path.empty())
+	{
+		destroy_texture(texture_data.path);
+	}
+
+	texture_data.texture = m_texture_resource.add(path);
+	texture_data.path = path;
 }
 
 void forge::OglRenderer::handle_framebuffer_resize(int width, int height)
