@@ -42,6 +42,12 @@ std::string forge::ArgParser::parse(std::span<const char*> args)
 			if (storage.index() != ArgValueType::Bool)
 			{
 				i++;
+
+				if (i >= args.size())
+				{
+					return fmt::format("expected value for flag {} but reached end of arguments", name);
+				}
+
 				value = args[i];
 
 				if (value.starts_with(m_prefix) || value.starts_with(m_alias_prefix))
@@ -108,7 +114,7 @@ std::optional<forge::ArgValue> forge::ArgParser::find_arg_value(std::string_view
 
 std::string_view forge::ArgParser::find_partial_match(std::string_view name)
 {
-	std::pair<std::string_view, u32> highest_match;
+	std::pair<std::string_view, u32> highest_match {};
 
 	for (auto &[flag, _] : m_args)
 	{

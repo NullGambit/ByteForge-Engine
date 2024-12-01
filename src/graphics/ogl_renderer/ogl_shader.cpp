@@ -81,11 +81,11 @@ bool forge::OglShader::compile(const ShaderSource &source)
 				continue;
 			}
 
-			m_wd = engine.fs_monitor->add_watch(path.c_str(), FSE_MODIFY, [&](auto events, auto p)
+			m_wd = engine.get_subsystem<FsMonitor>()->add_watch(path.c_str(), FSE_MODIFY, [&](auto events, auto p)
 			{
 				auto &engine = Engine::get_instance();
 
-				engine.renderer->add_command([&]
+				engine.get_subsystem<OglRenderer>()->add_command([&]
 				{
 					destroy();
 					compile_implementation();
@@ -122,7 +122,7 @@ forge::OglShader::~OglShader()
 
 #ifdef SHADER_HOT_RELOAD
 	auto &engine = Engine::get_instance();
-	engine.fs_monitor->remove_watch(m_wd);
+	engine.get_subsystem<FsMonitor>()->remove_watch(m_wd);
 #endif
 
 	destroy();

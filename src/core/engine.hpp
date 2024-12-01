@@ -60,7 +60,7 @@ namespace forge
 		void shutdown();
 
 		[[nodiscard]]
-		float get_engine_runtime() const;
+		float get_engine_runtime();
 
 		[[nodiscard]]
 		inline float get_fps() const
@@ -80,21 +80,47 @@ namespace forge
 		}
 
 		template<class T, class ...Args>
-		inline T* add_subsystem(Args ...args) requires std::derived_from<T, ISubSystem>
+		inline T* add_subsystem(Args &&...args) requires std::derived_from<T, ISubSystem>
 		{
-			return (T*)m_subsystems.emplace_back(std::make_unique<T>(args...)).get();
+			auto *ptr = (T*)m_subsystems.emplace_back(std::make_unique<T>(std::forward<Args>(args)...)).get();
+
+			m_subsystem_table.emplace(typeid(T), ptr);
+
+			return ptr;
 		}
 
-		WindowSubSystem *window_sub_system;
-		OglRenderer *renderer;
-		Nexus *nexus;
-		FsMonitor *fs_monitor;
+		template<class T, class I, class ...Args>
+		inline T* add_subsystem_as(Args &&...args) requires std::derived_from<T, ISubSystem>
+		{
+			auto *ptr = (T*)m_subsystems.emplace_back(std::make_unique<T>(std::forward<Args>(args)...)).get();
+
+			m_subsystem_table.emplace(typeid(I), ptr);
+
+			return ptr;
+		}
+
+		template<class T>
+		inline T* get_subsystem()
+		{
+			auto iter = m_subsystem_table.find(typeid(T));
+
+			if (iter == m_subsystem_table.end())
+			{
+				return nullptr;
+			}
+
+			return (T*)iter->second;
+		}
+
 		// TODO: create some sort of window factory class that will create windows and will swap their buffers in the main loop
 		Window window;
 		DeltaTime time_scale = 1.0;
 
 	private:
+		// subsystem storage for fast iteration
 		std::vector<std::unique_ptr<ISubSystem>> m_subsystems;
+		// subsystem storage for lookups. allows users to find subsystems by registered type.
+		HashMap<std::type_index, ISubSystem*> m_subsystem_table;
 		EngineInitOptions m_init_options;
 		// threads for subsystems with a SeparateThread mode
 		std::vector<std::thread> m_update_threads;

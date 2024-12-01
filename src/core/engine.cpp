@@ -15,13 +15,12 @@
 #include "gui/imgui_subsystem.hpp"
 #include "util/types.hpp"
 
-
 forge::Engine::Engine()
 {
-	window_sub_system = add_subsystem<WindowSubSystem>();
-	fs_monitor = add_subsystem<FsMonitor>();
-	renderer = add_subsystem<OglRenderer>();
-	nexus = add_subsystem<Nexus>();
+	add_subsystem<WindowSubSystem>();
+	add_subsystem<FsMonitor>();
+	add_subsystem<OglRenderer>();
+	add_subsystem<Nexus>();
 	add_subsystem<ImGuiSubsystem>();
 	add_subsystem<EditorSubsystem>();
 }
@@ -187,9 +186,9 @@ void forge::Engine::shutdown()
 	log::info("Engine shutdown successfully");
 }
 
-float forge::Engine::get_engine_runtime() const
+float forge::Engine::get_engine_runtime()
 {
-	return window_sub_system->get_runtime();
+	return get_subsystem<WindowSubSystem>()->get_runtime();
 }
 
 void forge::Engine::init_logger()

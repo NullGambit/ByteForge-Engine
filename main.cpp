@@ -58,7 +58,7 @@ protected:
 
 	void on_enter() override
 	{
-		auto *renderer = forge::Engine::get_instance().renderer;
+		auto *renderer = forge::Engine::get_instance().get_subsystem<forge::OglRenderer>();
 
 		auto [ptr, id] = renderer->create_camera();
 
@@ -190,7 +190,7 @@ protected:
 
 	void on_enter() override
 	{
-		auto *renderer = forge::Engine::get_instance().renderer;
+		auto *renderer = forge::Engine::get_instance().get_subsystem<forge::OglRenderer>();
 
 		auto [ptr, id] = renderer->create_camera();
 
@@ -319,7 +319,7 @@ private:
 protected:
 	void on_enter() override
 	{
-		m_renderer = forge::Engine::get_instance().renderer;
+		m_renderer = forge::Engine::get_instance().get_subsystem<forge::OglRenderer>();
 
 		auto &entity = m_owner->get_entity();
 		auto model = entity.get_model();
@@ -501,7 +501,7 @@ public:
 
 	void update(forge::DeltaTime delta) override
 	{
-		auto *renderer = forge::Engine::get_instance().renderer;
+		auto *renderer = forge::Engine::get_instance().get_subsystem<forge::OglRenderer>();
 
 		renderer->update_light(m_owner->get_entity().get_position(), glm::vec3{m_color});
 	}
@@ -520,6 +520,30 @@ struct MyArgs
 	bool my_bool;
 };
 
+void use(int, const std::string &)
+{
+
+}
+
+void use(std::string &)
+{
+
+}
+
+class BaseBase
+{
+
+};
+
+class Base : public BaseBase
+{
+
+};
+
+class Derived : public Base
+{
+
+};
 
 int main(int argc, const char **argv)
 {
@@ -542,20 +566,22 @@ int main(int argc, const char **argv)
 		return -1;
 	}
 
-	engine.nexus->register_component<FlyCamera>();
-	engine.nexus->register_component<ExportFieldTestComponent>();
-	engine.nexus->register_component<SpinCamera>();
-	engine.nexus->register_component<PrimitiveRendererComponent>();
-	engine.nexus->register_component<ClusteredRenderingComponent>();
-	engine.nexus->register_component<TempLightComponent>();
+	auto *nexus = engine.get_subsystem<forge::Nexus>();
 
-	auto &player = engine.nexus->create_entity<SpinCamera>("Player");
+	nexus->register_component<FlyCamera>();
+	nexus->register_component<ExportFieldTestComponent>();
+	nexus->register_component<SpinCamera>();
+	nexus->register_component<PrimitiveRendererComponent>();
+	nexus->register_component<ClusteredRenderingComponent>();
+	nexus->register_component<TempLightComponent>();
+
+	auto &player = nexus->create_entity<SpinCamera>("Player");
 
 	player.get_transform().set_local_position({0, 0, 5});
 
 	player.emplace_child<ExportFieldTestComponent>("Child");
 
-	auto &cube = engine.nexus->create_entity("Cube");
+	auto &cube = nexus->create_entity("Cube");
 
 	auto *primitive = cube.add_component<PrimitiveRendererComponent>();
 
@@ -563,7 +589,7 @@ int main(int argc, const char **argv)
 	primitive->set_texture("assets/textures/container2_specular.png", forge::TextureType::Specular);
 	primitive->set_texture("assets/textures/matrix.jpg", forge::TextureType::Emissive);
 
-	auto &light = engine.nexus->create_entity<TempLightComponent>("Light");
+	auto &light = nexus->create_entity<TempLightComponent>("Light");
 
 	light.set_local_position(glm::vec3{2, 1, -2});
 

@@ -134,16 +134,29 @@ public:
 		}
 	}
 
+private:
+	forge::OglRenderer *m_renderer;
+	forge::Nexus *m_nexus;
 protected:
+
+	void on_editor_enter() override
+	{
+		IEditorWindow::on_editor_enter();
+
+		auto &engine = forge::Engine::get_instance();
+
+		m_renderer = engine.get_subsystem<forge::OglRenderer>();
+		m_nexus = engine.get_subsystem<forge::Nexus>();
+	}
+
 	void on_window() override
 	{
-		auto &engine = forge::Engine::get_instance();
-		auto render_stats = engine.renderer->get_statistics();
+		auto render_stats = m_renderer->get_statistics();
 
 		ImGui::Text("FPS: %d", (int)last_frame);
 		ImGui::Text("Tick: %f", last_engine_delta);
 		ImGui::Text("Draw calls: %d", render_stats.draw_calls);
-		ImGui::Text("Entity tables: %d", engine.nexus->get_all_entities().size());
+		ImGui::Text("Entity tables: %d", m_nexus->get_all_entities().size());
 	}
 };
 
@@ -154,7 +167,19 @@ public:
 
 	SettingsEditorWindow() : IEditorWindow("Settings") {}
 
+private:
+	forge::OglRenderer *m_renderer;
+
 protected:
+
+	void on_editor_enter() override
+	{
+		IEditorWindow::on_editor_enter();
+
+		auto &engine = forge::Engine::get_instance();
+
+		m_renderer = engine.get_subsystem<forge::OglRenderer>();
+	}
 
 	void on_window() override
 	{
@@ -166,14 +191,14 @@ protected:
 			{
 				if (ImGui::Checkbox("Wireframe", &toggle_wireframe))
 				{
-					engine.renderer->set_wireframe(toggle_wireframe);
+					m_renderer->set_wireframe(toggle_wireframe);
 				}
 
-				auto clear_color = engine.renderer->get_clear_color();
+				auto clear_color = m_renderer->get_clear_color();
 
 				if (ImGui::ColorEdit3("Clear color", glm::value_ptr(clear_color)))
 				{
-					engine.renderer->set_clear_color(clear_color);
+					m_renderer->set_clear_color(clear_color);
 				}
 
 				ImGui::EndTabItem();
@@ -242,7 +267,20 @@ public:
 
 	SceneOutlineEditorWindow() : IEditorWindow("Scene Outline") {}
 
+private:
+	forge::OglRenderer *m_renderer;
+	forge::Nexus *m_nexus;
 protected:
+
+	void on_editor_enter() override
+	{
+		IEditorWindow::on_editor_enter();
+
+		auto &engine = forge::Engine::get_instance();
+
+		m_renderer = engine.get_subsystem<forge::OglRenderer>();
+		m_nexus = engine.get_subsystem<forge::Nexus>();
+	}
 
 	void vec_drag_control(std::string_view label, float *values, int components, bool *uniform = nullptr,
 		float speed = 1, float min_steps = 0, float max_steps = 0)
@@ -481,7 +519,7 @@ protected:
 			{
 				auto &engine = forge::Engine::get_instance();
 
-				for (auto &[index, ct] : engine.nexus->get_component_table())
+				for (auto &[index, ct] : m_nexus->get_component_table())
 				{
 					if (ImGui::Selectable(util::type_name(index).data()))
 					{
@@ -562,14 +600,14 @@ protected:
 			m_create_group_dialog.open();
 		}
 
-		m_create_group_dialog.take_text_input([](std::string &input)
+		m_create_group_dialog.take_text_input([&nexus = m_nexus](std::string &input)
 		{
-			forge::Engine::get_instance().nexus->create_group(input);
+			nexus->create_group(input);
 		});
 
 		auto &engine = forge::Engine::get_instance();
 
-		for (auto &[name, entities] : engine.nexus->get_all_groups())
+		for (auto &[name, entities] : m_nexus->get_all_groups())
 		{
 			if (ImGui::IsItemHovered())
 			{
@@ -581,9 +619,9 @@ protected:
 				open_context_menu("GroupContext",
 				{
 					{
-						"Delete", [&name]
+						"Delete", [&name, &nexus = m_nexus]
 						{
-							forge::Engine::get_instance().nexus->remove_group(name);
+							nexus->remove_group(name);
 						},
 						ImVec4(1.0f, 0.0f, 0.0f, 1.0f)
 					},
@@ -656,13 +694,13 @@ protected:
 			{
 				auto &engine = forge::Engine::get_instance();
 
-				auto &groups = engine.nexus->get_all_groups();
+				auto &groups = m_nexus->get_all_groups();
 
 				for (auto &[name, _] : groups)
 				{
 					if (ImGui::MenuItem(name.data()))
 					{
-						engine.nexus->add_to_group(name, m_selected_context_entity.get_entity());
+						m_nexus->add_to_group(name, m_selected_context_entity.get_entity());
 					}
 				}
 
@@ -670,7 +708,7 @@ protected:
 			}
 			if (m_is_in_group_tab && ImGui::Selectable("Remove from group"))
 			{
-				forge::Engine::get_instance().nexus->remove_from_group(from_group, m_selected_context_entity.get_entity());
+				m_nexus->remove_from_group(from_group, m_selected_context_entity.get_entity());
 			}
 
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
@@ -701,7 +739,7 @@ protected:
 	void show_entities(u32 entity_table_index = 0, std::string_view from_group = "")
 	{
 		auto &engine = forge::Engine::get_instance();
-		auto &entities_table = engine.nexus->get_all_entities();
+		auto &entities_table = m_nexus->get_all_entities();
 
 		if (entity_table_index >= entities_table.size())
 		{
@@ -722,7 +760,7 @@ protected:
 		{
 			auto &engine = forge::Engine::get_instance();
 
-			engine.nexus->create_entity();
+			m_nexus->create_entity();
 		}
 
 		ImGui::SameLine();
