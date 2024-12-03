@@ -19,6 +19,53 @@ namespace forge
 		SeparateThread,
 	};
 
+	class ISubSystem;
+
+	class DependencyStorage
+	{
+	public:
+		typedef std::unique_ptr<ISubSystem>(*ConstructTFunc)();
+
+		DependencyStorage(std::type_index index) :
+			m_type_index(index)
+		{}
+
+		template<class T>
+		void init()
+		{
+			m_construct_func = [] -> std::unique_ptr<ISubSystem>
+			{
+				return std::make_unique<T>();
+			};
+		}
+
+		[[nodiscard]]
+		std::unique_ptr<ISubSystem> construct() const
+		{
+			return m_construct_func();
+		}
+
+		[[nodiscard]]
+		const std::type_index& get_type_index() const
+		{
+			return m_type_index;
+		}
+
+	private:
+		ConstructTFunc m_construct_func;
+		std::type_index m_type_index;
+	};
+
+	template<class T>
+	inline DependencyStorage make_dependency()
+	{
+		DependencyStorage storage { typeid(T) };
+
+		storage.init<T>();
+
+		return storage;
+	}
+
 	class ISubSystem
 	{
 	public:
@@ -33,7 +80,7 @@ namespace forge
 		virtual void receive_cmd_args(ArgParser &parser) {}
 
 		// dependencies must be initialized otherwise this subsystem won't get initialized
-		virtual std::vector<std::type_index> get_dependencies() { return {}; }
+		virtual std::vector<DependencyStorage> get_dependencies() { return {}; }
 
 		// will be called at the start of the engine loop
 		virtual void start_tick() {}

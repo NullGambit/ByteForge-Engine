@@ -10,6 +10,7 @@
 #include "util/macros.hpp"
 
 #include "glm/gtc/type_ptr.hpp"
+#include "system/fs_monitor.hpp"
 #include "util/types.hpp"
 
 #define SHADER_ERROR_LOG_SIZE 512
@@ -65,13 +66,14 @@ void set_uniform(uint32_t program, std::string_view name, const forge::UniformVa
 
 bool forge::OglShader::compile(const ShaderSource &source)
 {
-	m_source = source;
+	auto ok = compile_implementation(source);
+
+#ifdef SHADER_HOT_RELOAD
 
 	auto &engine = Engine::get_instance();
 
-	auto ok = compile_implementation();
+	m_source = source;
 
-#ifdef SHADER_HOT_RELOAD
 	if (ok)
 	{
 		for (auto &path : m_source)
@@ -83,12 +85,12 @@ bool forge::OglShader::compile(const ShaderSource &source)
 
 			m_wd = engine.get_subsystem<FsMonitor>()->add_watch(path.c_str(), FSE_MODIFY, [&](auto events, auto p)
 			{
-				auto &engine = Engine::get_instance();
-
+				log::info("yes");
 				engine.get_subsystem<OglRenderer>()->add_command([&]
 				{
 					destroy();
-					compile_implementation();
+
+					compile_implementation(m_source);
 
 					glUseProgram(m_program);
 
@@ -331,13 +333,13 @@ std::optional<std::string> preprocess_shader(const std::string &source)
 	return out;
 }
 
-bool forge::OglShader::compile_implementation()
+bool forge::OglShader::compile_implementation(const ShaderSource &source)
 {
 	m_program = glCreateProgram();
 
 	char info_buffer[SHADER_ERROR_LOG_SIZE];
 
-	for (auto &path : m_source)
+	for (auto &path : source)
 	{
 		if (path.empty())
 		{

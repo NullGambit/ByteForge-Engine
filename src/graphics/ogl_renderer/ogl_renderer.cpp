@@ -14,6 +14,7 @@
 #include "core/engine.hpp"
 #include "core/logging.hpp"
 #include "graphics/mesh_primitives.hpp"
+#include "system/fs_monitor.hpp"
 #include "util/macros.hpp"
 #include "util/random.hpp"
 
@@ -164,6 +165,17 @@ void forge::OglRenderer::update()
 
 void forge::OglRenderer::shutdown()
 {}
+
+std::vector<forge::DependencyStorage> forge::OglRenderer::get_dependencies()
+{
+	std::vector<DependencyStorage> dependencies;
+
+#ifdef SHADER_HOT_RELOAD
+	dependencies.emplace_back(make_dependency<FsMonitor>());
+#endif
+
+	return dependencies;
+}
 
 void forge::OglRenderer::receive_cmd_args(ArgParser &parser)
 {

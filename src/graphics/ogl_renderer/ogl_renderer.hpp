@@ -70,6 +70,8 @@ namespace forge
 		void shutdown() override;
 		bool is_critical() override { return true; }
 
+		std::vector<DependencyStorage> get_dependencies() override;
+
 		void receive_cmd_args(ArgParser &parser) override;
 
 		// SubSystemThreadMode get_thread_mode() override

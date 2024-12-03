@@ -867,7 +867,7 @@ void forge::EditorSubsystem::update()
 	m_nexus.update();
 }
 
-std::vector<std::type_index> forge::EditorSubsystem::get_dependencies()
+std::vector<forge::DependencyStorage> forge::EditorSubsystem::get_dependencies()
 {
-	return { typeid(ImGuiSubsystem) };
+	return { make_dependency<ImGuiSubsystem>() };
 }

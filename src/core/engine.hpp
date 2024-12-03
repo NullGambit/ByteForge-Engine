@@ -1,21 +1,14 @@
 #pragma once
 
 #include <memory>
+#include <set>
 #include <vector>
 #include <thread>
 
 #include "isub_system.hpp"
 #include "config/arg_parser.hpp"
 #include "ecs/ecs.hpp"
-#include "memory/arena_allocator.hpp"
-#include "system/fs_monitor.hpp"
 #include "system/window.hpp"
-#include "system/window_sub_system.hpp"
-
-namespace forge
-{
-	class OglRenderer;
-}
 
 namespace forge
 {
@@ -53,6 +46,8 @@ namespace forge
 
 		void quit();
 
+
+
 		EngineInitResult init(std::span<const char*> sys_args, const EngineInitOptions &options);
 
 		void run();
@@ -74,6 +69,7 @@ namespace forge
 			return m_delta_time;
 		}
 
+		[[nodiscard]]
 		const EngineInitOptions& get_init_options() const
 		{
 			return m_init_options;
@@ -82,21 +78,13 @@ namespace forge
 		template<class T, class ...Args>
 		inline T* add_subsystem(Args &&...args) requires std::derived_from<T, ISubSystem>
 		{
-			auto *ptr = (T*)m_subsystems.emplace_back(std::make_unique<T>(std::forward<Args>(args)...)).get();
-
-			m_subsystem_table.emplace(typeid(T), ptr);
-
-			return ptr;
+			return add_subsystem_implementation<T, T>(std::make_unique<T>(std::forward<Args>(args)...));
 		}
 
 		template<class T, class I, class ...Args>
 		inline T* add_subsystem_as(Args &&...args) requires std::derived_from<T, ISubSystem>
 		{
-			auto *ptr = (T*)m_subsystems.emplace_back(std::make_unique<T>(std::forward<Args>(args)...)).get();
-
-			m_subsystem_table.emplace(typeid(I), ptr);
-
-			return ptr;
+			return add_subsystem_implementation<T, I>(std::make_unique<T>(std::forward<Args>(args)...));
 		}
 
 		template<class T>
@@ -149,5 +137,22 @@ namespace forge
 		void stop_threaded_subsystems();
 		void start_offload_threads();
 
+		EngineInitResult initialize_subsystem(std::set<std::type_index> &initialized_subsystems,
+			const std::unique_ptr<ISubSystem> &subsystem);
+
+		template<class T, class I>
+		inline T* add_subsystem_implementation(std::unique_ptr<ISubSystem> &&subsystem) requires std::derived_from<T, ISubSystem>
+		{
+			if (m_subsystem_table.contains(typeid(I)))
+			{
+				return nullptr;
+			}
+
+			auto *ptr = (T*)m_subsystems.emplace_back(std::forward<std::unique_ptr<ISubSystem>>(subsystem)).get();
+
+			m_subsystem_table.emplace(typeid(I), ptr);
+
+			return ptr;
+		}
 	};
 }

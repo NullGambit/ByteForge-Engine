@@ -7,18 +7,17 @@
 
 #include "logging.hpp"
 #include "editor/editor_subsystem.hpp"
-#include "fmt/fmt.hpp"
 #include "system/window_sub_system.hpp"
 #include "system/window.hpp"
 #include "graphics/ogl_renderer/ogl_renderer.hpp"
 #include "GLFW/glfw3.h"
 #include "gui/imgui_subsystem.hpp"
+#include "system/fs_monitor.hpp"
 #include "util/types.hpp"
 
 forge::Engine::Engine()
 {
 	add_subsystem<WindowSubSystem>();
-	add_subsystem<FsMonitor>();
 	add_subsystem<OglRenderer>();
 	add_subsystem<Nexus>();
 	add_subsystem<ImGuiSubsystem>();
@@ -28,6 +27,61 @@ forge::Engine::Engine()
 void forge::Engine::quit()
 {
 	window.set_should_close(true);
+}
+
+forge::EngineInitResult forge::Engine::initialize_subsystem(std::set<std::type_index> &initialized_subsystems,
+	const std::unique_ptr<ISubSystem> &subsystem)
+{
+	if (subsystem == nullptr)
+	{
+		log::warn("invalid subsystem found");
+		return EngineInitResult::SubsystemInitError;
+	}
+
+	auto &subsystem_type = typeid(*subsystem);
+
+	auto name = util::type_name(subsystem_type);
+
+	for (auto dependency : subsystem->get_dependencies())
+	{
+		const auto &type_index = dependency.get_type_index();
+
+		if (!initialized_subsystems.contains(type_index))
+		{
+			if (!m_subsystem_table.contains(type_index))
+			{
+				auto &ptr = m_subsystems.emplace_back(dependency.construct());
+
+				initialize_subsystem(initialized_subsystems, ptr);
+
+				m_subsystem_table.emplace(type_index, ptr.get());
+			}
+		}
+	}
+
+	if (initialized_subsystems.contains(subsystem_type))
+	{
+		return EngineInitResult::Ok;
+	}
+
+	auto result = subsystem->init();
+
+	if (!result.empty())
+	{
+		log::warn("Failed to initialize subsystem ({}): {}", name, result);
+
+		if (subsystem->is_critical())
+		{
+			return EngineInitResult::SubsystemInitError;
+		}
+	}
+	else
+	{
+		log::info("Initialized subsystem {}", name);
+		initialized_subsystems.emplace(subsystem_type);
+	}
+
+	return EngineInitResult::Ok;
 }
 
 // TODO: currently if a user subsystem is added it will be added before the builtin subsystems which might not be desired behavior
@@ -64,59 +118,16 @@ forge::EngineInitResult forge::Engine::init(std::span<const char*> sys_args, con
 		return EngineInitResult::ArgParserError;
 	}
 
-	std::set<std::type_index> initialized_dependencies;
+	std::set<std::type_index> initialized_subsystems;
 
-	for (const auto &subsystem : m_subsystems)
+	// range based for loop is not a good idea because a new subsystem might be added to the list
+	for (auto i = 0; i < m_subsystems.size(); i++)
 	{
-		if (subsystem == nullptr)
+		auto result = initialize_subsystem(initialized_subsystems, m_subsystems[i]);
+
+		if (result != EngineInitResult::Ok)
 		{
-			fmt::println("invalid subsystem found");
-			return EngineInitResult::SubsystemInitError;
-		}
-
-		auto &subsystem_type = typeid(*subsystem);
-		auto name = util::type_name(subsystem_type);
-
-		auto skip = false;
-
-		for (auto index : subsystem->get_dependencies())
-		{
-			if (!initialized_dependencies.contains(index))
-			{
-				auto dep_name = util::type_name(index);
-
-				log::warn("could not initialize subsystem {} because it depends on subsystem {} which did not initialize",
-					name, dep_name);
-
-				if (subsystem->is_critical())
-				{
-					return EngineInitResult::SubsystemInitError;
-				}
-
-				skip = true;
-			}
-		}
-
-		if (skip)
-		{
-			continue;
-		}
-
-		auto result = subsystem->init();
-
-		if (!result.empty())
-		{
-			log::warn("Failed to initialize subsystem ({}): {}", name, result);
-
-			if (subsystem->is_critical())
-			{
-				return EngineInitResult::SubsystemInitError;
-			}
-		}
-		else
-		{
-			log::info("Initialized subsystem {}", name);
-			initialized_dependencies.emplace(subsystem_type);
+			return result;
 		}
 	}
 

@@ -51,11 +51,11 @@ namespace forge
 		u32 m_wd;
 		// a cache for uniforms used to set uniforms to their previous state when shaders reload
 		HashMap<std::string, UniformValue, ENABLE_TRANSPARENT_HASH> m_cache;
+		ShaderSource m_source;
 #endif
 
-		ShaderSource m_source;
 		uint32_t m_program;
 
-		bool compile_implementation();
+		bool compile_implementation(const ShaderSource &source);
 	};
 }

@@ -12,7 +12,7 @@ namespace forge
 		void shutdown() override;
 		void update() override;
 
-		std::vector<std::type_index> get_dependencies() override;
+		std::vector<DependencyStorage> get_dependencies() override;
 
 	private:
 		Nexus m_nexus {};
