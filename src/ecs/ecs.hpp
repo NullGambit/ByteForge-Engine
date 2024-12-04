@@ -66,6 +66,8 @@ namespace forge
             return m_is_enabled;
         }
 
+        virtual std::vector<std::type_index> get_bundle() { return {}; }
+
         virtual std::vector<ComponentField> export_fields() { return {}; }
 
         virtual void on_editor_enter() {}
@@ -355,17 +357,14 @@ namespace forge
         {
             MemPool mem_pool;
             // HashMap<size_t, OnComponentDestroy> destroy_signals;
-            bool is_component = false;
 
             void free(size_t offset_to_free)
             {
                 auto *mem = mem_pool.get_memory() + offset_to_free;
 
-                if (is_component)
-                {
-                    auto *component = (IComponent*)mem;
-                    component->m_is_active = false;
-                }
+                auto *component = (IComponent*)mem;
+
+                component->m_is_active = false;
 
                 mem_pool.free(offset_to_free);
             }
@@ -387,6 +386,7 @@ namespace forge
         }
 
         template<class T>
+        requires(std::derived_from<T, IComponent>)
         EcsResult register_component(bool override_should_update = false)
         {
             const auto &type = typeid(T);
@@ -407,14 +407,9 @@ namespace forge
                 return EcsResult::CouldNotAllocateComponentMemory;
             }
 
-            if (std::derived_from<T, IComponent>)
+            if (ComponentShouldEverUpdate<T> || override_should_update)
             {
-                ct.is_component = true;
-
-                if (ComponentShouldEverUpdate<T> || override_should_update)
-                {
-                    m_update_table.emplace_back(type);
-                }
+                m_update_table.emplace_back(type);
             }
 
             return emplaced.second ? EcsResult::Ok : EcsResult::CouldNotAddComponentToTypeMap;

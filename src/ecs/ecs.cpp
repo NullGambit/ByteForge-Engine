@@ -321,21 +321,24 @@ u8* forge::Nexus::add_component(Entity *entity, std::type_index index)
 
 	auto [ptr, offset] = ct.mem_pool.allocate(true);
 
-	if (ct.is_component)
-	{
-		auto *component = (IComponent*)ptr;
-		component->m_owner = entity->get_view();
-		component->m_is_active = true;
-		component->m_is_enabled = true;
+	auto *component = (IComponent*)ptr;
 
-		component->on_enter();
-	}
+	component->m_owner = entity->get_view();
+	component->m_is_active = true;
+	component->m_is_enabled = true;
+
+	component->on_enter();
 
 	entity->m_components[index] =
 	{
 		.offset =  offset,
 		.pointer = ptr
 	};
+
+	for (const auto &index : component->get_bundle())
+	{
+		add_component(entity, index);
+	}
 
 	return ptr;
 }

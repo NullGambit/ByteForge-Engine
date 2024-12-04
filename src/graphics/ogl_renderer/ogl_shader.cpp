@@ -85,7 +85,6 @@ bool forge::OglShader::compile(const ShaderSource &source)
 
 			m_wd = engine.get_subsystem<FsMonitor>()->add_watch(path.c_str(), FSE_MODIFY, [&](auto events, auto p)
 			{
-				log::info("yes");
 				engine.get_subsystem<OglRenderer>()->add_command([&]
 				{
 					destroy();

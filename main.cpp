@@ -83,8 +83,6 @@ public:
 
 	void update(forge::DeltaTime delta) override
 	{
-		auto &engine = forge::Engine::get_instance();
-
 		handle_movement(delta);
 		handle_other_input();
 
@@ -93,8 +91,11 @@ public:
 			handle_look();
 		}
 
-		auto position = camera->get_position();
+		auto &transform = m_owner->get_entity().get_transform();
+		auto position = transform.get_local_position();
+
 		camera->look_at(position, position + camera->front_dir);
+		// camera->set_position({-5, 0, 5});
 	}
 
 	void handle_look()
@@ -169,7 +170,7 @@ public:
 			position += speed * camera->get_left();
 		}
 
-		camera->set_position(position);
+		// camera->set_position(position);
 		transform.set_local_position(position);
 	}
 
@@ -202,6 +203,8 @@ protected:
 		camera->set_projection(forge::CameraProjectionMode::Perspective);
 
 		renderer->set_active_camera(camera);
+
+		camera->set_position(m_owner->get_entity().get_local_position());
 	}
 };
 
@@ -506,6 +509,11 @@ public:
 		renderer->update_light(m_owner->get_entity().get_position(), glm::vec3{m_color});
 	}
 
+	std::vector<std::type_index> get_bundle() override
+	{
+		return { typeid(PrimitiveRendererComponent) };
+	}
+
 	EXPORT_FIELDS(COLOR_FIELD(&m_color));
 
 private:
@@ -518,31 +526,6 @@ struct MyArgs
 	i32 window_height;
 	std::string_view some_name = "alex";
 	bool my_bool;
-};
-
-void use(int, const std::string &)
-{
-
-}
-
-void use(std::string &)
-{
-
-}
-
-class BaseBase
-{
-
-};
-
-class Base : public BaseBase
-{
-
-};
-
-class Derived : public Base
-{
-
 };
 
 int main(int argc, const char **argv)
@@ -575,7 +558,7 @@ int main(int argc, const char **argv)
 	nexus->register_component<ClusteredRenderingComponent>();
 	nexus->register_component<TempLightComponent>();
 
-	auto &player = nexus->create_entity<SpinCamera>("Player");
+	auto &player = nexus->create_entity<FlyCamera>("Player");
 
 	player.get_transform().set_local_position({0, 0, 5});
 
@@ -593,7 +576,7 @@ int main(int argc, const char **argv)
 
 	light.set_local_position(glm::vec3{2, 1, -2});
 
-	auto *light_renderer = light.add_component<PrimitiveRendererComponent>();
+	// auto *light_renderer = light.add_component<PrimitiveRendererComponent>();
 
 	// light_renderer->set_diffuse_texture("./assets/textures/wall.jpg");
 

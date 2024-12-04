@@ -42,7 +42,7 @@ namespace forge
 		[[nodiscard]]
 		inline glm::vec3 get_position() const
 		{
-			return m_position;
+			return m_view[3];
 		}
 
 		inline void set_direction()
