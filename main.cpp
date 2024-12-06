@@ -14,6 +14,62 @@
 #include "util/random.hpp"
 #include "system/native_dialog.hpp"
 
+class CameraComponent : public forge::IComponent
+{
+public:
+
+	[[nodiscard]]
+	forge::Camera* get_data() const
+	{
+		return m_camera;
+	}
+
+private:
+	u32 m_on_transform_update_connection;
+
+protected:
+	forge::Camera *m_camera = nullptr;
+	u32 m_camera_id;
+
+	void on_destroy() override
+	{
+		auto *renderer = forge::Engine::get_instance().get_subsystem<forge::OglRenderer>();
+
+		renderer->destroy_camera(m_camera_id);
+
+		auto &owner = m_owner->get_entity();
+
+		owner.on_entity_transform_updated.disconnect(m_on_transform_update_connection);
+	}
+
+	void on_enabled() override
+	{
+		auto *renderer = forge::Engine::get_instance().get_subsystem<forge::OglRenderer>();
+
+		renderer->set_active_camera(m_camera);
+	}
+
+	void on_enter() override
+	{
+		auto *renderer = forge::Engine::get_instance().get_subsystem<forge::OglRenderer>();
+
+		auto [ptr, id] = renderer->create_camera();
+
+		assert(ptr != nullptr);
+
+		m_camera = ptr;
+		m_camera_id = id;
+
+		m_camera->projection_mode = forge::CameraProjectionMode::Perspective;
+
+		auto &owner = m_owner->get_entity();
+
+		m_on_transform_update_connection = owner.on_entity_transform_updated.connect([&camera = m_camera](const auto &transform)
+		{
+			camera->position = transform.get_local_position();
+		});
+	}
+};
 class SpinCamera final : public forge::IComponent
 {
 public:
@@ -39,7 +95,7 @@ public:
 		auto camera_x = glm::sin(runtime) * radius;
 		auto camera_z = glm::cos(runtime) * radius;
 
-		camera->look_at({camera_x, height, camera_z}, {});
+		camera->position = glm::vec3{camera_x, height, camera_z};
 	}
 
 	EXPORT_FIELDS(&speed, &radius, &height);
@@ -67,7 +123,7 @@ protected:
 		camera = ptr;
 		m_camera_id = id;
 
-		camera->set_projection(forge::CameraProjectionMode::Perspective);
+		camera->projection_mode = forge::CameraProjectionMode::Perspective;
 
 		renderer->set_active_camera(camera);
 	}
@@ -94,8 +150,7 @@ public:
 		auto &transform = m_owner->get_entity().get_transform();
 		auto position = transform.get_local_position();
 
-		camera->look_at(position, position + camera->front_dir);
-		// camera->set_position({-5, 0, 5});
+		camera->position = position;
 	}
 
 	void handle_look()
@@ -117,7 +172,7 @@ public:
 
 		camera->pitch = glm::clamp(camera->pitch, -90.0f, 90.0f);
 
-		camera->set_direction();
+		camera->update_direction();
 	}
 
 	bool is_cursor_active() const
@@ -155,11 +210,11 @@ public:
 
 		if (is_key_held(forge::Key::W))
 		{
-			position += speed * camera->front_dir;
+			position += speed * camera->front;
 		}
 		else if (is_key_held(forge::Key::S))
 		{
-			position -= speed * camera->front_dir;
+			position -= speed * camera->front;
 		}
 		else if (is_key_held(forge::Key::D))
 		{
@@ -200,11 +255,9 @@ protected:
 		camera = ptr;
 		m_camera_id = id;
 
-		camera->set_projection(forge::CameraProjectionMode::Perspective);
+		camera->projection_mode = forge::CameraProjectionMode::Perspective;
 
 		renderer->set_active_camera(camera);
-
-		camera->set_position(m_owner->get_entity().get_local_position());
 	}
 };
 

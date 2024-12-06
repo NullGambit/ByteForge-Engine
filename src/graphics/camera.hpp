@@ -7,74 +7,53 @@
 
 namespace forge
 {
-	enum class CameraProjectionMode
+	enum class CameraProjectionMode : u8
 	{
 		Perspective,
 		Orthographic,
 	};
 
 	// TODO: the api of the camera class is currently very place holder most of it will likely be replaced in the future
-	class Camera
+	struct Camera
 	{
-	public:
+		glm::vec3 up {0, 1, 0};
+		glm::vec3 front {0, 0, -1};
+		glm::vec3 position {};
 
-		glm::vec3 up_dir {0, 1, 0};
-		glm::vec3 front_dir {0, 0, -1};
-		float yaw;
-		float pitch;
+		CameraProjectionMode projection_mode = CameraProjectionMode::Perspective;
 
-		Camera(CameraProjectionMode mode, float fov = 65, float near = 0.1, float far = 1000);
+		float yaw {};
+		float pitch {};
+		float fov = 65;
+		float near = 0.1;
+		float far = 1000;
+		float zoom = 1.0;
+
+		Camera(CameraProjectionMode mode, float fov = 65, float near = 0.1, float far = 1000) :
+			projection_mode(mode),
+			fov(fov),
+			near(near),
+			far(far)
+		{}
 
 		Camera() = default;
 
-		void set_mode(CameraProjectionMode mode);
-		void set_fov(float fov);
-		void set_near(float near);
-		void set_far(float far);
-		void set_bounds(float near, float far);
-
-		inline void set_position(const glm::vec3 position)
+		inline void update_direction()
 		{
-			m_position = position;
-			// m_view = glm::translate(m_view, position);
-		}
+			const glm::vec3 direction
+			{
+				glm::cos(glm::radians(yaw)) * glm::cos(glm::radians(pitch)),
+				glm::sin(glm::radians(pitch)),
+				glm::sin(glm::radians(yaw)) * glm::cos(glm::radians(pitch)),
+			};
 
-		[[nodiscard]]
-		inline glm::vec3 get_position() const
-		{
-			return m_view[3];
-		}
-
-		inline void set_direction()
-		{
-			m_direction.x = glm::cos(glm::radians(yaw)) * glm::cos(glm::radians(pitch));
-			m_direction.y = glm::sin(glm::radians(pitch));
-			m_direction.z = glm::sin(glm::radians(yaw)) * glm::cos(glm::radians(pitch));
-
-			front_dir = glm::normalize(m_direction);
-		}
-
-		[[nodiscard]]
-		inline glm::vec3 get_direction() const
-		{
-			return m_direction;
-		}
-
-		inline void set_zoom(float value)
-		{
-			m_view = glm::scale(m_view, glm::vec3{value});
-		}
-
-		[[nodiscard]]
-		inline auto get_front() const
-		{
-			return glm::normalize(m_direction);
+			front = glm::normalize(direction);
 		}
 
 		[[nodiscard]]
 		inline auto get_right() const
 		{
-			return glm::normalize(glm::cross(front_dir, up_dir));
+			return glm::normalize(glm::cross(front, up));
 		}
 
 		[[nodiscard]]
@@ -86,7 +65,7 @@ namespace forge
 		[[nodiscard]]
 		inline auto get_up() const
 		{
-			return glm::cross(m_direction, get_right());
+			return glm::normalize(glm::cross(front, get_right()));
 		}
 
 		[[nodiscard]]
@@ -95,44 +74,29 @@ namespace forge
 			return -get_up();
 		}
 
-		inline void look_at(glm::vec3 position, glm::vec3 target)
+		[[nodiscard]]
+		inline glm::mat4 get_view() const
 		{
-			m_view = glm::lookAt(position, target, up_dir);
-		}
+			auto view = glm::lookAt(position, position + front, up);
 
-		glm::mat4& get_view()
-		{
-			return m_view;
-		}
+			view = glm::scale(view, glm::vec3{zoom});
 
-		glm::mat4& get_projection()
-		{
-			return m_projection;
+			return view;
 		}
 
 		[[nodiscard]]
-		inline glm::mat4 pv() const
+		glm::mat4 get_projection() const;
+
+		[[nodiscard]]
+		inline glm::mat4 calculate_pv() const
 		{
-			return m_projection * m_view;
+			return get_projection() * get_view();
 		}
 
 		[[nodiscard]]
-		inline glm::mat4 pvm(const glm::mat4 &model) const
+		inline glm::mat4 calculate_pvm(const glm::mat4 &model) const
 		{
-			return pv() * model;
+			return calculate_pv() * model;
 		}
-
-		void set_projection(CameraProjectionMode mode = CameraProjectionMode::Perspective);
-
-	private:
-		glm::mat4 m_view {};
-		glm::mat4 m_projection {};
-		glm::vec3 m_direction {};
-		glm::vec3 m_position;
-
-		float m_fov = 65;
-		float m_near = 0.1;
-		float m_far = 1000;
-		CameraProjectionMode m_projection_mode = CameraProjectionMode::Perspective;
 	};
 }

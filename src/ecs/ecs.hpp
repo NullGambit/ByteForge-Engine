@@ -85,6 +85,7 @@ namespace forge
         virtual void on_enabled() {}
         virtual void on_disabled() {}
         virtual void on_enter() {}
+        virtual void on_destroy() {}
     };
 
     class Entity final
@@ -525,6 +526,8 @@ namespace forge
             {
                 return EcsResult::EntityDoesNotHaveComponent;
             }
+
+            ((IComponent*)iter->second.pointer)->on_destroy();
 
             auto &ct = m_component_table[index];
 

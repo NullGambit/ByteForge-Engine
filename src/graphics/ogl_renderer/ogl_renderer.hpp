@@ -93,7 +93,7 @@ namespace forge
 			return m_statistics;
 		}
 
-		std::pair<Camera*, u32> create_camera();
+		std::pair<Camera*, u32> create_camera(bool set_active = true);
 
 		void destroy_camera(u32 id);
 

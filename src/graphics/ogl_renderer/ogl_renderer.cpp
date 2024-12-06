@@ -108,11 +108,11 @@ void forge::OglRenderer::update()
 		{
 			const auto &model = data.primitive.m_model;
 
-			auto pvm = m_active_camera->get_projection() * m_active_camera->get_view() * model;
+			const auto pvm = m_active_camera->calculate_pvm(model);
 
 			m_forward_shader.set("pvm", pvm);
 			m_forward_shader.set("model", model);
-			m_forward_shader.set("view_position", m_active_camera->get_position());
+			m_forward_shader.set("view_position", m_active_camera->position);
 			m_forward_shader.set("normal_matrix", data.primitive.m_normal_matrix);
 			m_forward_shader.set("light_position", m_light_position);
 			m_forward_shader.set("light_color", m_light_color);
@@ -211,14 +211,21 @@ glm::vec3 forge::OglRenderer::get_clear_color()
 	return out;
 }
 
-std::pair<forge::Camera*, u32> forge::OglRenderer::create_camera()
+std::pair<forge::Camera*, u32> forge::OglRenderer::create_camera(bool set_active)
 {
 	if (m_camera_pool.get_offset() >= CAMERA_POOL_SIZE)
 	{
 		return {nullptr, UINT32_MAX};
 	}
 
-	return m_render_data_pool.emplace<Camera>();
+	auto result = m_render_data_pool.emplace<Camera>();
+
+	if (set_active)
+	{
+		m_active_camera = result.first;
+	}
+
+	return result;
 }
 
 void forge::OglRenderer::destroy_camera(u32 id)
