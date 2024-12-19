@@ -93,10 +93,6 @@ namespace forge
 			return m_statistics;
 		}
 
-		std::pair<Camera*, u32> create_camera(bool set_active = true);
-
-		void destroy_camera(u32 id);
-
 		void set_active_camera(Camera *camera);
 
 		Camera* get_active_camera();
@@ -134,9 +130,9 @@ namespace forge
 
 		OglRendererArgConfig m_arg_config;
 
+		Camera m_default_camera;
 		Camera *m_active_camera;
 
-		MemPool m_camera_pool;
 		MemPool m_render_data_pool;
 
 		struct TextureData

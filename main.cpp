@@ -14,28 +14,18 @@
 #include "util/random.hpp"
 #include "system/native_dialog.hpp"
 
-class CameraComponent : public forge::IComponent
+class CameraComponent : public forge::IComponent, public forge::Camera
 {
-public:
-
-	[[nodiscard]]
-	forge::Camera* get_data() const
-	{
-		return m_camera;
-	}
-
 private:
 	u32 m_on_transform_update_connection;
 
 protected:
-	forge::Camera *m_camera = nullptr;
-	u32 m_camera_id;
 
 	void on_destroy() override
 	{
 		auto *renderer = forge::Engine::get_instance().get_subsystem<forge::OglRenderer>();
 
-		renderer->destroy_camera(m_camera_id);
+		renderer->set_active_camera(nullptr);
 
 		auto &owner = m_owner->get_entity();
 
@@ -46,37 +36,28 @@ protected:
 	{
 		auto *renderer = forge::Engine::get_instance().get_subsystem<forge::OglRenderer>();
 
-		renderer->set_active_camera(m_camera);
+		renderer->set_active_camera(this);
 	}
 
 	void on_enter() override
 	{
 		auto *renderer = forge::Engine::get_instance().get_subsystem<forge::OglRenderer>();
 
-		auto [ptr, id] = renderer->create_camera();
-
-		assert(ptr != nullptr);
-
-		m_camera = ptr;
-		m_camera_id = id;
-
-		m_camera->projection_mode = forge::CameraProjectionMode::Perspective;
+		renderer->set_active_camera(this);
 
 		auto &owner = m_owner->get_entity();
 
-		m_on_transform_update_connection = owner.on_entity_transform_updated.connect([&camera = m_camera](const auto &transform)
+		m_on_transform_update_connection = owner.on_entity_transform_updated.connect([&position = position](auto &entity)
 		{
-			camera->position = transform.get_local_position();
+			position = entity.get_local_position();
 		});
 	}
 };
-class SpinCamera final : public forge::IComponent
+class SpinCamera final : public CameraComponent
 {
 public:
 
 	REGISTER_UPDATE_FUNC
-
-	forge::Camera *camera = nullptr;
 
 	void update(forge::DeltaTime delta) override
 	{
@@ -95,7 +76,9 @@ public:
 		auto camera_x = glm::sin(runtime) * radius;
 		auto camera_z = glm::cos(runtime) * radius;
 
-		camera->position = glm::vec3{camera_x, height, camera_z};
+		position = glm::vec3{camera_x, height, camera_z};
+
+
 	}
 
 	EXPORT_FIELDS(&speed, &radius, &height);
@@ -107,35 +90,13 @@ public:
 private:
 
 	bool m_is_paused = false;
-
-	u32 m_camera_id;
-
-protected:
-
-	void on_enter() override
-	{
-		auto *renderer = forge::Engine::get_instance().get_subsystem<forge::OglRenderer>();
-
-		auto [ptr, id] = renderer->create_camera();
-
-		assert(ptr != nullptr);
-
-		camera = ptr;
-		m_camera_id = id;
-
-		camera->projection_mode = forge::CameraProjectionMode::Perspective;
-
-		renderer->set_active_camera(camera);
-	}
 };
 
-class FlyCamera final : public forge::IComponent
+class FlyCamera final : public CameraComponent
 {
 public:
 
 	REGISTER_UPDATE_FUNC
-
-	forge::Camera *camera = nullptr;
 
 	void update(forge::DeltaTime delta) override
 	{
@@ -146,11 +107,6 @@ public:
 		{
 			handle_look();
 		}
-
-		auto &transform = m_owner->get_entity().get_transform();
-		auto position = transform.get_local_position();
-
-		camera->position = position;
 	}
 
 	void handle_look()
@@ -167,12 +123,10 @@ public:
 
 		offset *= m_mouse_sensitivity;
 
-		camera->yaw	 += offset.x;
-		camera->pitch += offset.y;
+		yaw	 += offset.x;
+		pitch += offset.y;
 
-		camera->pitch = glm::clamp(camera->pitch, -90.0f, 90.0f);
-
-		camera->update_direction();
+		pitch = glm::clamp(pitch, -90.0f, 90.0f);
 	}
 
 	bool is_cursor_active() const
@@ -203,33 +157,34 @@ public:
 
 	void handle_movement(forge::DeltaTime delta)
 	{
-		auto &transform = m_owner->get_entity().get_transform();
-		auto position = transform.get_local_position();
+		auto &owner = m_owner->get_entity();
+		auto position = owner.get_local_position();
 
 		auto speed = ((is_key_held(forge::Key::LeftShift) ? m_boost_speed : 0) + m_speed) * delta;
 
 		if (is_key_held(forge::Key::W))
 		{
-			position += speed * camera->front;
+			position += speed * get_front();
 		}
 		else if (is_key_held(forge::Key::S))
 		{
-			position -= speed * camera->front;
+			position -= speed * get_front();
 		}
 		else if (is_key_held(forge::Key::D))
 		{
-			position += speed * camera->get_right();
+			position += speed * get_right();
 		}
 		else if (is_key_held(forge::Key::A))
 		{
-			position += speed * camera->get_left();
+			position += speed * get_left();
 		}
 
 		// camera->set_position(position);
-		transform.set_local_position(position);
+		owner.set_local_position(position);
 	}
 
 	EXPORT_FIELDS(
+		&fov,
 		&m_speed,
 		&m_boost_speed,
 		&m_mouse_sensitivity);
@@ -240,25 +195,6 @@ private:
 	float m_mouse_sensitivity = 0.1;
 	bool m_pan_mode = false;
 	glm::vec2 m_last_mouse_coords = forge::get_mouse_coords();
-	u32 m_camera_id;
-
-protected:
-
-	void on_enter() override
-	{
-		auto *renderer = forge::Engine::get_instance().get_subsystem<forge::OglRenderer>();
-
-		auto [ptr, id] = renderer->create_camera();
-
-		assert(ptr != nullptr);
-
-		camera = ptr;
-		m_camera_id = id;
-
-		camera->projection_mode = forge::CameraProjectionMode::Perspective;
-
-		renderer->set_active_camera(camera);
-	}
 };
 
 class ExportFieldTestComponent : public forge::IComponent
@@ -337,7 +273,6 @@ public:
 	{
 		std::vector<forge::ComponentField> out;
 
-
 		for (auto type = 0; auto &texture : m_data->material.textures)
 		{
 			out.emplace_back(FIELD_ENTRY(forge::FieldSeperator{forge::TextureType::to_string(type)}));
@@ -383,9 +318,9 @@ protected:
 		m_data = m_renderer->create_primitive(model);
 
 		m_on_update_connection = entity.on_entity_transform_updated.connect(
-		[&data = m_data](const forge::Transform &transform)
+		[&data = m_data](const auto &entity)
 		{
-			data->update_model(transform.get_model());
+			data->update_model(entity.get_model());
 		});
 	}
 
@@ -399,154 +334,6 @@ protected:
 		m_data->is_hidden = false;
 	}
 
-};
-
-class CounterComponent : public forge::IComponent
-{
-public:
-
-	REGISTER_UPDATE_FUNC
-
-	void update(forge::DeltaTime delta) override
-	{
-		m_counter++;
-	}
-
-private:
-	u64 m_counter = 0;
-};
-
-class ClusteredRenderingComponent : public forge::IComponent
-{
-public:
-
-	struct ClusterEntry
-	{
-		u32 id;
-		glm::mat4 model;
-	};
-
-	REGISTER_UPDATE_FUNC
-
-	// void update(forge::DeltaTime delta) override
-	// {
-	// 	if (m_last_mesh_count != m_mesh_count)
-	// 	{
-	// 		if (m_last_mesh_count < m_mesh_count)
-	// 		{
-	// 			add_meshes(m_mesh_count - m_last_mesh_count);
-	// 		}
-	// 	}
-	//
-	// 	m_last_mesh_count = m_mesh_count;
-	// }
-	//
-	// ~ClusteredRenderingComponent() override
-	// {
-	// 	for (auto &entry : m_meshes)
-	// 	{
-	// 		m_renderer->destroy_primitive(entry.id);
-	// 	}
-	// }
-
-	EXPORT_FIELDS(&m_mesh_count);
-
-private:
-	std::vector<ClusterEntry> m_meshes;
-	int m_mesh_count = 1;
-	int m_last_mesh_count = m_mesh_count;
-	forge::OglRenderer *m_renderer;
-
-protected:
-	// void on_enter() override
-	// {
-	// 	m_renderer = forge::Engine::get_instance().renderer;
-	//
-	// 	add_meshes(m_mesh_count);
-	// }
-	//
-	// void on_disabled() override
-	// {
-	// 	set_all_hidden(true);
-	// }
-	//
-	// void on_enabled() override
-	// {
-	// 	set_all_hidden(false);
-	// }
-
-private:
-
-	// void set_all_hidden(bool value)
-	// {
-	// 	for (auto &entry : m_meshes)
-	// 	{
-	// 		m_renderer->primitive_set_hidden(entry.id, value);
-	// 	}
-	// }
-	//
-	// void add_meshes(int count)
-	// {
-	// 	glm::mat4 model {1.0};
-	//
-	// 	for (auto i = 0; i < count; i++)
-	// 	{
-	// 		auto primitive_model = glm::translate(model, util::rand_vec3(-10, 10));
-	//
-	// 		primitive_model = glm::scale(primitive_model, glm::vec3{util::rand_float(0.1, 2)});
-	//
-	// 		primitive_model = glm::rotate(primitive_model, util::rand_float(0, 1), normalize(util::rand_vec3(-360, 360)));
-	//
-	// 		auto id = m_renderer->create_primitive({primitive_model});
-	//
-	// 		m_meshes.emplace_back(id, model);
-	// 	}
-	// }
-};
-
-class BusyWorkComponent : public forge::IComponent
-{
-public:
-
-	REGISTER_UPDATE_FUNC
-
-	void update(forge::DeltaTime delta) override
-	{
-		m_result *= glm::mat4{5.0};
-	}
-
-private:
-	glm::mat4 m_result {1.0};
-};
-
-class BusyWorkComponent2 : public forge::IComponent
-{
-public:
-
-	REGISTER_UPDATE_FUNC
-
-	void update(forge::DeltaTime delta) override
-	{
-		m_result *= glm::mat4{5.0};
-	}
-
-private:
-	glm::mat4 m_result {1.0};
-};
-
-class BusyWorkComponent3 : public forge::IComponent
-{
-public:
-
-	REGISTER_UPDATE_FUNC
-
-	void update(forge::DeltaTime delta) override
-	{
-		m_result *= glm::mat4{5.0};
-	}
-
-private:
-	glm::mat4 m_result {1.0};
 };
 
 class TempLightComponent : public forge::IComponent
@@ -581,8 +368,100 @@ struct MyArgs
 	bool my_bool;
 };
 
+struct AosComp
+{
+	int x;
+	int y;
+	int z;
+	glm::mat4 mat {};
+	bool is_active = true;
+};
+
+struct SoaComp
+{
+	std::vector<int> x;
+	std::vector<int> y;
+	std::vector<int> z;
+	std::vector<glm::mat4> mat;
+	std::vector<bool> is_active;
+};
+
 int main(int argc, const char **argv)
 {
+	// constexpr auto COUNT = 10'000'000;
+	// constexpr auto INACTIVE_RATE = COUNT / (COUNT / 2);
+	// using time_unit = std::chrono::milliseconds;
+	// int inactive_counter = 0;
+	//
+	// std::vector<AosComp> aos_data;
+	//
+	// aos_data.reserve(COUNT);
+	//
+	// for (auto i = 0; i < COUNT; i++)
+	// {
+	// 	AosComp comp {};
+	//
+	// 	inactive_counter++;
+	//
+	// 	if (inactive_counter >= INACTIVE_RATE)
+	// 	{
+	// 		comp.is_active = false;
+	// 		inactive_counter = 0;
+	// 	}
+	//
+	// 	aos_data.push_back(comp);
+	// }
+	//
+	// SoaComp soa_data;
+	//
+	// for (auto i = 0; i < COUNT; i++)
+	// {
+	// 	inactive_counter++;
+	//
+	// 	if (inactive_counter >= INACTIVE_RATE)
+	// 	{
+	// 		soa_data.is_active.emplace_back(false);
+	// 		inactive_counter = 0;
+	// 	}
+	// 	else
+	// 	{
+	// 		soa_data.is_active.emplace_back(true);
+	// 	}
+	//
+	// 	soa_data.x.emplace_back(0);
+	// 	soa_data.y.emplace_back(0);
+	// 	soa_data.z.emplace_back(0);
+	// 	soa_data.mat.emplace_back();
+	// }
+	//
+	// auto start = std::chrono::high_resolution_clock::now();
+	//
+	// for (auto &comp : aos_data)
+	// {
+	// 	if (comp.is_active)
+	// 	{
+	// 		comp.x += 10;
+	// 	}
+	// }
+	//
+	// auto end = std::chrono::high_resolution_clock::now();
+	//
+	// std::cout << "aos time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
+	//
+	// start = std::chrono::high_resolution_clock::now();
+	//
+	// for (auto i = 0; i < COUNT; i++)
+	// {
+	// 	if (soa_data.is_active[i])
+	// 	{
+	// 		soa_data.x[i] += 10;
+	// 	}
+	// }
+	//
+	// end = std::chrono::high_resolution_clock::now();
+	//
+	// std::cout << "soa time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
+
 	auto &engine = forge::Engine::get_instance();
 
 	auto result = engine.init(std::span{argv, (size_t)argc},
@@ -608,10 +487,16 @@ int main(int argc, const char **argv)
 	nexus->register_component<ExportFieldTestComponent>();
 	nexus->register_component<SpinCamera>();
 	nexus->register_component<PrimitiveRendererComponent>();
-	nexus->register_component<ClusteredRenderingComponent>();
 	nexus->register_component<TempLightComponent>();
 
 	auto &player = nexus->create_entity<FlyCamera>("Player");
+	//
+	// auto *camera = player.get_component<FlyCamera>();
+	//
+	// if (camera)
+	// {
+	// 	camera->fov = 100;
+	// }
 
 	player.get_transform().set_local_position({0, 0, 5});
 

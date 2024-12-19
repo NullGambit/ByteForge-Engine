@@ -13,11 +13,9 @@ namespace forge
 		Orthographic,
 	};
 
-	// TODO: the api of the camera class is currently very place holder most of it will likely be replaced in the future
 	struct Camera
 	{
 		glm::vec3 up {0, 1, 0};
-		glm::vec3 front {0, 0, -1};
 		glm::vec3 position {};
 
 		CameraProjectionMode projection_mode = CameraProjectionMode::Perspective;
@@ -38,22 +36,32 @@ namespace forge
 
 		Camera() = default;
 
-		inline void update_direction()
+		[[nodiscard]]
+		inline auto get_front() const
 		{
+			const auto y = glm::radians(yaw);
+			const auto p = glm::radians(pitch);
+
 			const glm::vec3 direction
 			{
-				glm::cos(glm::radians(yaw)) * glm::cos(glm::radians(pitch)),
-				glm::sin(glm::radians(pitch)),
-				glm::sin(glm::radians(yaw)) * glm::cos(glm::radians(pitch)),
+				glm::cos(y) * glm::cos(p),
+				glm::sin(p),
+				glm::sin(y) * glm::cos(p),
 			};
 
-			front = glm::normalize(direction);
+			return glm::normalize(direction);
+		}
+
+		[[nodiscard]]
+		inline auto get_back() const
+		{
+			return -get_front();
 		}
 
 		[[nodiscard]]
 		inline auto get_right() const
 		{
-			return glm::normalize(glm::cross(front, up));
+			return glm::normalize(glm::cross(get_front(), up));
 		}
 
 		[[nodiscard]]
@@ -65,7 +73,7 @@ namespace forge
 		[[nodiscard]]
 		inline auto get_up() const
 		{
-			return glm::normalize(glm::cross(front, get_right()));
+			return glm::normalize(glm::cross(get_front(), get_right()));
 		}
 
 		[[nodiscard]]
@@ -77,7 +85,7 @@ namespace forge
 		[[nodiscard]]
 		inline glm::mat4 get_view() const
 		{
-			auto view = glm::lookAt(position, position + front, up);
+			auto view = glm::lookAt(position, position + get_front(), up);
 
 			view = glm::scale(view, glm::vec3{zoom});
 

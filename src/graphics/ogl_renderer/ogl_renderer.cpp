@@ -78,12 +78,7 @@ std::string forge::OglRenderer::init()
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 
-	m_camera_pool.init<Camera>(CAMERA_POOL_SIZE);
-
-	// default camera
-	auto [ptr, _] = m_camera_pool.emplace<Camera>();
-
-	m_active_camera = ptr;
+	m_active_camera = &m_default_camera;
 
 	m_render_data_pool.init<PrimitiveRenderData>(RENDER_DATA_POOL_SIZE);
 
@@ -211,31 +206,16 @@ glm::vec3 forge::OglRenderer::get_clear_color()
 	return out;
 }
 
-std::pair<forge::Camera*, u32> forge::OglRenderer::create_camera(bool set_active)
+void forge::OglRenderer::set_active_camera(Camera *camera)
 {
-	if (m_camera_pool.get_offset() >= CAMERA_POOL_SIZE)
+	if (camera == nullptr)
 	{
-		return {nullptr, UINT32_MAX};
+		m_active_camera = &m_default_camera;
 	}
-
-	auto result = m_render_data_pool.emplace<Camera>();
-
-	if (set_active)
+	else
 	{
-		m_active_camera = result.first;
+		m_active_camera = camera;
 	}
-
-	return result;
-}
-
-void forge::OglRenderer::destroy_camera(u32 id)
-{
-	m_camera_pool.free(id, false);
-}
-
-void forge::OglRenderer::set_active_camera(Camera* camera)
-{
-	m_active_camera = camera;
 }
 
 forge::Camera* forge::OglRenderer::get_active_camera()
