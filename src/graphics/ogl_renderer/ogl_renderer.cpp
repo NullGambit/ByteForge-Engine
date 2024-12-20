@@ -114,50 +114,42 @@ void forge::OglRenderer::update()
 			m_forward_shader.set("light_position", m_light_position);
 			m_forward_shader.set("light_color", m_light_color);
 
-			auto &material = data.primitive.material;
 
-			static constexpr TextureList<std::string_view> texture_names
+			static constexpr TextureList<std::array<std::string_view, 4>> properties
 			{
-				"material.diffuse",
-				"material.specular",
-				"material.emissive",
+				std::array<std::string_view, 4>
+				{
+					"material.diffuse.texture",
+					"material.diffuse.enabled",
+					"material.diffuse.scale",
+					"material.diffuse.strength",
+				},
+				{
+					"material.specular.texture",
+					"material.specular.enabled",
+					"material.specular.scale",
+					"material.specular.strength",
+				},
+				{
+					"material.emissive.texture",
+					"material.emissive.enabled",
+					"material.emissive.scale",
+					"material.emissive.strength",
+				}
 			};
 
-			static std::string buffer;
-
-			buffer.reserve(64);
+			auto &material = data.primitive.material;
 
 			for (auto i = 0; auto &texture : material.textures)
 			{
 				data.textures[i].texture.bind(i);
 
-				buffer += texture_names[i];
-				buffer += ".texture";
+				auto &props = properties[i];
 
-				m_forward_shader.set(buffer, i);
-
-				buffer.clear();
-
-				buffer += texture_names[i];
-				buffer += ".enabled";
-
-				m_forward_shader.set(buffer, texture.enabled);
-
-				buffer.clear();
-
-				buffer += texture_names[i];
-				buffer += ".scale";
-
-				m_forward_shader.set(buffer, texture.scale);
-
-				buffer.clear();
-
-				buffer += texture_names[i];
-				buffer += ".strength";
-
-				m_forward_shader.set(buffer, texture.strength);
-
-				buffer.clear();
+				m_forward_shader.set(props[0], i);
+				m_forward_shader.set(props[1], texture.enabled);
+				m_forward_shader.set(props[2], texture.scale);
+				m_forward_shader.set(props[3], texture.strength);
 
 				i++;
 			}
