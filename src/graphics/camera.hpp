@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include <glm/vec3.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
@@ -17,6 +18,7 @@ namespace forge
 	{
 		glm::vec3 up {0, 1, 0};
 		glm::vec3 position {};
+		std::optional<glm::vec3> lookat_override = std::nullopt;
 
 		CameraProjectionMode projection_mode = CameraProjectionMode::Perspective;
 
@@ -85,7 +87,9 @@ namespace forge
 		[[nodiscard]]
 		inline glm::mat4 get_view() const
 		{
-			auto view = glm::lookAt(position, position + get_front(), up);
+			auto target = lookat_override.value_or(position + get_front());
+
+			auto view = glm::lookAt(position, target, up);
 
 			view = glm::scale(view, glm::vec3{zoom});
 

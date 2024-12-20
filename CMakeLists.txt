@@ -7,6 +7,8 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_definitions(SHADER_HOT_RELOAD)
 endif()
 
+add_compile_definitions(USE_UNIFORM_CACHE)
+
 add_compile_definitions(GLM_ENABLE_EXPERIMENTAL)
 
 #set(CMAKE_CXX_FLAGS "-fconstexpr-depth=4096")
@@ -108,6 +110,8 @@ add_executable(ByteForge_Engine main.cpp
         src/graphics/ogl_renderer/gl_buffers.cpp
         src/config/arg_parser.cpp
         src/config/arg_parser.hpp
+        "src/framework/components /camera_component.cpp"
+        "src/framework/components /camera_component.hpp"
 )
 
 target_compile_options(ByteForge_Engine PRIVATE -include ${CMAKE_SOURCE_DIR}/src/core/forge_intrinsic.hpp)

@@ -17,9 +17,9 @@ namespace forge
 		{
 			switch (type)
 			{
-				case Diffuse: return "diffuse";
-				case Specular: return "specular";
-				case Emissive: return "emissive";
+				case Diffuse: return std::string_view{"diffuse", 7};
+				case Specular: return std::string_view{"specular", 8};
+				case Emissive: return std::string_view{"emissive", 8};
 				default: return "";
 			}
 		}

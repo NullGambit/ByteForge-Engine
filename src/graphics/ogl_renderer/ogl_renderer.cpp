@@ -95,6 +95,8 @@ void forge::OglRenderer::update()
 
 	glBindVertexArray(m_cube_buffers.vao);
 
+	const auto pv = m_active_camera->calculate_pv();
+
 	for (auto i = 0; i < m_render_data_pool.get_length(); i++)
 	{
 		auto &data = *m_render_data_pool.get_from_index<PrimitiveRenderData>(i);
@@ -103,7 +105,7 @@ void forge::OglRenderer::update()
 		{
 			const auto &model = data.primitive.m_model;
 
-			const auto pvm = m_active_camera->calculate_pvm(model);
+			const auto pvm = pv * model;
 
 			m_forward_shader.set("pvm", pvm);
 			m_forward_shader.set("model", model);
@@ -114,37 +116,48 @@ void forge::OglRenderer::update()
 
 			auto &material = data.primitive.material;
 
+			static constexpr TextureList<std::string_view> texture_names
+			{
+				"material.diffuse",
+				"material.specular",
+				"material.emissive",
+			};
+
+			static std::string buffer;
+
+			buffer.reserve(64);
+
 			for (auto i = 0; auto &texture : material.textures)
 			{
-				static char name_buffer[48] = "material.";
-				constexpr auto start_offset = sizeof("material.")-1;
-
 				data.textures[i].texture.bind(i);
 
-				auto field_name = TextureType::to_string(i);
+				buffer += texture_names[i];
+				buffer += ".texture";
 
-				strcpy(name_buffer + start_offset, field_name.data());
+				m_forward_shader.set(buffer, i);
 
-				auto last_offset = start_offset + field_name.size();
+				buffer.clear();
 
-				name_buffer[last_offset] = '.';
-				name_buffer[++last_offset] = '\0';
+				buffer += texture_names[i];
+				buffer += ".enabled";
 
-				strcpy(name_buffer + last_offset, "texture");
+				m_forward_shader.set(buffer, texture.enabled);
 
-				m_forward_shader.set(name_buffer, i);
+				buffer.clear();
 
-				strcpy(name_buffer + last_offset, "enabled");
+				buffer += texture_names[i];
+				buffer += ".scale";
 
-				m_forward_shader.set(name_buffer, texture.enabled);
+				m_forward_shader.set(buffer, texture.scale);
 
-				strcpy(name_buffer + last_offset, "scale");
+				buffer.clear();
 
-				m_forward_shader.set(name_buffer, texture.scale);
+				buffer += texture_names[i];
+				buffer += ".strength";
 
-				strcpy(name_buffer + last_offset, "strength");
+				m_forward_shader.set(buffer, texture.strength);
 
-				m_forward_shader.set(name_buffer, texture.strength);
+				buffer.clear();
 
 				i++;
 			}

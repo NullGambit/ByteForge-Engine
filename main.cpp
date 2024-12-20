@@ -7,53 +7,14 @@
 #include "glm/glm.hpp"
 #include "core/logging.hpp"
 #include "framework/input.hpp"
-#include "src/util/types.hpp"
 #include "core/engine.hpp"
+#include "framework/components /camera_component.hpp"
 #include "graphics/ogl_renderer/ogl_renderer.hpp"
 #include "memory/arena_allocator.hpp"
 #include "util/random.hpp"
 #include "system/native_dialog.hpp"
 
-class CameraComponent : public forge::IComponent, public forge::Camera
-{
-private:
-	u32 m_on_transform_update_connection;
-
-protected:
-
-	void on_destroy() override
-	{
-		auto *renderer = forge::Engine::get_instance().get_subsystem<forge::OglRenderer>();
-
-		renderer->set_active_camera(nullptr);
-
-		auto &owner = m_owner->get_entity();
-
-		owner.on_entity_transform_updated.disconnect(m_on_transform_update_connection);
-	}
-
-	void on_enabled() override
-	{
-		auto *renderer = forge::Engine::get_instance().get_subsystem<forge::OglRenderer>();
-
-		renderer->set_active_camera(this);
-	}
-
-	void on_enter() override
-	{
-		auto *renderer = forge::Engine::get_instance().get_subsystem<forge::OglRenderer>();
-
-		renderer->set_active_camera(this);
-
-		auto &owner = m_owner->get_entity();
-
-		m_on_transform_update_connection = owner.on_entity_transform_updated.connect([&position = position](auto &entity)
-		{
-			position = entity.get_local_position();
-		});
-	}
-};
-class SpinCamera final : public CameraComponent
+class SpinCamera final : public forge::CameraComponent
 {
 public:
 
@@ -77,11 +38,15 @@ public:
 		auto camera_z = glm::cos(runtime) * radius;
 
 		position = glm::vec3{camera_x, height, camera_z};
-
-
+		lookat_override = glm::vec3{0.0};
 	}
 
-	EXPORT_FIELDS(&speed, &radius, &height);
+	EXPORT_FIELDS(
+		CAMERA_COMPONENT_EXPORTED_FIELDS,
+		forge::FieldSeperator{"Spin parameters"},
+		&speed,
+		&radius,
+		&height);
 
 	float speed = 0.5;
 	float radius = 5;
@@ -92,7 +57,7 @@ private:
 	bool m_is_paused = false;
 };
 
-class FlyCamera final : public CameraComponent
+class FlyCamera final : public forge::CameraComponent
 {
 public:
 
@@ -184,7 +149,8 @@ public:
 	}
 
 	EXPORT_FIELDS(
-		&fov,
+		CAMERA_COMPONENT_EXPORTED_FIELDS,
+		forge::FieldSeperator{"Fly parameters"},
 		&m_speed,
 		&m_boost_speed,
 		&m_mouse_sensitivity);
@@ -247,7 +213,7 @@ public:
 	~PrimitiveRendererComponent() override
 	{
 		m_renderer->destroy_primitive(m_data->get_id());
-		m_owner->get_entity().on_entity_transform_updated.disconnect(m_on_update_connection);
+		m_owner->get_entity().on_transform_update.disconnect(m_on_update_connection);
 	}
 
 	void set_texture(std::string_view path, u32 type)
@@ -308,7 +274,7 @@ private:
 	forge::ConnectionID m_on_update_connection;
 
 protected:
-	void on_enter() override
+	void on_create() override
 	{
 		m_renderer = forge::Engine::get_instance().get_subsystem<forge::OglRenderer>();
 
@@ -317,7 +283,7 @@ protected:
 
 		m_data = m_renderer->create_primitive(model);
 
-		m_on_update_connection = entity.on_entity_transform_updated.connect(
+		m_on_update_connection = entity.on_transform_update.connect(
 		[&data = m_data](const auto &entity)
 		{
 			data->update_model(entity.get_model());
@@ -384,6 +350,36 @@ struct SoaComp
 	std::vector<int> z;
 	std::vector<glm::mat4> mat;
 	std::vector<bool> is_active;
+};
+
+class BobComponent : public forge::IComponent
+{
+
+public:
+	REGISTER_UPDATE_FUNC
+
+	void update(forge::DeltaTime delta) override
+	{
+		auto &owner = m_owner->get_entity();
+
+		auto position = owner.get_local_position();
+		auto runtime = forge::Engine::get_instance().get_engine_runtime();
+
+		position.x = glm::sin(runtime + m_offset);
+
+		owner.set_local_position(position);
+
+		m_mat *= glm::inverse(owner.get_model()) * glm::inverse(glm::transpose(owner.get_model()));
+	}
+
+private:
+	float m_offset = 0;
+	glm::mat4 m_mat {1.0};
+
+	void on_create() override
+	{
+
+	}
 };
 
 int main(int argc, const char **argv)
@@ -500,19 +496,26 @@ int main(int argc, const char **argv)
 
 	player.get_transform().set_local_position({0, 0, 5});
 
-	player.emplace_child<ExportFieldTestComponent>("Child");
+	// player.emplace_child<ExportFieldTestComponent>("Child");
+	//
+	// auto &cube = nexus->create_entity("Cube");
+	//
+	// auto *primitive = cube.add_component<PrimitiveRendererComponent>();
+	//
+	// primitive->set_texture("assets/textures/container2.png", forge::TextureType::Diffuse);
+	// primitive->set_texture("assets/textures/container2_specular.png", forge::TextureType::Specular);
+	// primitive->set_texture("assets/textures/matrix.jpg", forge::TextureType::Emissive);
+	//
+	// auto &light = nexus->create_entity<TempLightComponent>("Light");
+	//
+	// light.set_local_position(glm::vec3{2, 1, -2});
 
-	auto &cube = nexus->create_entity("Cube");
+	constexpr auto COUNT = 10'000;
 
-	auto *primitive = cube.add_component<PrimitiveRendererComponent>();
-
-	primitive->set_texture("assets/textures/container2.png", forge::TextureType::Diffuse);
-	primitive->set_texture("assets/textures/container2_specular.png", forge::TextureType::Specular);
-	primitive->set_texture("assets/textures/matrix.jpg", forge::TextureType::Emissive);
-
-	auto &light = nexus->create_entity<TempLightComponent>("Light");
-
-	light.set_local_position(glm::vec3{2, 1, -2});
+	for (auto i = 0; i < COUNT; i++)
+	{
+		nexus->create_entity<PrimitiveRendererComponent, BobComponent>();
+	}
 
 	// auto *light_renderer = light.add_component<PrimitiveRendererComponent>();
 

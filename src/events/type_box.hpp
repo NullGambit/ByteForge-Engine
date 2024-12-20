@@ -3,6 +3,7 @@
 #include <mutex>
 #include <typeindex>
 
+#include "signal.hpp"
 #include "../container/map.hpp"
 #include "../memory/mem_pool.hpp"
 #include "../memory/defs.hpp"

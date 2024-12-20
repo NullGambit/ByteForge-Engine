@@ -5,8 +5,6 @@
 
 #include "core/engine.hpp"
 
-
-
 void forge::IComponent::set_enabled(bool value)
 {
 	m_is_enabled = value;
@@ -29,6 +27,11 @@ u8* forge::Entity::add_component(std::type_index index)
 std::vector<forge::EntityEntry>& forge::Entity::get_children()
 {
 	return m_nexus->m_entities_table[m_children_index].entities;
+}
+
+size_t forge::Entity::get_children_count()
+{
+	return get_children().size();
 }
 
 void forge::Entity::set_name(std::string_view new_name)
@@ -69,7 +72,7 @@ void forge::Entity::update_hierarchy()
 		m_transform.m_model = m_transform.compute_local_transform();
 	}
 
-	on_entity_transform_updated(*this);
+	on_transform_update(*this);
 
 	if (m_children_index == 0)
 	{
@@ -99,11 +102,22 @@ void forge::Entity::update_dirty_array() const
 	auto top_most_parent = get_top_most_parent();
 	auto &entity = top_most_parent->get_entity();
 
-	if (!entity.m_is_queued_for_update)
+	if (!entity.m_is_queued_for_cleaning)
 	{
 		m_nexus->m_entity_dirty_table.emplace_back(top_most_parent);
-		entity.m_is_queued_for_update = true;
+		entity.m_is_queued_for_cleaning = true;
 	}
+}
+
+void forge::Nexus::ComponentType::free(size_t offset_to_free)
+{
+	auto *mem = mem_pool.get_memory() + offset_to_free;
+
+	auto *component = (IComponent*)mem;
+
+	component->m_is_active = false;
+
+	mem_pool.free(offset_to_free);
 }
 
 void forge::Nexus::ComponentType::update(DeltaTime delta) const
@@ -327,7 +341,7 @@ u8* forge::Nexus::add_component(Entity *entity, std::type_index index)
 	component->m_is_active = true;
 	component->m_is_enabled = true;
 
-	component->on_enter();
+	component->on_create();
 
 	entity->m_components[index] =
 	{
@@ -369,7 +383,7 @@ void forge::Nexus::update()
 		{
 			auto &entity = handle->get_entity();
 			entity.update_hierarchy();
-			entity.m_is_queued_for_update = false;
+			entity.m_is_queued_for_cleaning = false;
 		}
 
 		m_entity_dirty_table.clear();

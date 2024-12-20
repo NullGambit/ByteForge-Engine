@@ -50,7 +50,6 @@ namespace forge
 
     using OnComponentDestroy = Signal<void()>;
 
-
     class IComponent
     {
     public:
@@ -84,7 +83,7 @@ namespace forge
 
         virtual void on_enabled() {}
         virtual void on_disabled() {}
-        virtual void on_enter() {}
+        virtual void on_create() {}
         virtual void on_destroy() {}
     };
 
@@ -92,7 +91,7 @@ namespace forge
     {
     public:
 
-        Signal<void(Entity&)> on_entity_transform_updated;
+        Signal<void(Entity&)> on_transform_update;
 
         template<class T>
         T* add_component();
@@ -103,7 +102,7 @@ namespace forge
         void add_components();
 
         template<class T>
-        T* get_component(std::optional<void(*)()> on_destroy = std::nullopt);
+        T* get_component();
 
         std::vector<EntityEntry>& get_children();
 
@@ -118,6 +117,9 @@ namespace forge
         {
             return m_children_index > 0;
         }
+
+        [[nodiscard]]
+        size_t get_children_count();
 
         [[nodiscard]]
         inline EntityID get_id() const
@@ -197,13 +199,13 @@ namespace forge
             return get_top_most_parent()->get_entity().m_transform;
         }
 
-        inline void set_local_position(glm::vec3 position)
+        inline void set_local_position(Transform::PositionT position)
         {
             update_dirty_array();
             m_transform.set_local_position(position);
         }
 
-        inline glm::vec3 get_local_position() const
+        inline Transform::PositionT get_local_position() const
         {
             return m_transform.m_position;
         }
@@ -241,13 +243,13 @@ namespace forge
             return m_transform.m_scale;
         }
 
-        inline void set_position(glm::vec3 position)
+        inline void set_position(Transform::PositionT position)
         {
             update_dirty_array();
             m_transform.set_position(get_top_most_parent_transform().m_position, position);
         }
 
-        inline glm::vec3 get_position() const
+        inline Transform::PositionT get_position() const
         {
             return m_transform.get_position(get_top_most_parent_transform().m_position);
         }
@@ -285,7 +287,7 @@ namespace forge
             return m_transform.get_euler_rotation(get_top_most_parent_transform().m_scale);
         }
 
-        inline glm::mat4 get_model() const
+        inline Transform::MatT get_model() const
         {
             return m_transform.m_model;
         }
@@ -313,15 +315,15 @@ namespace forge
         u32 m_index;
         // the actual table this entity belongs to if 0 than it is a top level entity
         u32 m_table_index;
-        // an id used for comparison and verification to make sure the entity has not been changed (swapped and popped)
+        // an id used for comparison and verification to make sure the entity has not been changed (swapped and popped?)
         EntityID m_id;
 
-        // Signal<void(Transform&)> m_on_transform_updated;
-
-        bool m_is_queued_for_update = false;
+        // will be set to true if any transform component is marked dirty and signifies that this entity has been marked for cleaning
+        // is mainly used to avoid trying to add it to the dirty table more than once since the table is a vector
+        bool m_is_queued_for_cleaning = false;
 
         [[nodiscard]]
-        EntityViewHandle make_view() const
+        EntityViewHandle make_handle() const
         {
             return std::make_shared<EntityView>(EntityView
             {
@@ -333,7 +335,6 @@ namespace forge
         }
 
         void update_dirty_array() const;
-
     };
 
     struct EntityEntry
@@ -344,12 +345,14 @@ namespace forge
         EntityViewHandle handle;
     };
 
-#define REGISTER_UPDATE_FUNC virtual void should_ever_update() {}
+    // if used within an IComponent class it will be used as a tag to signify that this component should be placed within the update table
+    // the actual function itself is not called ever
+#define REGISTER_UPDATE_FUNC void __should_ever_update__() {}
 
     template<class T>
     concept ComponentShouldEverUpdate = requires(T t)
     {
-        t.should_ever_update();
+        t.__should_ever_update__();
     };
 
     class Nexus final : public ISubSystem
@@ -357,18 +360,8 @@ namespace forge
         struct ComponentType
         {
             MemPool mem_pool;
-            // HashMap<size_t, OnComponentDestroy> destroy_signals;
 
-            void free(size_t offset_to_free)
-            {
-                auto *mem = mem_pool.get_memory() + offset_to_free;
-
-                auto *component = (IComponent*)mem;
-
-                component->m_is_active = false;
-
-                mem_pool.free(offset_to_free);
-            }
+            void free(size_t offset_to_free);
 
             void update(DeltaTime delta) const;
         };
@@ -455,7 +448,7 @@ namespace forge
             entity.m_index = index;
             entity.m_id = m_id_counter++;
 
-            handle = entity.make_view();
+            handle = entity.make_handle();
 
             // TODO: resolve name collisions
             if (name)
@@ -593,7 +586,7 @@ namespace forge
     }
 
     template<class T>
-    T* Entity::get_component(std::optional<void(*)()> on_destroy)
+    T* Entity::get_component()
     {
         auto iter = m_components.find(typeid(T));
 
@@ -601,28 +594,6 @@ namespace forge
         {
             return nullptr;
         }
-
-        // if (on_destroy.has_value())
-        // {
-        //     auto ct_iter = m_nexus->m_component_table.find(typeid(T));
-        //     auto offset = iter->second.offset;
-        //
-        //     if (ct_iter != m_nexus->m_component_table.end())
-        //     {
-        //         auto &ct = ct_iter->second;
-        //
-        //         auto destroy_iter = ct.destroy_signals.find(offset);
-        //         auto &signal = destroy_iter->second;
-        //
-        //         if (destroy_iter == ct.destroy_signals.end())
-        //         {
-        //             auto emplaced = ct.destroy_signals.emplace(offset, OnComponentDestroy());
-        //             signal = emplaced.first->second;
-        //         }
-        //
-        //         signal.connect(on_destroy.value());
-        //     }
-        // }
 
         return (T*)iter->second.pointer;
     }
@@ -652,7 +623,7 @@ namespace forge
         entity.m_index = index;
         entity.m_id = m_nexus->m_id_counter++;
 
-        handle = entity.make_view();
+        handle = entity.make_handle();
 
         if (name)
         {

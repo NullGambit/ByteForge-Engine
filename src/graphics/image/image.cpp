@@ -4,7 +4,7 @@
 
 forge::Image::Image(std::string_view path, bool load_flipped)
 {
-	load(path);
+	load(path, load_flipped);
 }
 
 forge::Image::~Image()

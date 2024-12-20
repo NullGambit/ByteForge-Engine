@@ -10,16 +10,20 @@ namespace forge
 {
 	class Entity;
 
-	class Transform final
+	template<class T>
+	class TransformBase final
 	{
 	public:
-		inline void set_local_position(glm::vec3 position)
+		using PositionT = glm::vec<3, T>;
+		using MatT = glm::mat<4, 4, T>;
+
+		inline void set_local_position(PositionT position)
 		{
 			m_position = position;
 			m_is_dirty = true;
 		}
 
-		inline glm::vec3 get_local_position() const
+		inline PositionT get_local_position() const
 		{
 			return m_position;
 		}
@@ -57,13 +61,13 @@ namespace forge
 			return m_scale;
 		}
 
-		inline void set_position(glm::vec3 parent, glm::vec3 position)
+		inline void set_position(PositionT parent, glm::vec3 position)
 		{
 			m_position = parent * position;
 			m_is_dirty = true;
 		}
 
-		inline glm::vec3 get_position(glm::vec3 parent) const
+		inline PositionT get_position(PositionT parent) const
 		{
 			return parent * m_position;
 		}
@@ -101,7 +105,7 @@ namespace forge
 			return parent * m_scale;
 		}
 
-		inline glm::mat4 get_model() const
+		inline MatT get_model() const
 		{
 			return m_model;
 		}
@@ -116,13 +120,13 @@ namespace forge
 
 		bool m_is_dirty = false;
 
-		glm::vec3 m_position {0.0};
+		PositionT m_position {0.0};
 		glm::vec3 m_scale {1.0};
 		glm::quat m_rotation {1.0f, 0.0f, 0.0f, 0.0f};
-		glm::mat4 m_model {1.0};
+		MatT m_model {1.0};
 
 		[[nodiscard]]
-		inline glm::mat4 compute_local_transform()
+		inline MatT compute_local_transform()
 		{
 			auto rotation_matrix	= glm::toMat4(m_rotation);
 			auto translation_matrix = glm::translate(glm::mat4(1.0f), m_position);
@@ -133,4 +137,6 @@ namespace forge
 			return translation_matrix * rotation_matrix * scale_matrix;
 		}
 	};
+
+	using Transform = TransformBase<float>;
 }

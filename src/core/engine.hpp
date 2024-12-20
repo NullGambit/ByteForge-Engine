@@ -46,8 +46,6 @@ namespace forge
 
 		void quit();
 
-
-
 		EngineInitResult init(std::span<const char*> sys_args, const EngineInitOptions &options);
 
 		void run();

@@ -137,63 +137,92 @@ forge::OglShader& forge::OglShader::use()
 
 forge::OglShader& forge::OglShader::set(std::string_view name, int value)
 {
+
+#if SHOULD_USE_UNIFORM_CACHE
+	if (update_cache(name, value))
+	{
+		return *this;
+	}
+#endif
+
 	auto location = glGetUniformLocation(m_program, name.data());
 	glUniform1i(location, value);
-
-#ifdef SHADER_HOT_RELOAD
-	m_cache[name] = value;
-#endif
 
 	return *this;
 }
 
 forge::OglShader& forge::OglShader::set(std::string_view name, float value)
 {
+#if SHOULD_USE_UNIFORM_CACHE
+	if (update_cache(name, value))
+	{
+		return *this;
+	}
+#endif
+
 	auto location = glGetUniformLocation(m_program, name.data());
 	glUniform1f(location, value);
-#ifdef SHADER_HOT_RELOAD
-	m_cache[name] = value;
-#endif
+
 	return *this;
 }
 
 forge::OglShader& forge::OglShader::set(std::string_view name, glm::vec2 value)
 {
+#if SHOULD_USE_UNIFORM_CACHE
+	if (update_cache(name, value))
+	{
+		return *this;
+	}
+#endif
+
 	auto location = glGetUniformLocation(m_program, name.data());
 	glUniform2f(location, EXPAND_VEC2(value));
-#ifdef SHADER_HOT_RELOAD
-	m_cache[name] = value;
-#endif
+
 	return *this;
 }
 
 forge::OglShader& forge::OglShader::set(std::string_view name, glm::vec3 value)
 {
+#if SHOULD_USE_UNIFORM_CACHE
+	if (update_cache(name, value))
+	{
+		return *this;
+	}
+#endif
+
 	auto location = glGetUniformLocation(m_program, name.data());
 	glUniform3f(location, EXPAND_VEC3(value));
-#ifdef SHADER_HOT_RELOAD
-	m_cache[name] = value;
-#endif
+
 	return *this;
 }
 
 forge::OglShader& forge::OglShader::set(std::string_view name, glm::vec4 value)
 {
+#if SHOULD_USE_UNIFORM_CACHE
+	if (update_cache(name, value))
+	{
+		return *this;
+	}
+#endif
+
 	auto location = glGetUniformLocation(m_program, name.data());
 	glUniform4f(location, EXPAND_VEC4(value));
-#ifdef SHADER_HOT_RELOAD
-	m_cache[name] = value;
-#endif
+
 	return *this;
 }
 
 forge::OglShader& forge::OglShader::set(std::string_view name, glm::mat4 value)
 {
+#if SHOULD_USE_UNIFORM_CACHE
+	if (update_cache(name, value))
+	{
+		return *this;
+	}
+#endif
+
 	auto location = glGetUniformLocation(m_program, name.data());
 	glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(value));
-#ifdef SHADER_HOT_RELOAD
-	m_cache[name] = value;
-#endif
+
 	return *this;
 }
 

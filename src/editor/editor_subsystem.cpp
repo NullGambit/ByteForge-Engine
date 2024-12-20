@@ -519,7 +519,7 @@ protected:
 			{
 				auto &engine = forge::Engine::get_instance();
 
-				for (auto &[index, ct] : m_nexus->get_component_table())
+				for (auto &[index, _] : m_nexus->get_component_table())
 				{
 					if (ImGui::Selectable(util::type_name(index).data()))
 					{

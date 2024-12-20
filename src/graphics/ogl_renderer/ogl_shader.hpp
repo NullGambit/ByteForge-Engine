@@ -10,6 +10,7 @@
 #include "core/forge_intrinsic.hpp"
 #include "glm/glm.hpp"
 
+#define SHOULD_USE_UNIFORM_CACHE defined(SHADER_HOT_RELOAD) || defined(USE_UNIFORM_CACHE)
 namespace forge
 {
 	enum class ShaderType
@@ -50,12 +51,36 @@ namespace forge
 #ifdef SHADER_HOT_RELOAD
 		u32 m_wd;
 		// a cache for uniforms used to set uniforms to their previous state when shaders reload
-		HashMap<std::string, UniformValue, ENABLE_TRANSPARENT_HASH> m_cache;
 		ShaderSource m_source;
+#endif
+
+#if SHOULD_USE_UNIFORM_CACHE
+		HashMap<std::string, UniformValue, ENABLE_TRANSPARENT_HASH> m_cache;
 #endif
 
 		uint32_t m_program;
 
 		bool compile_implementation(const ShaderSource &source);
+
+#if SHOULD_USE_UNIFORM_CACHE
+		template<class T>
+		bool update_cache(std::string_view name, T &value)
+		{
+			auto iter = m_cache.find(name);
+
+			if (iter != m_cache.end())
+			{
+				if (std::get<T>(iter->second) == value)
+				{
+					return true;
+				}
+			}
+
+			m_cache[name] = value;
+
+			return false;
+		}
+#endif
+
 	};
 }
