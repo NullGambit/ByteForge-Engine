@@ -1,6 +1,8 @@
 #pragma once
 #include "../core/isub_system.hpp"
 
+class Window;
+
 namespace forge
 {
 	class WindowSubSystem final : public ISubSystem
@@ -16,5 +18,6 @@ namespace forge
 
 		[[nodiscard]]
 		float get_runtime() const;
+
 	};
 }

@@ -4,7 +4,7 @@ namespace forge
 {
 	enum class Key
     {
-        Space = 32,
+	    Space = 32,
         Apostrophe = 39,
         Comma = 44,
         Minus = 45,
@@ -138,7 +138,7 @@ namespace forge
         B8,
     };
 
-    enum class Modifier : i8
+    enum class KeyModifier : i8
     {
         None = 0,
         Shift = 0x0001,

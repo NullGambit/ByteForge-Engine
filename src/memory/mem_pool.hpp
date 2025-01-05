@@ -9,16 +9,111 @@
 
 namespace forge
 {
+	namespace MemPoolFlags
+	{
+		enum : u8
+		{
+			Invalid = 1 << 0,
+			Valid = 1 << 1
+		};
+	}
+
+	struct MemPoolHeader
+	{
+		u8 flags;
+		u32 next_free_offset;
+	};
+
 	struct MemPoolObject
 	{
 		u8 *pointer;
 		size_t byte_offset;
 	};
 
+	template<class T>
+	class MemPoolIterator
+	{
+	public:
+		using value_type = T;
+		using difference_type = std::ptrdiff_t;
+		using pointer = T*;
+		using reference = T&;
+		using iterator_category = std::forward_iterator_tag;
+
+		MemPoolIterator(u8 *m_offset, const size_t m_element_size) :
+			m_offset(m_offset),
+			m_element_size(m_element_size)
+		{}
+
+		reference operator*() const
+		{
+			return *(pointer)m_offset;
+		}
+
+		pointer operator->() const
+		{
+			return (pointer)m_offset;
+		}
+
+		MemPoolIterator& operator++()
+		{
+			m_offset += m_element_size;
+			return *this;
+		}
+
+		MemPoolIterator operator++(int)
+		{
+			auto temp = *this;
+			m_offset += m_element_size;
+			return temp;
+		}
+
+		bool operator==(const MemPoolIterator &other) const
+		{
+			return m_offset == other.m_offset;
+		}
+
+		bool operator!=(const MemPoolIterator &other) const
+		{
+			return m_offset != other.m_offset;
+		}
+
+	private:
+		u8* m_offset;
+		const size_t m_element_size;
+	};
+
+	class MemPool;
+
+	// a proxy object for the begin and end functions to be defined in
+	// this is required because these functions cant be implemented within mempool while still retaining a type
+	// mostly just for ranged based for loops
+	template<class T>
+	class MemPoolTypedIterator
+	{
+	public:
+
+		MemPoolTypedIterator(const MemPool *mempool) :
+			m_mempool(mempool)
+		{}
+
+		MemPoolTypedIterator(const MemPool &mempool) :
+			m_mempool(&mempool)
+		{}
+
+		MemPoolIterator<T> begin();
+
+		MemPoolIterator<T> end();
+
+	private:
+		const MemPool *m_mempool;
+	};
+
 	class MemPool
 	{
 		typedef void(*DestroyFunc)(u8*);
 		typedef void(*ConstructFunc)(u8*);
+		typedef void(*CreateIteratorFunc)(u8*);
 
 	public:
 		MemPool() = default;
@@ -75,6 +170,8 @@ namespace forge
 
 		void free(size_t offset_to_free, bool destroy = true);
 
+		void free_at(size_t index, bool destroy = true);
+
 		void reset(bool destroy = true);
 
 		inline u8* get(size_t offset)
@@ -119,6 +216,12 @@ namespace forge
 			return m_memory;
 		}
 
+		template<class T>
+		MemPoolTypedIterator<T> get_iterator()
+		{
+			return this;
+		}
+
 	private:
 		u8 *m_memory;
 		size_t m_offset;
@@ -129,4 +232,17 @@ namespace forge
 		DestroyFunc m_destroy_func = nullptr;
 		ConstructFunc m_construct_func = nullptr;
 	};
+
+	template<class T>
+	MemPoolIterator<T> MemPoolTypedIterator<T>::begin()
+	{
+		return {m_mempool->get_memory(), m_mempool->get_element_size()};
+	}
+
+	template<class T>
+	MemPoolIterator<T> MemPoolTypedIterator<T>::end()
+	{
+		auto end_offset = m_mempool->get_length() * m_mempool->get_element_size();
+		return {m_mempool->get_memory() + end_offset, m_mempool->get_element_size()};
+	}
 }

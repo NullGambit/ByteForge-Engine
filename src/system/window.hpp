@@ -1,4 +1,5 @@
 #pragma once
+#include <bitset>
 #include <string_view>
 #include <glm/vec2.hpp>
 
@@ -18,13 +19,13 @@ namespace forge
 
 	struct WindowInputEventData
 	{
-		glm::vec2	mouse_cords;
-		glm::vec2	scroll_offsets;
-		bool		mouse_called;
-		bool		scroll_called;
+		glm::vec2 mouse_cords;
+		glm::vec2 scroll_offsets;
 
-		std::array<WindowKeyEventData, 119> key_cache;
-		std::array<WindowKeyEventData, 8> mouse_button_cache;
+		std::bitset<119> key_down;
+		std::bitset<119> key_up;
+		std::bitset<7> mouse_button_down;
+		std::bitset<7> mouse_button_up;
 	};
 
 	class Window
@@ -57,11 +58,11 @@ namespace forge
 		void set_cursor_mode(CursorMode mode) const;
 		CursorMode get_cursor_mode() const;
 
-		bool is_key_pressed(Key key, Modifier mod = Modifier::None) const;
-		bool is_key_released(Key key, Modifier mod = Modifier::None) const;
+		bool is_key_pressed(Key key, KeyModifier mod = KeyModifier::None) const;
+		bool is_key_released(Key key, KeyModifier mod = KeyModifier::None) const;
 		bool is_key_held(Key key) const;
-		bool is_mouse_button_pressed(MouseButton key, Modifier mod = Modifier::None) const;
-		bool is_mouse_button_released(MouseButton key, Modifier mod = Modifier::None) const;
+		bool is_mouse_button_pressed(MouseButton key, KeyModifier mod = KeyModifier::None) const;
+		bool is_mouse_button_released(MouseButton key, KeyModifier mod = KeyModifier::None) const;
 		bool is_mouse_button_held(MouseButton key) const;
 		glm::vec2 get_mouse_coords() const;
 

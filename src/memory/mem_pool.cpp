@@ -48,7 +48,7 @@ forge::MemPoolObject forge::MemPool::allocate(bool construct)
 	auto *out_mem = m_memory + offset;
 	auto mem_offset = offset;
 
-	++m_length;
+	m_length++;
 	m_offset += m_element_size;
 
 	if (construct && m_construct_func)
@@ -67,6 +67,15 @@ void forge::MemPool::free(size_t offset_to_free, bool destroy)
 	}
 
 	m_free_list.push_back(offset_to_free);
+
+	m_length--;
+}
+
+void forge::MemPool::free_at(size_t index, bool destroy)
+{
+	auto offset_to_free = m_element_size * index;
+
+	free(offset_to_free, destroy);
 }
 
 void forge::MemPool::reset(bool destroy)

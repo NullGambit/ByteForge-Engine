@@ -2,13 +2,13 @@
 
 #include "core/engine.hpp"
 
-bool forge::is_key_pressed(Key key, Modifier mod)
+bool forge::is_key_pressed(Key key, KeyModifier mod)
 {
 	auto &engine = Engine::get_instance();
 	return engine.window.is_key_pressed(key, mod);
 }
 
-bool forge::is_key_released(Key key, Modifier mod)
+bool forge::is_key_released(Key key, KeyModifier mod)
 {
 	auto &engine = Engine::get_instance();
 	return engine.window.is_key_released(key, mod);
@@ -20,13 +20,13 @@ bool forge::is_key_held(Key key)
 	return engine.window.is_key_held(key);
 }
 
-bool forge::is_mouse_button_pressed(MouseButton key, Modifier mod)
+bool forge::is_mouse_button_pressed(MouseButton key, KeyModifier mod)
 {
 	auto &engine = Engine::get_instance();
 	return engine.window.is_mouse_button_pressed(key, mod);
 }
 
-bool forge::is_mouse_button_released(MouseButton key, Modifier mod)
+bool forge::is_mouse_button_released(MouseButton key, KeyModifier mod)
 {
 	auto &engine = Engine::get_instance();
 	return engine.window.is_mouse_button_released(key, mod);

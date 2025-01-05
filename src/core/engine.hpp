@@ -98,6 +98,12 @@ namespace forge
 			return (T*)iter->second;
 		}
 
+		template<class T>
+		inline bool is_subsystem_initialized() const
+		{
+			return m_subsystem_table.contains(typeid(T));
+		}
+
 		// TODO: create some sort of window factory class that will create windows and will swap their buffers in the main loop
 		Window window;
 		DeltaTime time_scale = 1.0;

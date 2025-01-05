@@ -114,7 +114,6 @@ void forge::OglRenderer::update()
 			m_forward_shader.set("light_position", m_light_position);
 			m_forward_shader.set("light_color", m_light_color);
 
-
 			static constexpr TextureList<std::array<std::string_view, 4>> properties
 			{
 				std::array<std::string_view, 4>

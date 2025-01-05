@@ -3,6 +3,7 @@
 #include <imgui.h>
 #include <GLFW/glfw3.h>
 
+#include "window_sub_system.hpp"
 #include "core/engine.hpp"
 #include "core/logging.hpp"
 #include "fmt/fmt.hpp"
@@ -28,7 +29,6 @@ void on_mouse_callback(GLFWwindow *window, double xpos, double ypos)
 	    }
 	}
 
-
 	auto *windowPtr = (forge::Window*)glfwGetWindowUserPointer(window);
 
 	auto &data = windowPtr->get_input_event_data();
@@ -38,8 +38,6 @@ void on_mouse_callback(GLFWwindow *window, double xpos, double ypos)
         xpos,
         ypos
     };
-
-    data.mouse_called = true;
 }
 
 void on_scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
@@ -53,8 +51,6 @@ void on_scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
         xoffset,
         yoffset
     };
-
-    data.scroll_called = true;
 }
 
 uint32_t translate_glfw_key(int key);
@@ -76,11 +72,15 @@ void on_key_callback(GLFWwindow* window, int key, int scancode, int action, int 
 	auto &data = windowPtr->get_input_event_data();
 
 	auto index = translate_glfw_key(key);
-	auto &key_event = data.key_cache[index];
 
-	key_event.called = true;
-	key_event.action = action;
-	key_event.mods = mods;
+	if (action == GLFW_PRESS)
+	{
+		data.key_down.set(index);
+	}
+	else if (action == GLFW_RELEASE)
+	{
+		data.key_up.set(index);
+	}
 }
 
 void on_mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
@@ -99,11 +99,11 @@ void on_mouse_button_callback(GLFWwindow* window, int button, int action, int mo
 
 	auto &data = windowPtr->get_input_event_data();
 
-	auto &key_event = data.mouse_button_cache[button];
-
-	key_event.called = true;
-	key_event.action = action;
-	key_event.mods = mods;
+	// auto &key_event = data.mouse_button_cache[button];
+	//
+	// key_event.called = true;
+	// key_event.action = action;
+	// key_event.mods = mods;
 }
 
 uint32_t translate_glfw_key(int key)
@@ -168,6 +168,13 @@ void forge::Window::close()
 
 bool forge::Window::open(std::string_view name, int width, int height)
 {
+	auto &engine = Engine::get_instance();
+
+	if (!engine.is_subsystem_initialized<WindowSubSystem>())
+	{
+		return false;
+	}
+
 	m_handle = glfwCreateWindow(width, height, name.data(), nullptr, nullptr);
 
 	if (!m_handle)
@@ -222,7 +229,7 @@ forge::CursorMode forge::Window::get_cursor_mode() const
 	return (CursorMode)glfwGetInputMode(m_handle, GLFW_CURSOR);
 }
 
-bool forge::Window::is_key_pressed(Key key, Modifier mod) const
+bool forge::Window::is_key_pressed(Key key, KeyModifier mod) const
 {
 	return get_key(int(key), GLFW_PRESS, int(mod));
 }
@@ -240,12 +247,12 @@ bool forge::Window::is_key_held(Key key) const
 	return !imgui_wants_keyboard && glfwGetKey(m_handle, (int)key);
 }
 
-bool forge::Window::is_mouse_button_pressed(MouseButton key, Modifier mod) const
+bool forge::Window::is_mouse_button_pressed(MouseButton key, KeyModifier mod) const
 {
 	return get_mouse_button((int)key, (int)mod, GLFW_PRESS);
 }
 
-bool forge::Window::is_mouse_button_released(MouseButton key, Modifier mod) const
+bool forge::Window::is_mouse_button_released(MouseButton key, KeyModifier mod) const
 {
 	return get_mouse_button((int)key, (int)mod, GLFW_RELEASE);
 }
@@ -260,25 +267,15 @@ glm::vec2 forge::Window::get_mouse_coords() const
 	return m_input_event_data.mouse_cords;
 }
 
-bool forge::Window::is_key_released(Key key, Modifier mod) const
+bool forge::Window::is_key_released(Key key, KeyModifier mod) const
 {
 	return get_key(int(key), GLFW_RELEASE, int(mod));
 }
 
 void forge::Window::reset_input()
 {
-	m_input_event_data.mouse_called = false;
-	m_input_event_data.scroll_called = false;
-
-	for (auto &key : m_input_event_data.key_cache)
-	{
-		key.called = false;
-	}
-
-	for (auto &button : m_input_event_data.mouse_button_cache)
-	{
-		button.called = false;
-	}
+	m_input_event_data.key_down.reset();
+	m_input_event_data.key_up.reset();
 }
 
 GLFWwindow* forge::Window::get_handle() const
@@ -307,16 +304,16 @@ bool was_key_called(forge::WindowKeyEventData key_event, int action, int mod)
 
 bool forge::Window::get_mouse_button(int button, int action, int mod) const
 {
-	auto &key_event = m_input_event_data.mouse_button_cache[button];
+	const auto &bitset = action == GLFW_PRESS ? m_input_event_data.mouse_button_down : m_input_event_data.mouse_button_up;
 
-	return was_key_called(key_event, action, mod);
+	return bitset.test(button);
 }
 
 bool forge::Window::get_key(int key, int action, int mod) const
 {
-	auto index = translate_glfw_key(key);
-	auto &key_event = m_input_event_data.key_cache[index];
+	const auto index = translate_glfw_key(key);
+	const auto &bitset = action == GLFW_PRESS ? m_input_event_data.key_down : m_input_event_data.key_up;
 
-	return was_key_called(key_event, action, mod);
+	return bitset.test(index);
 }
 
