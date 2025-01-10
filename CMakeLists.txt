@@ -112,6 +112,7 @@ add_executable(ByteForge_Engine main.cpp
         src/config/arg_parser.hpp
         "src/framework/components /camera_component.cpp"
         "src/framework/components /camera_component.hpp"
+        src/container/virtual_array.hpp
 )
 
 target_compile_options(ByteForge_Engine PRIVATE -include ${CMAKE_SOURCE_DIR}/src/core/forge_intrinsic.hpp)

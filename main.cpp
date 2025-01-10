@@ -4,6 +4,7 @@
 #include <ranges>
 
 #include "config/arg_parser.hpp"
+#include "container/virtual_array.hpp"
 #include "glm/glm.hpp"
 #include "core/logging.hpp"
 #include "framework/input.hpp"
@@ -371,6 +372,7 @@ struct Counter
 
 	~Counter()
 	{
+		// log::info("destructor called");
 		destroyed = true;
 	}
 
@@ -383,74 +385,97 @@ struct Counter
 
 int main(int argc, const char **argv)
 {
-	constexpr auto MAX_COUNTERS = 50'000'000;
-	using time_unit = std::chrono::milliseconds;
+	forge::VirtualArray<Counter> array;
 
-	std::vector<Counter> vec_counters {MAX_COUNTERS};
+	array.emplace(5);
+	array.emplace(10);
+	array.emplace(11);
 
-	vec_counters.erase(vec_counters.begin() + MAX_COUNTERS / 2);
+	array.emplace(114);
 
-	std::vector<std::shared_ptr<Counter>> smart_ptr_counters;
+	// array.free_at(2);
+	// array.free_at(1);
+	// array.free_at(3);
 
-	for (int i = 0; i < MAX_COUNTERS; i++)
+	array.emplace(15);
+
+	array.emplace(20);
+	array.emplace(30);
+	array.emplace(40);
+
+	for (auto &counter : array)
 	{
-		smart_ptr_counters.emplace_back(std::make_shared<Counter>());
+		fmt::println("{}", counter.count);
 	}
 
-	forge::MemPool mem_pool_counters;
-
-	mem_pool_counters.init<Counter>(sizeof(Counter) * MAX_COUNTERS);
-
-	for (int i = 0; i < MAX_COUNTERS; i++)
-	{
-		mem_pool_counters.emplace<Counter>();
-	}
-
-	mem_pool_counters.free_at(MAX_COUNTERS / 2);
-
-	auto start = std::chrono::high_resolution_clock::now();
-
-	for (auto &counter : vec_counters)
-	{
-		counter.update();
-	}
-
-	auto end = std::chrono::high_resolution_clock::now();
-
-	std::cout << "vec time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
-
-	start = std::chrono::high_resolution_clock::now();
-
-	for (auto &counter : smart_ptr_counters)
-	{
-		counter->update();
-	}
-
-	end = std::chrono::high_resolution_clock::now();
-
-	std::cout << "smart ptr time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
-
-	start = std::chrono::high_resolution_clock::now();
-
-	// auto *memory = mem_pool_counters.get_memory();
+	// constexpr auto MAX_COUNTERS = 10'000'000;
+	// using time_unit = std::chrono::milliseconds;
 	//
-	// for (int i = 0; i < mem_pool_counters.get_length(); i++)
+	// std::vector<Counter> vec_counters {MAX_COUNTERS};
+	//
+	// vec_counters.erase(vec_counters.begin() + MAX_COUNTERS / 2);
+	//
+	// std::vector<std::shared_ptr<Counter>> smart_ptr_counters;
+	//
+	// for (int i = 0; i < MAX_COUNTERS; i++)
 	// {
-	// 	auto *counter = (Counter*)memory;
-	//
-	// 	counter->update();
-	//
-	// 	memory += mem_pool_counters.get_element_size();
+	// 	smart_ptr_counters.emplace_back(std::make_shared<Counter>());
 	// }
-
-	for (auto &counter : mem_pool_counters.get_iterator<Counter>())
-	{
-		counter.update();
-	}
-
-	end = std::chrono::high_resolution_clock::now();
-
-	std::cout << "mem pool time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
+	//
+	// forge::MemPool mem_pool_counters;
+	//
+	// mem_pool_counters.init<Counter>(sizeof(Counter) * MAX_COUNTERS);
+	//
+	// for (int i = 0; i < MAX_COUNTERS; i++)
+	// {
+	// 	mem_pool_counters.emplace<Counter>();
+	// }
+	//
+	// // mem_pool_counters.free_at(MAX_COUNTERS / 2);
+	//
+	// auto start = std::chrono::high_resolution_clock::now();
+	//
+	// for (auto &counter : vec_counters)
+	// {
+	// 	counter.update();
+	// }
+	//
+	// auto end = std::chrono::high_resolution_clock::now();
+	//
+	// std::cout << "vec time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
+	//
+	// start = std::chrono::high_resolution_clock::now();
+	//
+	// for (auto &counter : smart_ptr_counters)
+	// {
+	// 	counter->update();
+	// }
+	//
+	// end = std::chrono::high_resolution_clock::now();
+	//
+	// std::cout << "smart ptr time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
+	//
+	// start = std::chrono::high_resolution_clock::now();
+	//
+	// // auto *memory = mem_pool_counters.get_memory();
+	// //
+	// // for (int i = 0; i < mem_pool_counters.get_length(); i++)
+	// // {
+	// // 	auto *counter = (Counter*)(memory + sizeof(forge::MemPoolHeader));
+	// //
+	// // 	counter->update();
+	// //
+	// // 	memory += mem_pool_counters.get_element_size() + sizeof(forge::MemPoolHeader);
+	// // }
+	//
+	// for (auto &counter : mem_pool_counters.get_iterator<Counter>())
+	// {
+	// 	counter.update();
+	// }
+	//
+	// end = std::chrono::high_resolution_clock::now();
+	//
+	// std::cout << "mem pool time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
 
 	// auto &engine = forge::Engine::get_instance();
 	//

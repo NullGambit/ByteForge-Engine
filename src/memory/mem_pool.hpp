@@ -18,12 +18,6 @@ namespace forge
 		};
 	}
 
-	struct MemPoolHeader
-	{
-		u8 flags;
-		u32 next_free_offset;
-	};
-
 	struct MemPoolObject
 	{
 		u8 *pointer;
@@ -155,7 +149,7 @@ namespace forge
 		template<class T, class... Args>
 		std::pair<T*, size_t> emplace(Args ...args)
 		{
-			auto [mem, offset] = allocate();
+			auto [mem, offset] = allocate(false);
 
 			return {new (mem) T(std::forward<Args>(args)...), offset};
 		}
