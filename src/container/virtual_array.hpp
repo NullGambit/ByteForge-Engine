@@ -38,7 +38,7 @@ namespace forge
 		using reference = T&;
 		using iterator_category = std::forward_iterator_tag;
 
-		VirtualArrayIterator(T *memory, const size_t m_element_size) :
+		VirtualArrayIterator(u8 *memory, const size_t m_element_size) :
 			m_memory(memory),
 			m_element_size(m_element_size)
 		{}
@@ -91,7 +91,7 @@ namespace forge
 		}
 
 	private:
-		T* m_memory;
+		u8* m_memory;
 		const size_t m_element_size;
 	};
 
@@ -99,18 +99,22 @@ namespace forge
 	class VirtualArray
 	{
 	public:
-		explicit VirtualArray(size_t map_size = KB(16))
+		explicit VirtualArray(i32 max_elements = -1)
 		{
-			auto adjusted_size = map_size / sizeof(T);
+			if (max_elements == -1)
+			{
+				auto base = KB(16) / sizeof(T);
+				m_map_size = base * (sizeof(VirtualArrayHeader) + sizeof(T));
+			}
+			else
+			{
+				m_map_size = max_elements * (sizeof(VirtualArrayHeader) + sizeof(T));
+			}
 
-			adjusted_size *= sizeof(VirtualArrayHeader) + sizeof(T);
-
-			m_memory = (T*)virtual_alloc(adjusted_size);
+			m_memory = virtual_alloc(m_map_size);
 
 			m_offset = 0;
 			m_length = 0;
-
-			m_map_size = adjusted_size;
 		}
 
 		~VirtualArray()
@@ -221,7 +225,7 @@ namespace forge
 		}
 
 	private:
-		T *m_memory;
+		u8 *m_memory;
 		u32 m_offset;
 		u32 m_length;
 		u32 m_map_size;
@@ -259,7 +263,7 @@ namespace forge
 		{
 			constexpr auto header_size = sizeof(VirtualArrayHeader);
 
-			T *memory = nullptr;
+			u8 *memory = nullptr;
 
 			if (m_free_head)
 			{
@@ -299,7 +303,7 @@ namespace forge
 
 			m_length++;
 
-			return memory;
+			return (T*)memory;
 		}
 	};
 }
