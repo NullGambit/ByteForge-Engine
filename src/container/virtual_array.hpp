@@ -12,103 +12,35 @@
 
 namespace forge
 {
-	namespace VirtualArrayFlags
-	{
-		enum : u8
-		{
-			Free = 1 << 0,
-			InUse = 1 << 1
-		};
-	}
-
-	struct VirtualArrayHeader
-	{
-		u8 flags;
-		u32 next_free;
-		u32 offset;
-	};
-
-	template<class T>
-	class VirtualArrayIterator
-	{
-	public:
-		using value_type = T;
-		using difference_type = std::ptrdiff_t;
-		using pointer = T*;
-		using reference = T&;
-		using iterator_category = std::forward_iterator_tag;
-
-		VirtualArrayIterator(u8 *memory, const size_t m_element_size) :
-			m_memory(memory),
-			m_element_size(m_element_size)
-		{}
-
-		reference operator*()
-		{
-			auto *header = (VirtualArrayHeader*)m_memory;
-
-			// if the thing being dereferenced is actually free which would always happen if the first element is free
-			// then skip past this and any other free memory
-			if (header->flags & VirtualArrayFlags::Free)
-			{
-				this->operator++();
-			}
-
-			return *(pointer)(m_memory + sizeof(VirtualArrayHeader));
-		}
-
-		VirtualArrayIterator& operator++()
-		{
-			m_memory += m_element_size + sizeof(VirtualArrayHeader);
-
-			auto *header = (VirtualArrayHeader*)m_memory;
-
-			bool is_free = header->flags & VirtualArrayFlags::Free;
-
-			while (is_free)
-			{
-				auto *header = (VirtualArrayHeader*)m_memory;
-
-				is_free = header->flags & VirtualArrayFlags::Free;
-
-				if (is_free)
-				{
-					m_memory += m_element_size + sizeof(VirtualArrayHeader);
-				}
-			}
-
-			return *this;
-		}
-
-		bool operator==(const VirtualArrayIterator &other) const
-		{
-			return m_memory == other.m_memory;
-		}
-
-		bool operator!=(const VirtualArrayIterator &other) const
-		{
-			return m_memory != other.m_memory;
-		}
-
-	private:
-		u8* m_memory;
-		const size_t m_element_size;
-	};
-
 	template<class T>
 	class VirtualArray
 	{
+		class Iterator;
+
+		enum : u8
+		{
+			FREE = 1 << 0,
+			IN_USE = 1 << 1
+		};
+
+		struct Header
+		{
+			u8 flags;
+			u32 next_free;
+			u32 offset;
+		};
+
 	public:
 		explicit VirtualArray(i32 max_elements = -1)
 		{
 			if (max_elements == -1)
 			{
 				auto base = KB(16) / sizeof(T);
-				m_map_size = base * (sizeof(VirtualArrayHeader) + sizeof(T));
+				m_map_size = base * (sizeof(Header) + sizeof(T));
 			}
 			else
 			{
-				m_map_size = max_elements * (sizeof(VirtualArrayHeader) + sizeof(T));
+				m_map_size = max_elements * (sizeof(Header) + sizeof(T));
 			}
 
 			m_memory = virtual_alloc(m_map_size);
@@ -125,7 +57,7 @@ namespace forge
 
 			if (m_memory)
 			{
-				virtual_free((u8*)m_memory);
+				virtual_free(m_memory);
 				m_memory = nullptr;
 			}
 		}
@@ -180,13 +112,13 @@ namespace forge
 		// very unreliable dont use it please.
 		inline T* get(size_t index)
 		{
-			auto offset = index * (sizeof(VirtualArrayHeader) + sizeof(T));
+			auto offset = index * (sizeof(Header) + sizeof(T));
 
 			auto *ptr = (T*)m_memory + offset;
 
-			auto *header = (VirtualArrayHeader*)(ptr - sizeof(VirtualArrayHeader));
+			auto *header = (Header*)(ptr - sizeof(Header));
 
-			if (header->flags & VirtualArrayFlags::Free)
+			if (header->flags & FREE)
 			{
 				return nullptr;
 			}
@@ -214,12 +146,12 @@ namespace forge
 			return m_memory;
 		}
 
-		VirtualArrayIterator<T> begin()
+		Iterator begin()
 		{
 			return {m_memory, sizeof(T)};
 		}
 
-		VirtualArrayIterator<T> end()
+		Iterator end()
 		{
 			return {m_memory + m_offset, sizeof(T)};
 		}
@@ -231,19 +163,19 @@ namespace forge
 		u32 m_map_size;
 
 		// the start of the first free VirtualArray header
-		VirtualArrayHeader *m_free_head = nullptr;
-		VirtualArrayHeader *m_free_tail = nullptr;
+		Header *m_free_head = nullptr;
+		Header *m_free_tail = nullptr;
 
 		void free(u8 *memory)
 		{
-			auto *header = (VirtualArrayHeader*)(memory - sizeof(VirtualArrayHeader));
+			auto *header = (Header*)(memory - sizeof(Header));
 
-			if (header->flags & VirtualArrayFlags::Free)
+			if (header->flags & FREE)
 			{
 				return;
 			}
 
-			header->flags = (header->flags | VirtualArrayFlags::Free) & ~VirtualArrayFlags::InUse;
+			header->flags = (header->flags | FREE) & ~IN_USE;
 
 			if (m_free_head == nullptr)
 			{
@@ -261,7 +193,7 @@ namespace forge
 
 		T* allocate()
 		{
-			constexpr auto header_size = sizeof(VirtualArrayHeader);
+			constexpr auto header_size = sizeof(Header);
 
 			u8 *memory = nullptr;
 
@@ -269,11 +201,11 @@ namespace forge
 			{
 				memory = m_memory + (m_free_head->offset + header_size);
 
-				m_free_head->flags = (m_free_head->flags | VirtualArrayFlags::InUse) & ~VirtualArrayFlags::Free;
+				m_free_head->flags = (m_free_head->flags | IN_USE) & ~FREE;
 
 				if (m_free_head->next_free != UINT32_MAX)
 				{
-					auto *next_header = (VirtualArrayHeader*)(m_memory + m_free_head->next_free);
+					auto *next_header = (Header*)(m_memory + m_free_head->next_free);
 					m_free_head = next_header;
 				}
 				else
@@ -285,9 +217,9 @@ namespace forge
 			{
 				assert(m_offset + header_size + sizeof(T) <= m_map_size && "VirtualArray size exceeded limit");
 
-				VirtualArrayHeader header
+				Header header
 				{
-					.flags = VirtualArrayFlags::InUse,
+					.flags = IN_USE,
 					.next_free = UINT32_MAX,
 					.offset = m_offset,
 				};
@@ -305,5 +237,72 @@ namespace forge
 
 			return (T*)memory;
 		}
+	};
+
+	template<class T>
+	class VirtualArray<T>::Iterator
+	{
+	public:
+		using value_type = T;
+		using difference_type = std::ptrdiff_t;
+		using pointer = T*;
+		using reference = T&;
+		using iterator_category = std::forward_iterator_tag;
+
+		Iterator(u8 *memory, const size_t m_element_size) :
+			m_memory(memory),
+			m_element_size(m_element_size)
+		{}
+
+		reference operator*()
+		{
+			auto *header = (Header*)m_memory;
+
+			// if the thing being dereferenced is actually free which would always happen if the first element is free
+			// then skip past this and any other free memory
+			if (header->flags & FREE)
+			{
+				this->operator++();
+			}
+
+			return *(pointer)(m_memory + sizeof(Header));
+		}
+
+		Iterator& operator++()
+		{
+			m_memory += m_element_size + sizeof(Header);
+
+			auto *header = (Header*)m_memory;
+
+			bool is_free = header->flags & FREE;
+
+			while (is_free)
+			{
+				auto *header = (Header*)m_memory;
+
+				is_free = header->flags & FREE;
+
+				if (is_free)
+				{
+					m_memory += m_element_size + sizeof(Header);
+				}
+			}
+
+			return *this;
+		}
+
+		bool operator==(const Iterator &other) const
+		{
+			return m_memory == other.m_memory;
+		}
+
+		bool operator!=(const Iterator &other) const
+		{
+			return m_memory != other.m_memory;
+		}
+
+	private:
+		u8* m_memory;
+		const size_t m_element_size;
 	};
 }

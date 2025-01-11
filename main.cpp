@@ -365,172 +365,172 @@ private:
 	}
 };
 
-struct Counter
-{
-	int count = 0;
-	bool destroyed = false;
-
-	~Counter()
-	{
-		// log::info("destructor called");
-		destroyed = true;
-	}
-
-	void update()
-	{
-		// assert(!destroyed);
-		count++;
-	}
-};
+// struct Counter
+// {
+// 	int count = 0;
+// 	bool destroyed = false;
+//
+// 	~Counter()
+// 	{
+// 		// log::info("destructor called");
+// 		destroyed = true;
+// 	}
+//
+// 	void update()
+// 	{
+// 		// assert(!destroyed);
+// 		count++;
+// 	}
+// };
 
 int main(int argc, const char **argv)
 {
-	constexpr auto MAX_COUNTERS = 10'000'000;
-	using time_unit = std::chrono::milliseconds;
-
-	std::vector<Counter> vec_counters {MAX_COUNTERS};
-
-	vec_counters.erase(vec_counters.begin() + MAX_COUNTERS / 2);
-
-	std::vector<std::shared_ptr<Counter>> smart_ptr_counters;
-
-	for (int i = 0; i < MAX_COUNTERS; i++)
-	{
-		smart_ptr_counters.emplace_back(std::make_shared<Counter>());
-	}
-
-	forge::MemPool mem_pool_counters;
-
-	mem_pool_counters.init<Counter>(sizeof(Counter) * MAX_COUNTERS);
-
-	for (auto i = 0; i < MAX_COUNTERS; i++)
-	{
-		mem_pool_counters.emplace<Counter>();
-	}
-
-	forge::VirtualArray<Counter> virtual_array_counters (MAX_COUNTERS);
-
-	for (auto i = 0; i < MAX_COUNTERS; i++)
-	{
-		virtual_array_counters.emplace();
-	}
-
-	auto start = std::chrono::high_resolution_clock::now();
-
-	for (auto &counter : vec_counters)
-	{
-		counter.update();
-	}
-
-	auto end = std::chrono::high_resolution_clock::now();
-
-	std::cout << "vec time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
-
-	start = std::chrono::high_resolution_clock::now();
-
-	for (auto &counter : smart_ptr_counters)
-	{
-		counter->update();
-	}
-
-	end = std::chrono::high_resolution_clock::now();
-
-	std::cout << "smart ptr time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
-
-	start = std::chrono::high_resolution_clock::now();
-
-	for (auto &counter : mem_pool_counters.get_iterator<Counter>())
-	{
-		counter.update();
-	}
-
-	end = std::chrono::high_resolution_clock::now();
-
-	std::cout << "mem pool time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
-
-	start = std::chrono::high_resolution_clock::now();
-
-	for (auto &counter : virtual_array_counters)
-	{
-		counter.update();
-	}
-
-	end = std::chrono::high_resolution_clock::now();
-
-	std::cout << "virtual array time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
-
-	// auto &engine = forge::Engine::get_instance();
+	// constexpr auto MAX_COUNTERS = 10'000'000;
+	// using time_unit = std::chrono::milliseconds;
 	//
-	// auto result = engine.init(std::span{argv, (size_t)argc},
-	// {
-	// 	.window_title = "ByteForge Engine",
-	// 	.window_width = 1920,
-	// 	.window_height = 1080,
-	// 	.log_flags =  log::LogTime
-	// });
+	// std::vector<Counter> vec_counters {MAX_COUNTERS};
 	//
-	// if (result == forge::EngineInitResult::HaltWithNoError)
+	// vec_counters.erase(vec_counters.begin() + MAX_COUNTERS / 2);
+	//
+	// std::vector<std::shared_ptr<Counter>> smart_ptr_counters;
+	//
+	// for (int i = 0; i < MAX_COUNTERS; i++)
 	// {
-	// 	return 0;
-	// }
-	// if (result != forge::EngineInitResult::Ok)
-	// {
-	// 	return -1;
+	// 	smart_ptr_counters.emplace_back(std::make_shared<Counter>());
 	// }
 	//
-	// auto *nexus = engine.get_subsystem<forge::Nexus>();
+	// forge::MemPool mem_pool_counters;
 	//
-	// nexus->register_component<FlyCamera>();
-	// nexus->register_component<ExportFieldTestComponent>();
-	// nexus->register_component<SpinCamera>();
-	// nexus->register_component<PrimitiveRendererComponent>();
-	// nexus->register_component<TempLightComponent>();
+	// mem_pool_counters.init<Counter>(sizeof(Counter) * MAX_COUNTERS);
 	//
-	// auto &player = nexus->create_entity<FlyCamera>("Player");
-	// //
-	// // auto *camera = player.get_component<FlyCamera>();
-	// //
-	// // if (camera)
-	// // {
-	// // 	camera->fov = 100;
-	// // }
+	// for (auto i = 0; i < MAX_COUNTERS; i++)
+	// {
+	// 	mem_pool_counters.emplace<Counter>();
+	// }
 	//
-	// player.get_transform().set_local_position({0, 0, 5});
+	// forge::VirtualArray<Counter> virtual_array_counters (MAX_COUNTERS);
 	//
-	// player.emplace_child<ExportFieldTestComponent>("Child");
+	// for (auto i = 0; i < MAX_COUNTERS; i++)
+	// {
+	// 	virtual_array_counters.emplace();
+	// }
 	//
-	// auto &cube = nexus->create_entity("Cube");
+	// auto start = std::chrono::high_resolution_clock::now();
 	//
-	// auto *primitive = cube.add_component<PrimitiveRendererComponent>();
+	// for (auto &counter : vec_counters)
+	// {
+	// 	counter.update();
+	// }
 	//
-	// primitive->set_texture("assets/textures/container2.png", forge::TextureType::Diffuse);
-	// primitive->set_texture("assets/textures/container2_specular.png", forge::TextureType::Specular);
-	// primitive->set_texture("assets/textures/matrix.jpg", forge::TextureType::Emissive);
+	// auto end = std::chrono::high_resolution_clock::now();
 	//
-	// auto &light = nexus->create_entity<TempLightComponent>("Light");
+	// std::cout << "vec time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
 	//
-	// light.set_local_position(glm::vec3{2, 1, -2});
+	// start = std::chrono::high_resolution_clock::now();
 	//
-	// // constexpr auto COUNT = 10'000;
-	// //
-	// // for (auto i = 0; i < COUNT; i++)
-	// // {
-	// // 	nexus->create_entity<PrimitiveRendererComponent, BobComponent>();
-	// // }
+	// for (auto &counter : smart_ptr_counters)
+	// {
+	// 	counter->update();
+	// }
 	//
-	// // auto *light_renderer = light.add_component<PrimitiveRendererComponent>();
+	// end = std::chrono::high_resolution_clock::now();
 	//
-	// // light_renderer->set_diffuse_texture("./assets/textures/wall.jpg");
+	// std::cout << "smart ptr time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
 	//
-	// // constexpr auto ENTITY_COUNT = 400'000;
-	// //
-	// // for (auto i = 0; i < ENTITY_COUNT; i++)
-	// // {
-	// // 	auto name = "Entity_" + std::to_string(i);
-	// // 	engine.nexus->create_entity<CounterComponent, BusyWorkComponent, BusyWorkComponent2, BusyWorkComponent3>(name);
-	// // }
+	// start = std::chrono::high_resolution_clock::now();
 	//
-	// engine.run();
+	// for (auto &counter : mem_pool_counters.get_iterator<Counter>())
+	// {
+	// 	counter.update();
+	// }
 	//
-	// engine.shutdown();
+	// end = std::chrono::high_resolution_clock::now();
+	//
+	// std::cout << "mem pool time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
+	//
+	// start = std::chrono::high_resolution_clock::now();
+	//
+	// for (auto &counter : virtual_array_counters)
+	// {
+	// 	counter.update();
+	// }
+	//
+	// end = std::chrono::high_resolution_clock::now();
+	//
+	// std::cout << "virtual array time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
+
+	auto &engine = forge::Engine::get_instance();
+
+	auto result = engine.init(std::span{argv, (size_t)argc},
+	{
+		.window_title = "ByteForge Engine",
+		.window_width = 1920,
+		.window_height = 1080,
+		.log_flags =  log::LogTime
+	});
+
+	if (result == forge::EngineInitResult::HaltWithNoError)
+	{
+		return 0;
+	}
+	if (result != forge::EngineInitResult::Ok)
+	{
+		return -1;
+	}
+
+	auto *nexus = engine.get_subsystem<forge::Nexus>();
+
+	nexus->register_component<FlyCamera>();
+	nexus->register_component<ExportFieldTestComponent>();
+	nexus->register_component<SpinCamera>();
+	nexus->register_component<PrimitiveRendererComponent>();
+	nexus->register_component<TempLightComponent>();
+
+	auto &player = nexus->create_entity<FlyCamera>("Player");
+	//
+	// auto *camera = player.get_component<FlyCamera>();
+	//
+	// if (camera)
+	// {
+	// 	camera->fov = 100;
+	// }
+
+	player.get_transform().set_local_position({0, 0, 5});
+
+	player.emplace_child<ExportFieldTestComponent>("Child");
+
+	auto &cube = nexus->create_entity("Cube");
+
+	auto *primitive = cube.add_component<PrimitiveRendererComponent>();
+
+	primitive->set_texture("assets/textures/container2.png", forge::TextureType::Diffuse);
+	primitive->set_texture("assets/textures/container2_specular.png", forge::TextureType::Specular);
+	primitive->set_texture("assets/textures/matrix.jpg", forge::TextureType::Emissive);
+
+	auto &light = nexus->create_entity<TempLightComponent>("Light");
+
+	light.set_local_position(glm::vec3{2, 1, -2});
+
+	// constexpr auto COUNT = 10'000;
+	//
+	// for (auto i = 0; i < COUNT; i++)
+	// {
+	// 	nexus->create_entity<PrimitiveRendererComponent, BobComponent>();
+	// }
+
+	// auto *light_renderer = light.add_component<PrimitiveRendererComponent>();
+
+	// light_renderer->set_diffuse_texture("./assets/textures/wall.jpg");
+
+	// constexpr auto ENTITY_COUNT = 400'000;
+	//
+	// for (auto i = 0; i < ENTITY_COUNT; i++)
+	// {
+	// 	auto name = "Entity_" + std::to_string(i);
+	// 	engine.nexus->create_entity<CounterComponent, BusyWorkComponent, BusyWorkComponent2, BusyWorkComponent3>(name);
+	// }
+
+	engine.run();
+
+	engine.shutdown();
 }

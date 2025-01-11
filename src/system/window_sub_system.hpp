@@ -19,5 +19,6 @@ namespace forge
 		[[nodiscard]]
 		float get_runtime() const;
 
+	private:
 	};
 }
