@@ -3,12 +3,13 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
-#include <functional>
 
 #include "core/logging.hpp"
 #include "memory/defs.hpp"
 #include "system/virtual_memory.hpp"
 #include "util/types.hpp"
+
+#define DEFAULT_VIRTUAL_ARRAY_SIZE KB(4)
 
 namespace forge
 {
@@ -35,7 +36,7 @@ namespace forge
 		{
 			if (max_elements == -1)
 			{
-				auto base = KB(16) / sizeof(T);
+				auto base = DEFAULT_VIRTUAL_ARRAY_SIZE / sizeof(T);
 				m_map_size = base * (sizeof(Header) + sizeof(T));
 			}
 			else

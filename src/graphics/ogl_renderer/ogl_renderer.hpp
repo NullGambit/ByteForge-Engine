@@ -139,6 +139,7 @@ namespace forge
 		{
 			OglTexture texture;
 			std::string_view path;
+			bool is_valid = false;
 		};
 
 		struct PrimitiveRenderData

@@ -36,6 +36,12 @@ namespace forge
 			return m_id;
 		}
 
+		[[nodiscard]]
+		bool is_valid() const
+		{
+			return m_id == UINT32_MAX;
+		}
+
 	private:
 		TextureOptions m_options;
 		u32 m_id = UINT32_MAX;

@@ -456,16 +456,16 @@ protected:
 
 	void draw_right_side()
 	{
-		if (show_window && m_selected_entity.has_value())
+		if (show_window && (m_selected_entity && m_selected_entity->has_value()))
 		{
 			ScopedWindow components_window {"Components"};
 
-			if (!m_selected_entity.is_entity_valid())
+			if (!m_selected_entity->is_entity_valid())
 			{
 				return;
 			}
 
-			auto &entity = m_selected_entity.get_entity();
+			auto &entity = m_selected_entity->get_entity();
 
 			char name_buffer[256] {};
 
@@ -658,7 +658,7 @@ protected:
 
 		auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
 
-		if (m_selected_entity == *entity.get_view())
+		if (m_selected_entity == entity.get_view())
 		{
 			flags |= ImGuiTreeNodeFlags_Selected;
 		}
@@ -676,19 +676,19 @@ protected:
 
 		if (ImGui::IsItemClicked())
 		{
-			m_selected_entity = *entity.get_view();
+			m_selected_entity = entity.get_view();
 		}
 
 		if (check_context_menu("EntityContext"))
 		{
-			m_selected_context_entity = *entity.get_view();
+			m_selected_context_entity = entity.get_view();
 		}
 
-		if (*entity.get_view() == m_selected_context_entity && ImGui::BeginPopup("EntityContext"))
+		if (entity.get_view() == m_selected_context_entity && ImGui::BeginPopup("EntityContext"))
 		{
 			if (ImGui::Selectable("Add child"))
 			{
-				m_selected_entity = *entity.emplace_child().get_view();
+				m_selected_entity = entity.emplace_child().get_view();
 			}
 			if (ImGui::BeginMenu("Add to group"))
 			{
@@ -700,7 +700,7 @@ protected:
 				{
 					if (ImGui::MenuItem(name.data()))
 					{
-						m_nexus->add_to_group(name, m_selected_context_entity.get_entity());
+						m_nexus->add_to_group(name, m_selected_context_entity->get_entity());
 					}
 				}
 
@@ -708,14 +708,15 @@ protected:
 			}
 			if (m_is_in_group_tab && ImGui::Selectable("Remove from group"))
 			{
-				m_nexus->remove_from_group(from_group, m_selected_context_entity.get_entity());
+				m_nexus->remove_from_group(from_group, m_selected_context_entity->get_entity());
 			}
 
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
 
 			if (ImGui::Selectable("Delete"))
 			{
-				m_selected_context_entity.get_entity().destroy();
+				m_selected_context_entity->get_entity().destroy();
+				m_selected_context_entity = nullptr;
 			}
 
 			ImGui::PopStyleColor(1);
@@ -778,8 +779,8 @@ protected:
 
 private:
 	u32 m_entity_counter = 0;
-	forge::EntityView m_selected_entity;
-	forge::EntityView m_selected_context_entity;
+	forge::EntityViewHandle m_selected_entity;
+	forge::EntityViewHandle m_selected_context_entity;
 	std::string_view m_filter;
 	bool m_is_in_group_tab = false;
 	std::string_view m_last_hovered_group_name;

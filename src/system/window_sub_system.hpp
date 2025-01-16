@@ -1,7 +1,10 @@
 #pragma once
+#include "window.hpp"
 #include "../core/isub_system.hpp"
+#include "container/virtual_array.hpp"
 
-class Window;
+
+#define MAX_WINDOW_COUNT 32
 
 namespace forge
 {
@@ -20,5 +23,6 @@ namespace forge
 		float get_runtime() const;
 
 	private:
+		VirtualArray<Window> m_windows {MAX_WINDOW_COUNT};
 	};
 }

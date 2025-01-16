@@ -53,7 +53,7 @@ void forge::OglTexture::destroy()
 
 void forge::OglTexture::bind(int unit)
 {
-	if (m_id == UINT32_MAX)
+	if (is_valid())
 	{
 		return;
 	}

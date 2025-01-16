@@ -10,6 +10,7 @@
 #include "framework/input.hpp"
 #include "core/engine.hpp"
 #include "framework/components /camera_component.hpp"
+#include "framework/components /register_engine_components.hpp"
 #include "graphics/ogl_renderer/ogl_renderer.hpp"
 #include "memory/arena_allocator.hpp"
 #include "util/random.hpp"
@@ -343,26 +344,43 @@ public:
 
 	void update(forge::DeltaTime delta) override
 	{
+		m_accumulated_time += delta;
+
 		auto &owner = m_owner->get_entity();
 
 		auto position = owner.get_local_position();
-		auto runtime = forge::Engine::get_instance().get_engine_runtime();
 
-		position.x = glm::sin(runtime + m_offset);
+		auto angular_frequency = 2.0f * M_PI * frequency;
+
+		auto sin_bob = amplitude * glm::sin(angular_frequency * m_accumulated_time);
+
+		if (bob_x)
+		{
+			position.x = sin_bob;
+		}
+		if (bob_z)
+		{
+			position.z = sin_bob;
+		}
+		if (bob_y)
+		{
+			position.y = amplitude * glm::cos(angular_frequency * m_accumulated_time);
+		}
 
 		owner.set_local_position(position);
-
-		m_mat *= glm::inverse(owner.get_model()) * glm::inverse(glm::transpose(owner.get_model()));
 	}
+
+	EXPORT_FIELDS(&frequency, &amplitude, &bob_x, &bob_y, &bob_z);
+
+	float frequency = 0.5;
+	float amplitude = 0.5;
+
+	bool bob_x = false;
+	bool bob_y = false;
+	bool bob_z = true;
 
 private:
-	float m_offset = 0;
-	glm::mat4 m_mat {1.0};
-
-	void on_create() override
-	{
-
-	}
+	forge::DeltaTime m_accumulated_time {};
 };
 
 // struct Counter
@@ -480,11 +498,14 @@ int main(int argc, const char **argv)
 
 	auto *nexus = engine.get_subsystem<forge::Nexus>();
 
+	forge::register_engine_components(nexus);
+
 	nexus->register_component<FlyCamera>();
 	nexus->register_component<ExportFieldTestComponent>();
 	nexus->register_component<SpinCamera>();
 	nexus->register_component<PrimitiveRendererComponent>();
 	nexus->register_component<TempLightComponent>();
+	nexus->register_component<BobComponent>();
 
 	auto &player = nexus->create_entity<FlyCamera>("Player");
 	//
@@ -495,7 +516,7 @@ int main(int argc, const char **argv)
 	// 	camera->fov = 100;
 	// }
 
-	player.get_transform().set_local_position({0, 0, 5});
+	player.get_transform().set_local_position({-5, 0, 0});
 
 	player.emplace_child<ExportFieldTestComponent>("Child");
 

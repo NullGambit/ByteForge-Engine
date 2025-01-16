@@ -141,12 +141,17 @@ void forge::OglRenderer::update()
 
 			for (auto i = 0; auto &texture : material.textures)
 			{
-				data.textures[i].texture.bind(i);
+				auto &texture_data = data.textures[i];
+
+				texture_data.texture.bind(i);
 
 				auto &props = properties[i];
 
+				auto enable_texture = texture_data.is_valid && texture.enabled;
+
+				m_forward_shader.set(props[1], enable_texture);
+
 				m_forward_shader.set(props[0], i);
-				m_forward_shader.set(props[1], texture.enabled);
 				m_forward_shader.set(props[2], texture.scale);
 				m_forward_shader.set(props[3], texture.strength);
 
@@ -229,9 +234,7 @@ forge::Camera* forge::OglRenderer::get_active_camera()
 
 forge::PrimitiveModel* forge::OglRenderer::create_primitive(glm::mat4 model)
 {
-	auto [ptr, id] = m_render_data_pool.allocate(true);
-
-	auto *data = (PrimitiveRenderData*)ptr;
+	auto [data, id] = m_render_data_pool.emplace<PrimitiveRenderData>();
 
 	data->primitive = PrimitiveModel {model};
 	data->primitive.m_id = id;
@@ -268,6 +271,7 @@ void forge::OglRenderer::create_texture(u32 id, std::string_view path, u32 type)
 
 	texture_data.texture = m_texture_resource.add(path);
 	texture_data.path = path;
+	texture_data.is_valid = true;
 }
 
 void forge::OglRenderer::handle_framebuffer_resize(int width, int height)
