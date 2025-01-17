@@ -53,10 +53,8 @@ forge::EcsResult forge::Entity::remove_component(std::type_index index)
 
 void forge::Entity::on_editor_enter()
 {
-	for (auto &[_, view] : m_components)
+	for (auto &[_, component] : m_components)
 	{
-		auto *component = (IComponent*)view.pointer;
-
 		component->on_editor_enter();
 	}
 }
@@ -282,9 +280,9 @@ void forge::Nexus::destroy_children(Entity* entity)
 void forge::Nexus::destroy_entity(Entity* entity)
 {
 	// free components and call their destructors
-	for (auto &[index, cv] : entity->m_components)
+	for (auto &[index, component] : entity->m_components)
 	{
-		m_component_table[index].free(cv.offset);
+		m_component_table[index].free(component->m_id);
 	}
 
 	destroy_children(entity);
@@ -333,21 +331,18 @@ u8* forge::Nexus::add_component(Entity *entity, std::type_index index)
 
 	auto &ct = m_component_table[index];
 
-	auto [ptr, offset] = ct.mem_pool.allocate(true);
+	auto [ptr, id] = ct.mem_pool.allocate(true);
 
 	auto *component = (IComponent*)ptr;
 
 	component->m_owner = entity->get_view();
 	component->m_is_active = true;
 	component->m_is_enabled = true;
+	component->m_id = id;
 
 	component->on_create();
 
-	entity->m_components[index] =
-	{
-		.offset =  offset,
-		.pointer = ptr
-	};
+	entity->m_components[index] = component;
 
 	for (const auto &index : component->get_bundle())
 	{

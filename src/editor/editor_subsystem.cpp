@@ -530,10 +530,8 @@ protected:
 				ImGui::EndPopup();
 			}
 
-			for (auto i = 0; auto &[index, view] : entity.get_components())
+			for (auto i = 0; auto &[index, component] : entity.get_components())
 			{
-				auto *component = (IComponent*)view.pointer;
-
 				auto is_enabled = component->is_enabled();
 
 				ImGui::PushID(index.name());

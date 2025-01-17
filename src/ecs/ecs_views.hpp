@@ -9,12 +9,6 @@ namespace forge
 	class Nexus;
 	class Entity;
 
-	struct ComponentView
-	{
-		size_t offset;
-		u8 *pointer;
-	};
-
 	struct EntityView
 	{
 		static constexpr auto NO_INDEX = std::numeric_limits<u32>::max();

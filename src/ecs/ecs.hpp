@@ -71,12 +71,20 @@ namespace forge
 
         virtual void on_editor_enter() {}
 
+        [[nodiscard]]
+        u32 get_id() const
+        {
+            return m_id;
+        }
+
     private:
         friend Nexus;
         // if false this component has been freed
         bool m_is_active = true;
         // if false this component should not be updated
         bool m_is_enabled = true;
+
+        u32 m_id;
 
     protected:
         EntityViewHandle m_owner;
@@ -142,7 +150,7 @@ namespace forge
         void set_name(std::string_view new_name);
 
         [[nodiscard]]
-        inline const HashMap<std::type_index, ComponentView>& get_components() const
+        inline const HashMap<std::type_index, IComponent*>& get_components() const
         {
             return m_components;
         }
@@ -300,7 +308,7 @@ namespace forge
 
         std::string m_name;
 
-        HashMap<std::type_index, ComponentView> m_components;
+        HashMap<std::type_index, IComponent*> m_components;
 
         Nexus *m_nexus = nullptr;
 
@@ -520,11 +528,11 @@ namespace forge
                 return EcsResult::EntityDoesNotHaveComponent;
             }
 
-            ((IComponent*)iter->second.pointer)->on_destroy();
+            iter->second->on_destroy();
 
             auto &ct = m_component_table[index];
 
-            ct.free(iter->second.offset);
+            ct.free(iter->second->m_id);
 
             entity->m_components.erase(iter);
 
@@ -595,7 +603,7 @@ namespace forge
             return nullptr;
         }
 
-        return (T*)iter->second.pointer;
+        return (T*)iter->second;
     }
 
     template<class ... Args>
