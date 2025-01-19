@@ -107,31 +107,21 @@ void forge::Entity::update_dirty_array() const
 	}
 }
 
-void forge::Nexus::ComponentType::free(size_t offset_to_free)
+void forge::Nexus::ComponentType::free(IComponent *component)
 {
-	auto *mem = mem_pool.get_memory() + offset_to_free;
-
-	auto *component = (IComponent*)mem;
-
 	component->m_is_active = false;
 
-	mem_pool.free(offset_to_free);
+	mem_pool.free(component->m_id);
 }
 
 void forge::Nexus::ComponentType::update(DeltaTime delta) const
 {
-	auto *memory = mem_pool.get_memory();
-
-	for (int i = 0; i < mem_pool.get_length(); i++)
+	for (auto &component : mem_pool.get_iterator<IComponent>())
 	{
-		auto *component = (IComponent*)memory;
-
-		if (component->m_is_active && component->m_is_enabled)
+		if (component.m_is_active && component.m_is_enabled)
 		{
-			component->update(delta);
+			component.update(delta);
 		}
-
-		memory += mem_pool.get_element_size();
 	}
 }
 
@@ -140,15 +130,63 @@ std::string forge::Nexus::init()
 	// construct global entities vector
 	m_entities_table.emplace_back();
 
-	// m_entities_table.front().entities.reserve(sizeof(Entity) * 10'000);
-	//
-	// m_entities_table.reserve(sizeof(EntitiesTableEntry) * 4098);
-
 	return {};
 }
 
 void forge::Nexus::shutdown()
 {
+	// unregister all components so that their mempools will be destroyed
+	for (auto &[type_index, _] : m_component_table)
+	{
+		unregister_component(type_index, false);
+	}
+}
+
+void forge::Nexus::unregister_component(std::type_index type_index, bool remove_from_update_table)
+{
+	auto it = m_component_table.find(type_index);
+
+	if (it == m_component_table.end())
+	{
+		return;
+	}
+
+	it->second.mem_pool.destroy();
+
+	m_component_table.erase(it);
+
+	if (remove_from_update_table)
+	{
+		// while this is a less than efficient way to remove the component type from the update table i think its
+		// perfectly fine because unregistering a component will happen very rarely and likely never during gameplay
+		// not worth the effort and cost to optimize
+		auto index = std::find(m_update_table.begin(), m_update_table.end(), type_index);
+
+		m_update_table.erase(index);
+	}
+}
+
+forge::Entity & forge::Nexus::create_entity(std::string_view name)
+{
+	auto &entities = m_entities_table.front().entities;
+	auto index = entities.size();
+	auto &[entity, handle] = entities.emplace_back();
+
+	entity.m_nexus = this;
+	entity.m_table_index = 0;
+	entity.m_index = index;
+	entity.m_id = m_id_counter++;
+
+	handle = entity.make_handle();
+
+	// TODO: resolve name collisions
+	if (!name.empty())
+	{
+		entity.m_name = name;
+		m_name_table.emplace(entity.m_name, entity.get_view());
+	}
+
+	return entity;
 }
 
 void forge::Nexus::add_to_group(std::string_view group_name, Entity& entity)
@@ -282,7 +320,7 @@ void forge::Nexus::destroy_entity(Entity* entity)
 	// free components and call their destructors
 	for (auto &[index, component] : entity->m_components)
 	{
-		m_component_table[index].free(component->m_id);
+		m_component_table[index].free(component);
 	}
 
 	destroy_children(entity);

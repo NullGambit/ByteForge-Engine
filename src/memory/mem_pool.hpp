@@ -211,7 +211,7 @@ namespace forge
 		}
 
 		template<class T>
-		MemPoolTypedIterator<T> get_iterator()
+		MemPoolTypedIterator<T> get_iterator() const
 		{
 			return this;
 		}

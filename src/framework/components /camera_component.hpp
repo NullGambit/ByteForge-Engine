@@ -13,6 +13,8 @@ namespace forge
 
 		EXPORT_FIELDS(CAMERA_COMPONENT_EXPORTED_FIELDS)
 
+		SET_MAX_COMPONENT_MEMORY(sizeof(CameraComponent) * 32)
+
 	private:
 		u32 m_on_transform_update_connection {};
 

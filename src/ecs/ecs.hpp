@@ -20,9 +20,8 @@
 #include "transform.hpp"
 #include "util/types.hpp"
 
-// the maximum amount of virtual memory that will be used for each component
-// TODO: this can be fine tuned to allow components to specify how much maximum memory they'll need
-#define ECS_MAX_MAPPED_MEMORY MB(48)
+// the maximum amount of virtual memory that will be used for each component by default unless specified otherwise by the component
+#define DEFAULT_ECS_MAX_MAPPED_MEMORY MB(48)
 
 namespace forge
 {
@@ -356,6 +355,7 @@ namespace forge
     // if used within an IComponent class it will be used as a tag to signify that this component should be placed within the update table
     // the actual function itself is not called ever
 #define REGISTER_UPDATE_FUNC void __should_ever_update__() {}
+#define SET_MAX_COMPONENT_MEMORY(amount) constexpr static size_t max_component_memory() { return (amount); }
 
     template<class T>
     concept ComponentShouldEverUpdate = requires(T t)
@@ -369,7 +369,7 @@ namespace forge
         {
             MemPool mem_pool;
 
-            void free(size_t offset_to_free);
+            void free(IComponent *component);
 
             void update(DeltaTime delta) const;
         };
@@ -391,7 +391,7 @@ namespace forge
         requires(std::derived_from<T, IComponent>)
         EcsResult register_component(bool override_should_update = false)
         {
-            const auto &type = typeid(T);
+            constexpr auto &type = typeid(T);
 
             if (m_component_table.contains(type))
             {
@@ -402,7 +402,14 @@ namespace forge
 
             auto &ct = emplaced.first->second;
 
-            auto result = ct.mem_pool.init<T>(ECS_MAX_MAPPED_MEMORY);
+            auto component_size = DEFAULT_ECS_MAX_MAPPED_MEMORY;
+
+            if constexpr (requires { T::max_component_memory; })
+            {
+                component_size = T::max_component_memory();
+            }
+
+            auto result = ct.mem_pool.init<T>(component_size);
 
             if (!result)
             {
@@ -417,26 +424,18 @@ namespace forge
             return emplaced.second ? EcsResult::Ok : EcsResult::CouldNotAddComponentToTypeMap;
         }
 
-        // TODO: remove from update table as well
         template<class T>
-        void unregister_component()
+        void unregister_component(bool remove_from_update_table = true)
         {
-            auto it = m_component_table.find(typeid(T));
-
-            if (it == m_component_table.end())
-            {
-                return;
-            }
-
-            it->second.mem_pool.destroy();
-
-            m_component_table.erase(it);
+            unregister_component(typeid(T), remove_from_update_table);
         }
+
+        void unregister_component(std::type_index type_index, bool remove_from_update_table = true);
 
         template<class T>
         bool is_component_registered() const
         {
-            return m_component_table.contains(typeid(T));
+            return is_component_registered(typeid(T));
         }
 
         bool is_component_registered(std::type_index index) const
@@ -444,26 +443,12 @@ namespace forge
             return m_component_table.contains(index);
         }
 
+        Entity& create_entity(std::string_view name = "");
+
         template<class ...Args>
-        Entity& create_entity(std::optional<std::string_view> name = std::nullopt)
+        Entity& create_entity(std::string_view name = "")
         {
-            auto &entities = m_entities_table.front().entities;
-            auto index = entities.size();
-            auto &[entity, handle] = entities.emplace_back();
-
-            entity.m_nexus = this;
-            entity.m_table_index = 0;
-            entity.m_index = index;
-            entity.m_id = m_id_counter++;
-
-            handle = entity.make_handle();
-
-            // TODO: resolve name collisions
-            if (name)
-            {
-                entity.m_name = name.value();
-                m_name_table.emplace(entity.m_name, entity.get_view());
-            }
+            auto &entity = create_entity(name);
 
             (add_components<Args>(&entity), ...);
 
@@ -532,7 +517,7 @@ namespace forge
 
             auto &ct = m_component_table[index];
 
-            ct.free(iter->second->m_id);
+            ct.free(iter->second);
 
             entity->m_components.erase(iter);
 
