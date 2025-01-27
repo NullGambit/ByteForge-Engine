@@ -38,7 +38,7 @@ void forge::WindowSubSystem::update()
 {
 }
 
-void forge::WindowSubSystem::end_tick()
+void forge::WindowSubSystem::post_update()
 {
 	glfwPollEvents();
 }

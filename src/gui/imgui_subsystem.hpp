@@ -10,8 +10,8 @@ namespace forge
 		std::string init() override;
 		void shutdown() override;
 		void update() override;
-		void start_tick() override;
-		void end_tick() override;
+		void pre_update() override;
+		void post_update() override;
 
 		// SubSystemThreadMode get_thread_mode() override
 		// {

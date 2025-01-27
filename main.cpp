@@ -383,100 +383,8 @@ private:
 	forge::DeltaTime m_accumulated_time {};
 };
 
-// struct Counter
-// {
-// 	int count = 0;
-// 	bool destroyed = false;
-//
-// 	~Counter()
-// 	{
-// 		// log::info("destructor called");
-// 		destroyed = true;
-// 	}
-//
-// 	void update()
-// 	{
-// 		// assert(!destroyed);
-// 		count++;
-// 	}
-// };
-
 int main(int argc, const char **argv)
 {
-	// constexpr auto MAX_COUNTERS = 10'000'000;
-	// using time_unit = std::chrono::milliseconds;
-	//
-	// std::vector<Counter> vec_counters {MAX_COUNTERS};
-	//
-	// vec_counters.erase(vec_counters.begin() + MAX_COUNTERS / 2);
-	//
-	// std::vector<std::shared_ptr<Counter>> smart_ptr_counters;
-	//
-	// for (int i = 0; i < MAX_COUNTERS; i++)
-	// {
-	// 	smart_ptr_counters.emplace_back(std::make_shared<Counter>());
-	// }
-	//
-	// forge::MemPool mem_pool_counters;
-	//
-	// mem_pool_counters.init<Counter>(sizeof(Counter) * MAX_COUNTERS);
-	//
-	// for (auto i = 0; i < MAX_COUNTERS; i++)
-	// {
-	// 	mem_pool_counters.emplace<Counter>();
-	// }
-	//
-	// forge::VirtualArray<Counter> virtual_array_counters (MAX_COUNTERS);
-	//
-	// for (auto i = 0; i < MAX_COUNTERS; i++)
-	// {
-	// 	virtual_array_counters.emplace();
-	// }
-	//
-	// auto start = std::chrono::high_resolution_clock::now();
-	//
-	// for (auto &counter : vec_counters)
-	// {
-	// 	counter.update();
-	// }
-	//
-	// auto end = std::chrono::high_resolution_clock::now();
-	//
-	// std::cout << "vec time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
-	//
-	// start = std::chrono::high_resolution_clock::now();
-	//
-	// for (auto &counter : smart_ptr_counters)
-	// {
-	// 	counter->update();
-	// }
-	//
-	// end = std::chrono::high_resolution_clock::now();
-	//
-	// std::cout << "smart ptr time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
-	//
-	// start = std::chrono::high_resolution_clock::now();
-	//
-	// for (auto &counter : mem_pool_counters.get_iterator<Counter>())
-	// {
-	// 	counter.update();
-	// }
-	//
-	// end = std::chrono::high_resolution_clock::now();
-	//
-	// std::cout << "mem pool time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
-	//
-	// start = std::chrono::high_resolution_clock::now();
-	//
-	// for (auto &counter : virtual_array_counters)
-	// {
-	// 	counter.update();
-	// }
-	//
-	// end = std::chrono::high_resolution_clock::now();
-	//
-	// std::cout << "virtual array time: " << std::chrono::duration_cast<time_unit>(end-start).count() << '\n';
-
 	auto &engine = forge::Engine::get_instance();
 
 	auto result = engine.init(std::span{argv, (size_t)argc},
@@ -484,7 +392,7 @@ int main(int argc, const char **argv)
 		.window_title = "ByteForge Engine",
 		.window_width = 1920,
 		.window_height = 1080,
-		.log_flags =  log::LogTime
+		.log_flags = log::LogTime
 	});
 
 	if (result == forge::EngineInitResult::HaltWithNoError)
@@ -516,7 +424,7 @@ int main(int argc, const char **argv)
 	// 	camera->fov = 100;
 	// }
 
-	player.get_transform().set_local_position({-5, 0, 0});
+	player.set_local_position({-5, 0, 0});
 
 	player.emplace_child<ExportFieldTestComponent>("Child");
 

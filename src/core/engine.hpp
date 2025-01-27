@@ -48,6 +48,7 @@ namespace forge
 
 		EngineInitResult init(std::span<const char*> sys_args, const EngineInitOptions &options);
 
+
 		void run();
 
 		void shutdown();
@@ -118,22 +119,15 @@ namespace forge
 		std::vector<std::thread> m_update_threads;
 		std::vector<ISubSystem*> m_main_thread_subsystems;
 
-		// ======== member variables for offload subsystems ========
-
-		std::mutex m_offload_mutex;
-		std::condition_variable m_cv_start;
-		std::condition_variable m_cv_done;
-		int m_offload_systems = 0;
-		std::atomic_int m_offload_counter = 0;
-		std::atomic_bool m_should_start = false;
-
-		// ==============================================
+		SubSystemSyncData m_sync_data;
+		u32 m_offload_systems;
 
 		float m_delta_time;
 		float m_previous_time;
 		float m_fps;
 
 		Engine();
+		~Engine();
 
 		void init_logger();
 
@@ -154,9 +148,13 @@ namespace forge
 
 			auto *ptr = (T*)m_subsystems.emplace_back(std::forward<std::unique_ptr<ISubSystem>>(subsystem)).get();
 
+			assert(ptr != nullptr);
+
 			m_subsystem_table.emplace(typeid(I), ptr);
 
 			return ptr;
 		}
+
+		void update_subsystems(SubSystemUpdateType type);
 	};
 }

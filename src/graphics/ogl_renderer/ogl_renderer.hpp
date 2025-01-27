@@ -79,7 +79,7 @@ namespace forge
 		// 	return SubSystemThreadMode::OffloadThread;
 		// }
 
-		void start_tick() override;
+		void pre_update() override;
 
 		void set_wireframe(bool enable);
 

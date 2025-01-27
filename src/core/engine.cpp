@@ -6,6 +6,7 @@
 #include <thread>
 
 #include "logging.hpp"
+#include "concurrency/channel.hpp"
 #include "editor/editor_subsystem.hpp"
 #include "system/window_sub_system.hpp"
 #include "system/window.hpp"
@@ -17,11 +18,28 @@
 
 forge::Engine::Engine()
 {
+	// when constructing dependencies sometimes the unique pointer will be moved mid-dependency construction
+	// and it will result in dereferencing a null pointer
+	// reserving a large enough amount of memory is a temporary hack until i change how subsystems are stored
+	// to avoid smart pointers all together
+	m_subsystems.reserve(64);
+
 	add_subsystem<WindowSubSystem>();
 	add_subsystem<OglRenderer>();
 	add_subsystem<Nexus>();
 	add_subsystem<ImGuiSubsystem>();
 	add_subsystem<EditorSubsystem>();
+}
+
+forge::Engine::~Engine()
+{
+	for (auto &thread : m_update_threads)
+	{
+		if (thread.joinable())
+		{
+			thread.join();
+		}
+	}
 }
 
 void forge::Engine::quit()
@@ -46,16 +64,13 @@ forge::EngineInitResult forge::Engine::initialize_subsystem(std::set<std::type_i
 	{
 		const auto &type_index = dependency.get_type_index();
 
-		if (!initialized_subsystems.contains(type_index))
+		if (!initialized_subsystems.contains(type_index) && !m_subsystem_table.contains(type_index))
 		{
-			if (!m_subsystem_table.contains(type_index))
-			{
-				auto &ptr = m_subsystems.emplace_back(dependency.construct());
+			auto &ptr = m_subsystems.emplace_back(dependency.construct());
 
-				initialize_subsystem(initialized_subsystems, ptr);
+			initialize_subsystem(initialized_subsystems, ptr);
 
-				m_subsystem_table.emplace(type_index, ptr.get());
-			}
+			m_subsystem_table.emplace(type_index, ptr.get());
 		}
 	}
 
@@ -64,7 +79,24 @@ forge::EngineInitResult forge::Engine::initialize_subsystem(std::set<std::type_i
 		return EngineInitResult::Ok;
 	}
 
-	auto result = subsystem->init();
+	std::string result;
+
+	if (subsystem->get_thread_mode() == SubSystemThreadMode::OffloadThread)
+	{
+		auto done = false;
+
+		subsystem->post_event([&subsystem, &result, &done]
+		{
+			result = subsystem->init();
+			done = true;
+		});
+
+		while (!done);
+	}
+	else
+	{
+		result = subsystem->init();
+	}
 
 	if (!result.empty())
 	{
@@ -92,19 +124,41 @@ forge::EngineInitResult forge::Engine::init(std::span<const char*> sys_args, con
 
 	init_logger();
 
-	ArgParser default_parser;
+	m_sync_data.stage = SubSystemStage::Init;
 
+	start_subsystems();
+
+	m_sync_data.counter = m_offload_systems;
+
+	ArgParser default_parser;
 	ArgParser *parser = options.arg_parser;
 
-	if (parser == nullptr)
+	if (!parser)
 	{
 		parser = &default_parser;
 	}
 
-	for (const auto &subsystem : m_subsystems)
+	std::atomic_uint32_t counter = 0;
+
+	for (auto &subsystem : m_subsystems)
 	{
-		subsystem->receive_cmd_args(*parser);
+		if (subsystem->get_thread_mode() == SubSystemThreadMode::OffloadThread)
+		{
+			counter++;
+
+			subsystem->post_event([&subsystem, &parser, &counter]
+			{
+				subsystem->receive_cmd_args(*parser);
+				counter--;
+			});
+		}
+		else
+		{
+			subsystem->receive_cmd_args(*parser);
+		}
 	}
+
+	while (counter > 0);
 
 	auto result = parser->parse(sys_args);
 
@@ -121,6 +175,7 @@ forge::EngineInitResult forge::Engine::init(std::span<const char*> sys_args, con
 	std::set<std::type_index> initialized_subsystems;
 
 	// range based for loop is not a good idea because a new subsystem might be added to the list
+	// dont fall for clang-tidy's lies future me!!!
 	for (auto i = 0; i < m_subsystems.size(); i++)
 	{
 		auto result = initialize_subsystem(initialized_subsystems, m_subsystems[i]);
@@ -134,9 +189,36 @@ forge::EngineInitResult forge::Engine::init(std::span<const char*> sys_args, con
 	return EngineInitResult::Ok;
 }
 
+void forge::Engine::update_subsystems(SubSystemUpdateType type)
+{
+	std::unique_lock lock { m_sync_data.mutex };
+
+	m_sync_data.update_type = type;
+
+	start_offload_threads();
+
+	for (const auto &subsystem : m_main_thread_subsystems)
+	{
+		switch (type)
+		{
+			case SubSystemUpdateType::PreUpdate:
+				subsystem->pre_update();
+				break;
+			case SubSystemUpdateType::Update:
+				subsystem->update();
+				break;
+			case SubSystemUpdateType::PostUpdate:
+				subsystem->post_update();
+				break;
+		}
+	}
+
+	m_sync_data.cv_done.wait(lock, [&offload_counter = m_sync_data.counter]{ return offload_counter <= 0; });
+}
+
 void forge::Engine::run()
 {
-	start_subsystems();
+	m_sync_data.stage = SubSystemStage::Update;
 
 	while (window.should_stay_open())
 	{
@@ -147,33 +229,12 @@ void forge::Engine::run()
 		m_previous_time = current_time;
 		m_fps = 1 / m_delta_time;
 
-		for (const auto &subsystem : m_subsystems)
-		{
-			subsystem->start_tick();
-		}
-
-		// start offload threads update function
-		start_offload_threads();
-
-		// updates main thread subsystems
-		for (const auto &subsystem : m_main_thread_subsystems)
-		{
-			if (subsystem->should_update())
-			{
-				subsystem->update();
-			}
-		}
-
-		// waits till all offload threads are done
-		std::unique_lock lock { m_offload_mutex };
-		m_cv_done.wait(lock, [&offload_counter = m_offload_counter]{ return offload_counter <= 0; });
+		update_subsystems(SubSystemUpdateType::PreUpdate);
+		update_subsystems(SubSystemUpdateType::Update);
 
 		window.reset_input();
 
-		for (const auto &subsystem : m_subsystems)
-		{
-			subsystem->end_tick();
-		}
+		update_subsystems(SubSystemUpdateType::PostUpdate);
 
 		// TODO: this should swap all window buffers
 		window.swap_buffers();
@@ -181,18 +242,40 @@ void forge::Engine::run()
 
 	// start one last time so the offload threads won't get stuck waiting
 	start_offload_threads();
+
 }
 
 void forge::Engine::shutdown()
 {
+	m_sync_data.counter = m_offload_systems;
+
 	stop_threaded_subsystems();
+
+	m_sync_data.stage = SubSystemStage::Shutdown;
 
 	// shutdown and destructs subsystems in reverse order in which they were initialized to ensure correct cleanup
 	for (auto &subsystem : std::ranges::reverse_view(m_subsystems))
 	{
-		subsystem->shutdown();
-		subsystem.reset();
+		if (subsystem->get_thread_mode() == SubSystemThreadMode::OffloadThread)
+		{
+			subsystem->post_event([&subsystem]
+			{
+				subsystem->shutdown();
+				subsystem.reset();
+			});
+		}
+		else
+		{
+			subsystem->shutdown();
+			subsystem.reset();
+		}
 	}
+
+	m_sync_data.stage = SubSystemStage::Done;
+
+	std::unique_lock lock { m_sync_data.mutex };
+
+	m_sync_data.cv_done.wait(lock, [&offload_counter = m_sync_data.counter]{ return offload_counter <= 0; });
 
 	log::info("Engine shutdown successfully");
 }
@@ -220,16 +303,15 @@ void forge::Engine::start_subsystems()
 {
 	for (const auto &subsystem : m_subsystems)
 	{
+		subsystem->set_sync_data(&m_sync_data);
+
 		if (subsystem->get_thread_mode() == SubSystemThreadMode::SeparateThread)
 		{
 			m_update_threads.emplace_back(&ISubSystem::threaded_update, subsystem.get());
 		}
 		else if (subsystem->get_thread_mode() == SubSystemThreadMode::OffloadThread)
 		{
-			m_update_threads.emplace_back(&ISubSystem::offload_update, subsystem.get(),
-				std::ref(m_should_start), std::ref(m_offload_counter),
-				std::ref(m_cv_start), std::ref(m_cv_done),
-				std::ref(m_offload_mutex));
+			m_update_threads.emplace_back(&ISubSystem::offload_update, subsystem.get());
 
 			++m_offload_systems;
 		}
@@ -261,8 +343,7 @@ void forge::Engine::stop_threaded_subsystems()
 
 void forge::Engine::start_offload_threads()
 {
-	std::unique_lock lock { m_offload_mutex };
-	m_offload_counter = m_offload_systems;
-	m_should_start = true;
-	m_cv_start.notify_all();
+	m_sync_data.counter = m_offload_systems;
+	m_sync_data.should_start = true;
+	m_sync_data.cv_start.notify_all();
 }

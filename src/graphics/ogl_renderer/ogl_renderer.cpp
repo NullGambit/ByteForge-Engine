@@ -97,10 +97,8 @@ void forge::OglRenderer::update()
 
 	const auto pv = m_active_camera->calculate_pv();
 
-	for (auto i = 0; i < m_render_data_pool.get_length(); i++)
+	for (auto &data : m_render_data_pool.get_iterator<PrimitiveRenderData>())
 	{
-		auto &data = *m_render_data_pool.get_from_index<PrimitiveRenderData>(i);
-
 		if (data.is_valid && !data.primitive.is_hidden)
 		{
 			const auto &model = data.primitive.m_model;
@@ -187,7 +185,7 @@ void forge::OglRenderer::receive_cmd_args(ArgParser &parser)
 		{.description = "the path where the target shaders are located in", .group = "rendering"});
 }
 
-void forge::OglRenderer::start_tick()
+void forge::OglRenderer::pre_update()
 {
 	m_statistics = {};
 }

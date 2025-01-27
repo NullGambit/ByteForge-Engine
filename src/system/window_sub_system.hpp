@@ -15,7 +15,12 @@ namespace forge
 		void shutdown() override;
 		void update() override;
 		bool is_critical() override { return true; }
-		void end_tick() override;
+		void post_update() override;
+
+		// SubSystemThreadMode get_thread_mode() override
+		// {
+		// 	return SubSystemThreadMode::OffloadThread;
+		// }
 
 		void poll_events();
 

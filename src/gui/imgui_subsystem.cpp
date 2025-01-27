@@ -257,7 +257,7 @@ void forge::ImGuiSubsystem::update()
 
 }
 
-void forge::ImGuiSubsystem::start_tick()
+void forge::ImGuiSubsystem::pre_update()
 {
 	ImGui_ImplOpenGL3_NewFrame();
 
@@ -266,7 +266,7 @@ void forge::ImGuiSubsystem::start_tick()
 	ImGui::NewFrame();
 }
 
-void forge::ImGuiSubsystem::end_tick()
+void forge::ImGuiSubsystem::post_update()
 {
 	ImGui::Render();
 

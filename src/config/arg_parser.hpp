@@ -60,6 +60,8 @@ namespace forge
 		requires(std::is_constructible_v<ArgValue, T*>)
 		ArgParser& add(std::string_view name, T *storage, ArgMeta meta = {})
 		{
+			std::lock_guard lock {m_mutex};
+
 			ArgData data
 			{
 				storage,
@@ -91,6 +93,7 @@ namespace forge
 		}
 
 	private:
+		std::mutex m_mutex;
 		bool m_strict;
 		std::string_view m_prefix;
 		std::string_view m_alias_prefix;
