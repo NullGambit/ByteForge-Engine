@@ -811,9 +811,9 @@ private:
 	bool m_show_demo_window;
 };
 
-std::string forge::EditorSubsystem::init()
+std::string forge::EditorSubsystem::init(const EngineInitOptions &options)
 {
-	auto result = m_nexus.init();
+	auto result = m_nexus.init(options);
 
 	if (!result.empty())
 	{

@@ -16,12 +16,13 @@
 #include "graphics/mesh_primitives.hpp"
 #include "system/fs_monitor.hpp"
 #include "util/macros.hpp"
+#include "memory/defs.hpp"
 #include "util/random.hpp"
 
 #define CAMERA_POOL_SIZE sizeof(forge::Camera) * 16
 #define RENDER_DATA_POOL_SIZE MB(2048)
 
-std::string forge::OglRenderer::init()
+std::string forge::OglRenderer::init(const EngineInitOptions &options)
 {
 	auto ok = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 

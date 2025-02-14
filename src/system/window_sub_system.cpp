@@ -2,7 +2,7 @@
 #include "core/engine.hpp"
 #include "GLFW/glfw3.h"
 
-std::string forge::WindowSubSystem::init()
+std::string forge::WindowSubSystem::init(const EngineInitOptions &options)
 {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
@@ -15,8 +15,6 @@ std::string forge::WindowSubSystem::init()
 	{
 		return "could not init glfw";
 	}
-
-	const auto &options = g_engine.get_init_options();
 
 	ok = g_engine.window.open(options.window_title, options.window_width, options.window_height);
 

@@ -14,7 +14,7 @@
 
 #define INITIAL_MONITOR_SIZE 50
 
-std::string forge::LinuxFsMonitor::init()
+std::string forge::LinuxFsMonitor::init(const EngineInitOptions &options)
 {
 	m_fd = inotify_init1(IN_NONBLOCK);
 

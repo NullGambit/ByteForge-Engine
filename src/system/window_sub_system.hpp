@@ -1,8 +1,8 @@
 #pragma once
-#include "window.hpp"
-#include "../core/isub_system.hpp"
-#include "container/virtual_array.hpp"
 
+#include "window.hpp"
+#include "core/isub_system.hpp"
+#include "container/virtual_array.hpp"
 
 #define MAX_WINDOW_COUNT 32
 
@@ -11,16 +11,11 @@ namespace forge
 	class WindowSubSystem final : public ISubSystem
 	{
 	public:
-		std::string init() override;
+		std::string init(const EngineInitOptions &options) override;
 		void shutdown() override;
 		void update() override;
 		bool is_critical() override { return true; }
 		void post_update() override;
-
-		// SubSystemThreadMode get_thread_mode() override
-		// {
-		// 	return SubSystemThreadMode::OffloadThread;
-		// }
 
 		void poll_events();
 

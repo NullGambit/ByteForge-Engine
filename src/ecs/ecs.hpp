@@ -6,19 +6,21 @@
 #include <variant>
 #include <tuple>
 
-#include "../container/map.hpp"
-#include "../fmt/fmt.hpp"
-#include "../memory/defs.hpp"
-#include "../memory/mem_pool.hpp"
-#include "../events/signal.hpp"
+#include "container/map.hpp"
+#include "fmt/fmt.hpp"
+#include "memory/defs.hpp"
+#include "memory/mem_pool.hpp"
+#include "events/signal.hpp"
 #include "core/isub_system.hpp"
+#include "defs.hpp"
 
-// should get included as a part of ecs.hpp. don't remove this.
 #include "component_field.hpp"
 #include "ecs_views.hpp"
-#include "macro_warcrimes.hpp"
 #include "transform.hpp"
 #include "util/types.hpp"
+
+// should get included as a part of ecs.hpp. don't remove this.
+#include "macro_warcrimes.hpp"
 
 // the maximum amount of virtual memory that will be used for each component by default unless specified otherwise by the component
 #define DEFAULT_ECS_MAX_MAPPED_MEMORY MB(48)
@@ -36,8 +38,6 @@ namespace forge
         EntityDoesNotHaveComponent,
         EntityDoesNotExist,
     };
-
-    using DeltaTime = float;
 
     struct EntityEntry;
 
@@ -376,7 +376,7 @@ namespace forge
 
     public:
 
-        std::string init() override;
+        std::string init(const EngineInitOptions &options) override;
 
         void shutdown() override;
 

@@ -26,7 +26,7 @@ namespace forge
 	public:
 		using Callback = std::function<void(uint32_t, std::string_view path)>;
 
-		std::string init() override;
+		std::string init(const EngineInitOptions &options) override;
 		void shutdown() override;
 		void update() override;
 

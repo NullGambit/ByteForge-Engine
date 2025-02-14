@@ -15,6 +15,7 @@
 #include "memory/arena_allocator.hpp"
 #include "util/random.hpp"
 #include "system/native_dialog.hpp"
+#include "core/engine_init_options.hpp"
 
 class SpinCamera final : public forge::CameraComponent
 {

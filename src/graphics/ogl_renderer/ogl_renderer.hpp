@@ -65,7 +65,7 @@ namespace forge
 	class OglRenderer final : public ISubSystem
 	{
 	public:
-		std::string init() override;
+		std::string init(const EngineInitOptions &options) override;
 		void update() override;
 		void shutdown() override;
 		bool is_critical() override { return true; }

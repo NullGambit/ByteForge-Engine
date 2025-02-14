@@ -15,6 +15,7 @@
 #include "gui/imgui_subsystem.hpp"
 #include "system/fs_monitor.hpp"
 #include "util/types.hpp"
+#include "engine_init_options.hpp"
 
 forge::Engine::Engine()
 {
@@ -41,7 +42,7 @@ void forge::Engine::quit()
 }
 
 forge::EngineInitResult forge::Engine::initialize_subsystem(std::set<std::type_index> &initialized_subsystems,
-	const std::unique_ptr<ISubSystem> &subsystem)
+	const std::unique_ptr<ISubSystem> &subsystem, const EngineInitOptions &options)
 {
 	if (subsystem == nullptr)
 	{
@@ -61,7 +62,7 @@ forge::EngineInitResult forge::Engine::initialize_subsystem(std::set<std::type_i
 		{
 			auto &ptr = m_subsystems.emplace_back(dependency.construct());
 
-			initialize_subsystem(initialized_subsystems, ptr);
+			initialize_subsystem(initialized_subsystems, ptr, options);
 
 			m_subsystem_table.emplace(type_index, ptr.get());
 		}
@@ -72,7 +73,7 @@ forge::EngineInitResult forge::Engine::initialize_subsystem(std::set<std::type_i
 		return EngineInitResult::Ok;
 	}
 
-	auto result = subsystem->init();
+	auto result = subsystem->init(options);
 
 	if (!result.empty())
 	{
@@ -96,9 +97,7 @@ forge::EngineInitResult forge::Engine::initialize_subsystem(std::set<std::type_i
 // TODO: find some way to defer initialization to a later point
 forge::EngineInitResult forge::Engine::init(std::span<const char*> sys_args, const EngineInitOptions &options)
 {
-	m_init_options = options;
-
-	init_logger();
+	init_logger(options);
 
 	ArgParser default_parser;
 	ArgParser *parser = options.arg_parser;
@@ -131,7 +130,7 @@ forge::EngineInitResult forge::Engine::init(std::span<const char*> sys_args, con
 	// dont fall for clang-tidy's lies future me!!!
 	for (auto i = 0; i < m_subsystems.size(); i++)
 	{
-		auto result = initialize_subsystem(initialized_subsystems, m_subsystems[i]);
+		auto result = initialize_subsystem(initialized_subsystems, m_subsystems[i], options);
 
 		if (result != EngineInitResult::Ok)
 		{
@@ -155,19 +154,28 @@ void forge::Engine::run()
 
 		for (auto &subsystem : m_subsystems)
 		{
-			subsystem->pre_update();
+			if (subsystem->should_update()) [[likely]]
+			{
+				subsystem->pre_update();
+			}
 		}
 
 		for (auto &subsystem : m_subsystems)
 		{
-			subsystem->update();
+			if (subsystem->should_update()) [[likely]]
+			{
+				subsystem->update();
+			}
 		}
 
 		window.reset_input();
 
 		for (auto &subsystem : m_subsystems)
 		{
-			subsystem->post_update();
+			if (subsystem->should_update()) [[likely]]
+			{
+				subsystem->post_update();
+			}
 		}
 
 		// TODO: this should swap all window buffers
@@ -190,16 +198,16 @@ float forge::Engine::get_engine_runtime()
 	return get_subsystem<WindowSubSystem>()->get_runtime();
 }
 
-void forge::Engine::init_logger()
+void forge::Engine::init_logger(const EngineInitOptions &options)
 {
-	if (!m_init_options.log_file.empty())
+	if (!options.log_file.empty())
 	{
-		log::set_outfile(m_init_options.log_file);
+		log::set_outfile(options.log_file);
 	}
-	if (!m_init_options.log_time_fmt.empty())
+	if (!options.log_time_fmt.empty())
 	{
-		log::set_time_fmt(m_init_options.log_time_fmt);
+		log::set_time_fmt(options.log_time_fmt);
 	}
 
-	log::set_flags(m_init_options.log_flags);
+	log::set_flags(options.log_flags);
 }

@@ -1,12 +1,10 @@
 #pragma once
-#include <atomic>
-#include <condition_variable>
-#include <string_view>
+
 #include <typeindex>
 #include <vector>
 
-#include "concurrency/command_buffer.hpp"
 #include "config/arg_parser.hpp"
+#include "engine_init_options.hpp"
 
 namespace forge
 {
@@ -48,7 +46,7 @@ namespace forge
 	};
 
 	template<class T>
-	inline DependencyStorage make_dependency()
+	DependencyStorage make_dependency()
 	{
 		DependencyStorage storage { typeid(T) };
 
@@ -63,7 +61,7 @@ namespace forge
 		virtual ~ISubSystem() = default;
 
 		// if the returning string is not empty that means an error occurred
-		virtual std::string init() = 0;
+		virtual std::string init(const EngineInitOptions &options) = 0;
 		virtual void shutdown() = 0;
 		virtual void update() = 0;
 
@@ -83,11 +81,5 @@ namespace forge
 		// if true the system init call must succeed or else the engine will fail to init
 		[[nodiscard]]
 		virtual bool is_critical() { return false; }
-
-		// will be called if the thread mode is set to SeparateThread
-		void threaded_update();
-
-		// will be called if the thread mode is set to OffloadThread
-		void offload_update();
 	};
 }

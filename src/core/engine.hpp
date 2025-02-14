@@ -3,29 +3,18 @@
 #include <memory>
 #include <set>
 #include <vector>
-#include <thread>
+#include <span>
+#include <ecs/defs.hpp>
 
 #include "isub_system.hpp"
-#include "config/arg_parser.hpp"
-#include "ecs/ecs.hpp"
 #include "system/window.hpp"
 
 namespace forge
 {
-	struct EngineInitOptions
-	{
-		std::string_view window_title;
-		int window_width;
-		int window_height;
-		uint8_t log_flags;
-		std::string_view log_file;
-		std::string_view log_time_fmt;
-		ArgParser *arg_parser = nullptr;
-	};
-
 	enum class EngineInitResult
 	{
 		Ok,
+		// means a controlled shutdown happened and should not be considered an error
 		HaltWithNoError,
 		ArgParserError,
 		SubsystemInitError,
@@ -59,12 +48,6 @@ namespace forge
 		inline float get_delta() const
 		{
 			return m_delta_time;
-		}
-
-		[[nodiscard]]
-		const EngineInitOptions& get_init_options() const
-		{
-			return m_init_options;
 		}
 
 		template<class T, class ...Args>
@@ -105,20 +88,19 @@ namespace forge
 		~Engine();
 
 	private:
+		DeltaTime m_delta_time;
+		DeltaTime m_previous_time;
+		DeltaTime m_fps;
+
 		// subsystem storage for fast iteration
 		std::vector<std::unique_ptr<ISubSystem>> m_subsystems;
 		// subsystem storage for lookups. allows users to find subsystems by registered type.
 		HashMap<std::type_index, ISubSystem*> m_subsystem_table;
-		EngineInitOptions m_init_options;
 
-		float m_delta_time;
-		float m_previous_time;
-		float m_fps;
-
-		void init_logger();
+		void init_logger(const EngineInitOptions &options);
 
 		EngineInitResult initialize_subsystem(std::set<std::type_index> &initialized_subsystems,
-			const std::unique_ptr<ISubSystem> &subsystem);
+			const std::unique_ptr<ISubSystem> &subsystem, const EngineInitOptions &options);
 
 		template<class T, class I>
 		inline T* add_subsystem_implementation(std::unique_ptr<ISubSystem> &&subsystem) requires std::derived_from<T, ISubSystem>

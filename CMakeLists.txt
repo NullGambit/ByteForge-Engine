@@ -115,6 +115,8 @@ add_executable(ByteForge_Engine main.cpp
         "src/framework/components /register_engine_components.cpp"
         "src/framework/components /register_engine_components.hpp"
         src/concurrency/channel.hpp
+        src/core/engine_init_options.hpp
+        src/ecs/defs.hpp
 )
 
 target_compile_options(ByteForge_Engine PRIVATE -include ${CMAKE_SOURCE_DIR}/src/core/forge_intrinsic.hpp)

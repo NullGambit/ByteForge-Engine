@@ -125,7 +125,7 @@ void forge::Nexus::ComponentType::update(DeltaTime delta) const
 	}
 }
 
-std::string forge::Nexus::init()
+std::string forge::Nexus::init(const EngineInitOptions &options)
 {
 	// construct global entities vector
 	m_entities_table.emplace_back();

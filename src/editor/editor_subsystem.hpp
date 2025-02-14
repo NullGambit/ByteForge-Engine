@@ -8,7 +8,7 @@ namespace forge
 	class EditorSubsystem final : public ISubSystem
 	{
 	public:
-		std::string init() override;
+		std::string init(const EngineInitOptions &options) override;
 		void shutdown() override;
 		void update() override;
 

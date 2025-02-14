@@ -1,5 +1,3 @@
-#pragma once
-
 #include "fmt.hpp"
 
 std::string fmt::do_format(std::string_view fmt, const std::string& buffer)

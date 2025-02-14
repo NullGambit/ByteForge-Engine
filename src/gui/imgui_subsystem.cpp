@@ -207,7 +207,7 @@ void set_theme_dark()
     style->Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.25f, 1.00f, 0.00f, 0.43f);
 }
 
-std::string forge::ImGuiSubsystem::init()
+std::string forge::ImGuiSubsystem::init(const EngineInitOptions &options)
 {
 	IMGUI_CHECKVERSION();
 

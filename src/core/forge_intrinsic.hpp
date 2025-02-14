@@ -27,5 +27,3 @@ __extension__ typedef unsigned long long int u64;
 #define ENUM(...)
 #define PROPERTY(...)
 #define FUNCTION(...)
-
-#define GLOBAL_ALLOC_SIZE GB(12)
