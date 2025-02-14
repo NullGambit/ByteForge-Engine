@@ -61,7 +61,6 @@ add_executable(ByteForge_Engine main.cpp
         src/system/fs_monitor.hpp
         src/system/linux/linux_fs_monitor.cpp
         src/system/linux/linux_fs_monitor.hpp
-        src/core/isub_system.cpp
         src/core/logging.hpp
         src/concurrency/command_buffer.hpp
         src/graphics/image/image.hpp

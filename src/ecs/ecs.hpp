@@ -382,11 +382,6 @@ namespace forge
 
         bool is_critical() override { return true; }
 
-        SubSystemThreadMode get_thread_mode() override
-        {
-            return SubSystemThreadMode::OffloadThread;
-        }
-
         template<class T>
         requires(std::derived_from<T, IComponent>)
         EcsResult register_component(bool override_should_update = false)

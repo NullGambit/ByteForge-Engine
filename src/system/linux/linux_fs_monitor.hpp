@@ -30,11 +30,6 @@ namespace forge
 		void shutdown() override;
 		void update() override;
 
-		SubSystemThreadMode get_thread_mode() override
-		{
-			return SubSystemThreadMode::SeparateThread;
-		}
-
 		int add_watch(std::string_view path, uint32_t events, Callback callback);
 		bool remove_watch(int wd);
 

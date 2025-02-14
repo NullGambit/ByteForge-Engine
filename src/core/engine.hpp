@@ -48,7 +48,6 @@ namespace forge
 
 		EngineInitResult init(std::span<const char*> sys_args, const EngineInitOptions &options);
 
-
 		void run();
 
 		void shutdown();
@@ -115,12 +114,6 @@ namespace forge
 		// subsystem storage for lookups. allows users to find subsystems by registered type.
 		HashMap<std::type_index, ISubSystem*> m_subsystem_table;
 		EngineInitOptions m_init_options;
-		// threads for subsystems with a SeparateThread mode
-		std::vector<std::thread> m_update_threads;
-		std::vector<ISubSystem*> m_main_thread_subsystems;
-
-		SubSystemSyncData m_sync_data;
-		u32 m_offload_systems;
 
 		float m_delta_time;
 		float m_previous_time;
@@ -130,10 +123,6 @@ namespace forge
 		~Engine();
 
 		void init_logger();
-
-		void start_subsystems();
-		void stop_threaded_subsystems();
-		void start_offload_threads();
 
 		EngineInitResult initialize_subsystem(std::set<std::type_index> &initialized_subsystems,
 			const std::unique_ptr<ISubSystem> &subsystem);
@@ -154,7 +143,5 @@ namespace forge
 
 			return ptr;
 		}
-
-		void update_subsystems(SubSystemUpdateType type);
 	};
 }
