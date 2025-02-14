@@ -38,12 +38,6 @@ namespace forge
 		Engine(const Engine&) = delete;
 		Engine& operator=(const Engine&) = delete;
 
-		static inline Engine& get_instance()
-		{
-			static Engine instance;
-			return instance;
-		}
-
 		void quit();
 
 		EngineInitResult init(std::span<const char*> sys_args, const EngineInitOptions &options);
@@ -107,6 +101,8 @@ namespace forge
 		// TODO: create some sort of window factory class that will create windows and will swap their buffers in the main loop
 		Window window;
 		DeltaTime time_scale = 1.0;
+		Engine();
+		~Engine();
 
 	private:
 		// subsystem storage for fast iteration
@@ -118,9 +114,6 @@ namespace forge
 		float m_delta_time;
 		float m_previous_time;
 		float m_fps;
-
-		Engine();
-		~Engine();
 
 		void init_logger();
 
@@ -145,3 +138,5 @@ namespace forge
 		}
 	};
 }
+
+inline forge::Engine g_engine;

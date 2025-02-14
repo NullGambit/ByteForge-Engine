@@ -168,9 +168,7 @@ void forge::Window::close()
 
 bool forge::Window::open(std::string_view name, int width, int height)
 {
-	auto &engine = Engine::get_instance();
-
-	if (!engine.is_subsystem_initialized<WindowSubSystem>())
+	if (!g_engine.is_subsystem_initialized<WindowSubSystem>())
 	{
 		return false;
 	}

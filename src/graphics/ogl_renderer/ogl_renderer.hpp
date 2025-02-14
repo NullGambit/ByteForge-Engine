@@ -74,11 +74,6 @@ namespace forge
 
 		void receive_cmd_args(ArgParser &parser) override;
 
-		// SubSystemThreadMode get_thread_mode() override
-		// {
-		// 	return SubSystemThreadMode::OffloadThread;
-		// }
-
 		void pre_update() override;
 
 		void set_wireframe(bool enable);

@@ -392,9 +392,7 @@ u8* forge::Nexus::add_component(Entity *entity, std::type_index index)
 
 void forge::Nexus::update()
 {
-	auto &engine = Engine::get_instance();
-
-	auto delta = engine.get_delta();
+	auto delta = g_engine.get_delta();
 
 	for (auto &type : m_update_table)
 	{

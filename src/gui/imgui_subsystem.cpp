@@ -225,7 +225,7 @@ std::string forge::ImGuiSubsystem::init()
 
 	io.IniFilename = "./config/editor_layout.ini";
 
-	auto &window = Engine::get_instance().window;
+	auto &window = g_engine.window;
 
 	bool ok;
 

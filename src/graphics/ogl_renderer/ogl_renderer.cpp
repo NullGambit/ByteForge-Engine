@@ -32,10 +32,8 @@ std::string forge::OglRenderer::init()
 
 	glClearColor(0, 255, 76, 255);
 
-	auto &engine = Engine::get_instance();
-
 	// TODO: remove connection
-	engine.window.on_resize.connect(this, &OglRenderer::handle_framebuffer_resize);
+	g_engine.window.on_resize.connect(this, &OglRenderer::handle_framebuffer_resize);
 
 	// load builtin shaders
 

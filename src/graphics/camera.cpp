@@ -6,7 +6,7 @@ glm::mat4 forge::Camera::get_projection() const
 {
 	if (projection_mode == CameraProjectionMode::Perspective)
 	{
-		auto &window = Engine::get_instance().window;
+		auto &window = g_engine.window;
 
 		auto win_size = window.get_size();
 

@@ -5,7 +5,7 @@
 
 void forge::CameraComponent::on_destroy()
 {
-	auto *renderer = Engine::get_instance().get_subsystem<OglRenderer>();
+	auto *renderer = g_engine.get_subsystem<OglRenderer>();
 
 	renderer->set_active_camera(nullptr);
 
@@ -16,14 +16,14 @@ void forge::CameraComponent::on_destroy()
 
 void forge::CameraComponent::on_enabled()
 {
-	auto *renderer = Engine::get_instance().get_subsystem<OglRenderer>();
+	auto *renderer = g_engine.get_subsystem<OglRenderer>();
 
 	renderer->set_active_camera(this);
 }
 
 void forge::CameraComponent::on_create()
 {
-	auto *renderer = Engine::get_instance().get_subsystem<OglRenderer>();
+	auto *renderer = g_engine.get_subsystem<OglRenderer>();
 
 	renderer->set_active_camera(this);
 

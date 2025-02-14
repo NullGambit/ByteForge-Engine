@@ -16,10 +16,9 @@ std::string forge::WindowSubSystem::init()
 		return "could not init glfw";
 	}
 
-	auto &engine = Engine::get_instance();
-	const auto &options = engine.get_init_options();
+	const auto &options = g_engine.get_init_options();
 
-	ok = engine.window.open(options.window_title, options.window_width, options.window_height);
+	ok = g_engine.window.open(options.window_title, options.window_width, options.window_height);
 
 	if (!ok)
 	{

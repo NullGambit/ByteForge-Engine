@@ -34,7 +34,7 @@ public:
 			return;
 		}
 
-		auto runtime = forge::Engine::get_instance().get_engine_runtime() * speed;
+		auto runtime = g_engine.get_engine_runtime() * speed;
 
 		auto camera_x = glm::sin(runtime) * radius;
 		auto camera_z = glm::cos(runtime) * radius;
@@ -278,7 +278,7 @@ private:
 protected:
 	void on_create() override
 	{
-		m_renderer = forge::Engine::get_instance().get_subsystem<forge::OglRenderer>();
+		m_renderer = g_engine.get_subsystem<forge::OglRenderer>();
 
 		auto &entity = m_owner->get_entity();
 		auto model = entity.get_model();
@@ -312,7 +312,7 @@ public:
 
 	void update(forge::DeltaTime delta) override
 	{
-		auto *renderer = forge::Engine::get_instance().get_subsystem<forge::OglRenderer>();
+		auto *renderer = g_engine.get_subsystem<forge::OglRenderer>();
 
 		renderer->update_light(m_owner->get_entity().get_position(), glm::vec3{m_color});
 	}
@@ -385,9 +385,7 @@ private:
 
 int main(int argc, const char **argv)
 {
-	auto &engine = forge::Engine::get_instance();
-
-	auto result = engine.init(std::span{argv, (size_t)argc},
+	auto result = g_engine.init(std::span{argv, (size_t)argc},
 	{
 		.window_title = "ByteForge Engine",
 		.window_width = 1920,
@@ -404,7 +402,7 @@ int main(int argc, const char **argv)
 		return -1;
 	}
 
-	auto *nexus = engine.get_subsystem<forge::Nexus>();
+	auto *nexus = g_engine.get_subsystem<forge::Nexus>();
 
 	forge::register_engine_components(nexus);
 
@@ -459,7 +457,7 @@ int main(int argc, const char **argv)
 	// 	engine.nexus->create_entity<CounterComponent, BusyWorkComponent, BusyWorkComponent2, BusyWorkComponent3>(name);
 	// }
 
-	engine.run();
+	g_engine.run();
 
-	engine.shutdown();
+	g_engine.shutdown();
 }

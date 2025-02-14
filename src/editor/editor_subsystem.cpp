@@ -123,12 +123,10 @@ public:
 
 		elapsed_time += delta;
 
-		auto &engine = forge::Engine::get_instance();
-
 		if (elapsed_time >= 0.3)
 		{
-			last_frame = engine.get_fps();
-			last_engine_delta = engine.get_delta();
+			last_frame = g_engine.get_fps();
+			last_engine_delta = g_engine.get_delta();
 
 			elapsed_time = 0;
 		}
@@ -143,10 +141,8 @@ protected:
 	{
 		IEditorWindow::on_editor_enter();
 
-		auto &engine = forge::Engine::get_instance();
-
-		m_renderer = engine.get_subsystem<forge::OglRenderer>();
-		m_nexus = engine.get_subsystem<forge::Nexus>();
+		m_renderer = g_engine.get_subsystem<forge::OglRenderer>();
+		m_nexus = g_engine.get_subsystem<forge::Nexus>();
 	}
 
 	void on_window() override
@@ -176,15 +172,11 @@ protected:
 	{
 		IEditorWindow::on_editor_enter();
 
-		auto &engine = forge::Engine::get_instance();
-
-		m_renderer = engine.get_subsystem<forge::OglRenderer>();
+		m_renderer = g_engine.get_subsystem<forge::OglRenderer>();
 	}
 
 	void on_window() override
 	{
-		auto &engine = forge::Engine::get_instance();
-
 		if (ImGui::BeginTabBar("Rendering"))
 		{
 			if (ImGui::BeginTabItem("Rendering"))
@@ -206,7 +198,7 @@ protected:
 
 			if (ImGui::BeginTabItem("Engine"))
 			{
-				ImGui::DragFloat("Time scale", &engine.time_scale, 0.1);
+				ImGui::DragFloat("Time scale", &g_engine.time_scale, 0.1);
 
 				ImGui::EndTabItem();
 			}
@@ -276,10 +268,8 @@ protected:
 	{
 		IEditorWindow::on_editor_enter();
 
-		auto &engine = forge::Engine::get_instance();
-
-		m_renderer = engine.get_subsystem<forge::OglRenderer>();
-		m_nexus = engine.get_subsystem<forge::Nexus>();
+		m_renderer = g_engine.get_subsystem<forge::OglRenderer>();
+		m_nexus = g_engine.get_subsystem<forge::Nexus>();
 	}
 
 	void vec_drag_control(std::string_view label, float *values, int components, bool *uniform = nullptr,
@@ -517,8 +507,6 @@ protected:
 
 			if (ImGui::BeginPopup("Add component"))
 			{
-				auto &engine = forge::Engine::get_instance();
-
 				for (auto &[index, _] : m_nexus->get_component_table())
 				{
 					if (ImGui::Selectable(util::type_name(index).data()))
@@ -602,8 +590,6 @@ protected:
 		{
 			nexus->create_group(input);
 		});
-
-		auto &engine = forge::Engine::get_instance();
 
 		for (auto &[name, entities] : m_nexus->get_all_groups())
 		{
@@ -690,8 +676,6 @@ protected:
 			}
 			if (ImGui::BeginMenu("Add to group"))
 			{
-				auto &engine = forge::Engine::get_instance();
-
 				auto &groups = m_nexus->get_all_groups();
 
 				for (auto &[name, _] : groups)
@@ -737,7 +721,6 @@ protected:
 
 	void show_entities(u32 entity_table_index = 0, std::string_view from_group = "")
 	{
-		auto &engine = forge::Engine::get_instance();
 		auto &entities_table = m_nexus->get_all_entities();
 
 		if (entity_table_index >= entities_table.size())
@@ -757,8 +740,6 @@ protected:
 	{
 		if (ImGui::Button("+"))
 		{
-			auto &engine = forge::Engine::get_instance();
-
 			m_nexus->create_entity();
 		}
 
@@ -793,8 +774,6 @@ public:
 
 	void update(forge::DeltaTime delta) override
 	{
-		auto &engine = forge::Engine::get_instance();
-
 		if (m_show_demo_window)
 		{
 			ImGui::ShowDemoWindow();
@@ -806,7 +785,7 @@ public:
 			{
 				if (ImGui::MenuItem("Close"))
 				{
-					engine.quit();
+					g_engine.quit();
 				}
 
 				ImGui::EndMenu();
