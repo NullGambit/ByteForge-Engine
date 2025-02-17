@@ -1,124 +1,129 @@
-cmake_minimum_required(VERSION 3.29)
-project(ByteForge_Engine)
+cmake_minimum_required(VERSION 3.30)
+project(ByteForgeEngine)
 
 set(CMAKE_CXX_STANDARD 20)
-
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_compile_definitions(SHADER_HOT_RELOAD)
-endif()
-
-add_compile_definitions(USE_UNIFORM_CACHE)
-
-add_compile_definitions(GLM_ENABLE_EXPERIMENTAL)
 
 #set(CMAKE_CXX_FLAGS "-fconstexpr-depth=4096")
 #set(CMAKE_CXX_FLAGS "-fsanitize=address")
 
-include_directories(
-        src/
-        dep/unordered_dense/include/
-        dep/glfw-3.3-stable/include/
-        dep/glad/include/
-        dep/rpmalloc-1.4.5
-        dep)
+find_package(OpenGL REQUIRED)
 
 add_subdirectory(dep/glfw-3.3-stable/)
 add_subdirectory(dep/imgui)
 add_subdirectory(dep/glm)
 add_subdirectory(dep/rpmalloc-1.4.5)
 
-add_executable(ByteForge_Engine main.cpp
+add_library(ByteForgeEngine STATIC)
+
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(ByteForgeEngine PRIVATE FORGE_SHADER_HOT_RELOAD)
+endif()
+
+target_include_directories(ByteForgeEngine PUBLIC
+        dep/glfw-3.3-stable/include/
+        dep/glad/include/
+        dep/rpmalloc-1.4.5
+        dep/unordered_dense/include
+        dep
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+target_precompile_headers(ByteForgeEngine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/forge/core/forge_intrinsic.hpp)
+target_compile_definitions(ByteForgeEngine PUBLIC
+        GLM_ENABLE_EXPERIMENTAL
+        FORGE_USE_UNIFORM_CACHE
+        FORGE_ENGINE_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets/"
+        FORGE_ENGINE_CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/config/"
+)
+
+target_link_libraries(ByteForgeEngine PUBLIC glfw ${OPENGL_LIBRARIES} IMGUI glm rpmalloc)
+
+target_sources(ByteForgeEngine PRIVATE
         dep/glad/include/glad/glad.h
         dep/glad/include/KHR/khrplatform.h
         dep/glad/src/glad.c
-        src/ecs/ecs.hpp
-        src/fmt/fmt.hpp
-        src/util/types.hpp
+        forge/ecs/ecs.hpp
+        forge/fmt/fmt.hpp
+        forge/util/types.hpp
         dep/unordered_dense/include/ankerl/unordered_dense.h
-        src/container/map.hpp
-        src/memory/defs.hpp
-        src/ecs/ecs.cpp
-        src/core/result.hpp
-        src/memory/mem_pool.cpp
-        src/memory/mem_pool.hpp
-        src/ecs/macro_warcrimes.hpp
-        src/events/signal.hpp
-        src/system/window.cpp
-        src/system/window.hpp
-        src/core/isub_system.hpp
-        src/system/window_sub_system.cpp
-        src/system/window_sub_system.hpp
-        src/graphics/ogl_renderer/ogl_shader.cpp
-        src/graphics/ogl_renderer/ogl_shader.hpp
-        src/graphics/ogl_renderer/ogl_renderer.cpp
-        src/graphics/ogl_renderer/ogl_renderer.hpp
-        src/core/engine.hpp
-        src/core/engine.cpp
-        src/events/type_box.hpp
-        src/system/io.cpp
-        src/system/io.hpp
-        src/util/macros.hpp
-        src/system/fs_monitor.hpp
-        src/system/linux/linux_fs_monitor.cpp
-        src/system/linux/linux_fs_monitor.hpp
-        src/core/logging.hpp
-        src/concurrency/command_buffer.hpp
-        src/graphics/image/image.hpp
+        forge/container/map.hpp
+        forge/memory/defs.hpp
+        forge/ecs/ecs.cpp
+        forge/memory/mem_pool.cpp
+        forge/memory/mem_pool.hpp
+        forge/ecs/macro_warcrimes.hpp
+        forge/events/signal.hpp
+        forge/system/window.cpp
+        forge/system/window.hpp
+        forge/core/isub_system.hpp
+        forge/system/window_sub_system.cpp
+        forge/system/window_sub_system.hpp
+        forge/graphics/ogl_renderer/ogl_shader.cpp
+        forge/graphics/ogl_renderer/ogl_shader.hpp
+        forge/graphics/ogl_renderer/ogl_renderer.cpp
+        forge/graphics/ogl_renderer/ogl_renderer.hpp
+        forge/core/engine.hpp
+        forge/core/engine.cpp
+        forge/events/type_box.hpp
+        forge/system/io.cpp
+        forge/system/io.hpp
+        forge/util/macros.hpp
+        forge/system/fs_monitor.hpp
+        forge/system/linux/linux_fs_monitor.cpp
+        forge/system/linux/linux_fs_monitor.hpp
+        forge/core/logging.hpp
+        forge/concurrency/command_buffer.hpp
+        forge/graphics/image/image.hpp
         dep/stb/stb_image.h
-        src/graphics/ogl_renderer/ogl_texture.cpp
-        src/graphics/ogl_renderer/ogl_texture.hpp
-        src/resources/resource.hpp
-        src/graphics/image/stb_image.hpp
-        src/graphics/image/stb_image.cpp
-        src/graphics/image/image.cpp
-        src/core/forge_intrinsic.hpp
-        src/system/virtual_memory.hpp
-        src/system/linux/linux_virtual_memory.cpp
-        src/system/linux/linux_virtual_memory.hpp
-        src/container/string_id.cpp
-        src/container/string_id.hpp
-        src/graphics/mesh_primitives.hpp
-        src/util/random.hpp
-        src/graphics/camera.cpp
-        src/graphics/camera.hpp
-        src/graphics/camera.cpp
-        src/system/input_keys.hpp
-        src/framework/input.cpp
-        src/framework/input.hpp
-        src/gui/imgui_subsystem.cpp
-        src/gui/imgui_subsystem.hpp
-        src/editor/editor_subsystem.cpp
-        src/editor/editor_subsystem.hpp
-        src/ecs/transform.hpp
-        src/memory/arena_allocator.cpp
-        src/memory/arena_allocator.hpp
-        src/memory/mem_utils.hpp
-        src/system/system_info.hpp
-        src/system/linux/linux_system_info.cpp
-        src/system/linux/linux_system_info.hpp
-        src/ecs/component_field.hpp
-        src/ecs/ecs_views.cpp
-        src/ecs/ecs_views.hpp
-        src/graphics/material.hpp
-        src/graphics/ogl_renderer/render_resource.hpp
-        src/system/native_dialog.hpp
-        src/system/linux/linux_native_dialog.cpp
-        src/system/linux/linux_native_dialog.hpp
-        src/util/defer.hpp
-        src/fmt/fmt.cpp
-        src/graphics/ogl_renderer/gl_buffers.cpp
-        src/config/arg_parser.cpp
-        src/config/arg_parser.hpp
-        "src/framework/components /camera_component.cpp"
-        "src/framework/components /camera_component.hpp"
-        src/container/virtual_array.hpp
-        "src/framework/components /register_engine_components.cpp"
-        "src/framework/components /register_engine_components.hpp"
-        src/concurrency/channel.hpp
-        src/core/engine_init_options.hpp
-        src/ecs/defs.hpp
+        forge/graphics/ogl_renderer/ogl_texture.cpp
+        forge/graphics/ogl_renderer/ogl_texture.hpp
+        forge/resources/resource.hpp
+        forge/graphics/image/stb_image.hpp
+        forge/graphics/image/stb_image.cpp
+        forge/graphics/image/image.cpp
+        forge/core/forge_intrinsic.hpp
+        forge/system/virtual_memory.hpp
+        forge/system/linux/linux_virtual_memory.cpp
+        forge/system/linux/linux_virtual_memory.hpp
+        forge/container/string_id.cpp
+        forge/container/string_id.hpp
+        forge/graphics/mesh_primitives.hpp
+        forge/util/random.hpp
+        forge/graphics/camera.cpp
+        forge/graphics/camera.hpp
+        forge/graphics/camera.cpp
+        forge/system/input_keys.hpp
+        forge/framework/input.cpp
+        forge/framework/input.hpp
+        forge/gui/imgui_subsystem.cpp
+        forge/gui/imgui_subsystem.hpp
+        forge/editor/editor_subsystem.cpp
+        forge/editor/editor_subsystem.hpp
+        forge/ecs/transform.hpp
+        forge/memory/mem_utils.hpp
+        forge/system/system_info.hpp
+        forge/system/linux/linux_system_info.cpp
+        forge/system/linux/linux_system_info.hpp
+        forge/ecs/component_field.hpp
+        forge/ecs/ecs_views.cpp
+        forge/ecs/ecs_views.hpp
+        forge/graphics/material.hpp
+        forge/graphics/ogl_renderer/render_resource.hpp
+        forge/system/native_dialog.hpp
+        forge/system/linux/linux_native_dialog.cpp
+        forge/system/linux/linux_native_dialog.hpp
+        forge/util/defer.hpp
+        forge/fmt/fmt.cpp
+        forge/graphics/ogl_renderer/gl_buffers.cpp
+        forge/config/arg_parser.cpp
+        forge/config/arg_parser.hpp
+        forge/framework/components/camera_component.cpp
+        forge/framework/components/camera_component.hpp
+        forge/container/virtual_array.hpp
+        forge/framework/components/register_engine_components.cpp
+        forge/framework/components/register_engine_components.hpp
+        forge/core/engine_init_options.hpp
+        forge/ecs/defs.hpp
+        forge/container/set.hpp
+        forge/container/hash.hpp
 )
-
-target_compile_options(ByteForge_Engine PRIVATE -include ${CMAKE_SOURCE_DIR}/src/core/forge_intrinsic.hpp)
-
-target_link_libraries(ByteForge_Engine glfw ${OPENGL_LIBRARIES} IMGUI glm rpmalloc)

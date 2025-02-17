@@ -21,8 +21,10 @@ target_sources(IMGUI
                 )
 
 target_include_directories(IMGUI
+                            PUBLIC ${CMAKE_SOURCE_DIR}../glfw-3.3-stable/include/
                             PUBLIC ${IMGUI_DIR}
                             PUBLIC ${IMGUI_DIR}/backends
                             PUBLIC ${SDL3_DIR}/include
                             )
-#target_link_libraries(IMGUI glfw vulkan ${OPENGL_LIBRARIES})
+
+target_link_libraries(IMGUI glfw ${OPENGL_LIBRARIES})
