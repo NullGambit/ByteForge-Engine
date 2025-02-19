@@ -6,6 +6,8 @@
 
 #define MAX_WINDOW_COUNT 32
 
+inline forge::Window *g_main_window;
+
 namespace forge
 {
 	class WindowSubSystem final : public ISubSystem
@@ -17,7 +19,16 @@ namespace forge
 		bool is_critical() override { return true; }
 		void post_update() override;
 
-		void poll_events();
+		// set to highest update order so it will be able to swap buffers after everything is done rendering
+		u32 get_update_order() override
+		{
+			return UINT32_MAX;
+		}
+
+		Window *create_window();
+		void destroy_window(Window *window);
+
+		Window* get_main_window();
 
 		[[nodiscard]]
 		float get_runtime() const;

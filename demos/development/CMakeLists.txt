@@ -1,0 +1,22 @@
+cmake_minimum_required(VERSION 3.30)
+project(DevDemo)
+
+set(CMAKE_CXX_STANDARD 20)
+
+set(FORGE_DIR ${CMAKE_SOURCE_DIR}/../..)
+
+add_subdirectory(${FORGE_DIR} ${CMAKE_BINARY_DIR}/ByteForgeEngine)
+
+add_executable(DevDemo
+        src/main.cpp
+        src/components/bob_component.cpp
+        src/components/bob_component.hpp
+        src/components/export_test_component.hpp
+        src/components/player_controller.hpp
+        src/components/player_controller.cpp)
+
+target_link_libraries(DevDemo PUBLIC ByteForgeEngine)
+
+target_include_directories(DevDemo PUBLIC ${FORGE_DIR})
+
+#target_precompile_headers(byte_forge_demo PUBLIC ${FORGE_DIR}/forge/core/forge_intrinsic.hpp)

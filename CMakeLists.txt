@@ -13,33 +13,8 @@ add_subdirectory(dep/imgui)
 add_subdirectory(dep/glm)
 add_subdirectory(dep/rpmalloc-1.4.5)
 
-add_library(ByteForgeEngine STATIC)
-
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_definitions(ByteForgeEngine PRIVATE FORGE_SHADER_HOT_RELOAD)
-endif()
-
-target_include_directories(ByteForgeEngine PUBLIC
-        dep/glfw-3.3-stable/include/
-        dep/glad/include/
-        dep/rpmalloc-1.4.5
-        dep/unordered_dense/include
-        dep
-        ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
-target_precompile_headers(ByteForgeEngine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/forge/core/forge_intrinsic.hpp)
-target_compile_definitions(ByteForgeEngine PUBLIC
-        GLM_ENABLE_EXPERIMENTAL
-        FORGE_USE_UNIFORM_CACHE
-        FORGE_ENGINE_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets/"
-        FORGE_ENGINE_CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/config/"
-)
-
-target_link_libraries(ByteForgeEngine PUBLIC glfw ${OPENGL_LIBRARIES} IMGUI glm rpmalloc)
-
-target_sources(ByteForgeEngine PRIVATE
-        dep/glad/include/glad/glad.h
+add_library(ByteForgeEngine STATIC
+dep/glad/include/glad/glad.h
         dep/glad/include/KHR/khrplatform.h
         dep/glad/src/glad.c
         forge/ecs/ecs.hpp
@@ -126,4 +101,29 @@ target_sources(ByteForgeEngine PRIVATE
         forge/ecs/defs.hpp
         forge/container/set.hpp
         forge/container/hash.hpp
+        forge/framework/components/mesh_primitive_component.cpp
+        forge/framework/components/mesh_primitive_component.hpp
 )
+
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(ByteForgeEngine PRIVATE FORGE_SHADER_HOT_RELOAD)
+endif()
+
+target_include_directories(ByteForgeEngine PUBLIC
+        dep/glfw-3.3-stable/include/
+        dep/glad/include/
+        dep/rpmalloc-1.4.5
+        dep/unordered_dense/include
+        dep
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+target_precompile_headers(ByteForgeEngine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/forge/core/forge_intrinsic.hpp)
+target_compile_definitions(ByteForgeEngine PUBLIC
+        GLM_ENABLE_EXPERIMENTAL
+        FORGE_USE_UNIFORM_CACHE
+        FORGE_ENGINE_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets/"
+        FORGE_ENGINE_CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/config/"
+)
+
+target_link_libraries(ByteForgeEngine PUBLIC glfw ${OPENGL_LIBRARIES} IMGUI glm rpmalloc)

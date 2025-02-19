@@ -83,8 +83,8 @@ namespace forge
 		}
 
 		// TODO: create some sort of window factory class that will create windows and will swap their buffers in the main loop
-		Window window;
 		DeltaTime time_scale = 1.0;
+		bool should_run = true;
 		Engine();
 		~Engine();
 

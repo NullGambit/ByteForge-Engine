@@ -5,6 +5,7 @@
 #include <imgui_impl_opengl3.h>
 
 #include "forge/core/engine.hpp"
+#include "forge/system/window_sub_system.hpp"
 
 #define FORGE_EDITOR_LAYOUT_FILENAME "editor_layout.ini"
 
@@ -231,13 +232,11 @@ std::string forge::ImGuiSubsystem::init(const EngineInitOptions &options)
 
 	io.IniFilename = "./config/" FORGE_EDITOR_LAYOUT_FILENAME;
 
-	auto &window = g_engine.window;
-
 	bool ok;
 
 #define VALIDATE(expr, message) ok = (expr); if (!ok) return message
 
-	VALIDATE(ImGui_ImplGlfw_InitForOpenGL(window.get_handle(), true), "could not init imgui for glfw");
+	VALIDATE(ImGui_ImplGlfw_InitForOpenGL(g_main_window->get_handle(), true), "could not init imgui for glfw");
 
 	// TODO update this when vulkan backend is implemented
 	VALIDATE(ImGui_ImplOpenGL3_Init(), "could not init imgui for opengl backend");

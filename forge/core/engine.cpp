@@ -8,7 +8,6 @@
 #include "logging.hpp"
 #include "forge/editor/editor_subsystem.hpp"
 #include "forge/system/window_sub_system.hpp"
-#include "forge/system/window.hpp"
 #include "forge/graphics/ogl_renderer/ogl_renderer.hpp"
 #include "GLFW/glfw3.h"
 #include "forge/gui/imgui_subsystem.hpp"
@@ -37,7 +36,7 @@ forge::Engine::~Engine()
 
 void forge::Engine::quit()
 {
-	window.set_should_close(true);
+	should_run = false;
 }
 
 forge::EngineInitResult forge::Engine::initialize_subsystem(std::set<std::type_index> &initialized_subsystems,
@@ -137,12 +136,18 @@ forge::EngineInitResult forge::Engine::init(std::span<const char*> sys_args, con
 		}
 	}
 
+	std::stable_sort(m_subsystems.begin(), m_subsystems.end(),
+		[](const auto &l, const auto &r)
+		{
+			return l->get_update_order() < r->get_update_order();
+		});
+
 	return EngineInitResult::Ok;
 }
 
 void forge::Engine::run()
 {
-	while (window.should_stay_open())
+	while (should_run)
 	{
 		auto current_time = get_engine_runtime();
 
@@ -167,8 +172,6 @@ void forge::Engine::run()
 			}
 		}
 
-		window.reset_input();
-
 		for (auto &subsystem : m_subsystems)
 		{
 			if (subsystem->should_update()) [[likely]]
@@ -176,9 +179,6 @@ void forge::Engine::run()
 				subsystem->post_update();
 			}
 		}
-
-		// TODO: this should swap all window buffers
-		window.swap_buffers();
 	}
 }
 

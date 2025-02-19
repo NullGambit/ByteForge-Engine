@@ -66,6 +66,10 @@ namespace forge
 		virtual void shutdown() = 0;
 		virtual void update() = 0;
 
+		// the order in which this subsystem will get updated when compared to other subsystems
+		// applies to all update events.
+		virtual u32 get_update_order() { return 0; }
+
 		// allows for subsystems to add their own flags to the command line parser for per subsystem configuration
 		virtual void receive_cmd_args(ArgParser &parser) {}
 

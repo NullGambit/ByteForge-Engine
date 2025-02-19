@@ -1,0 +1,48 @@
+#pragma once
+#include <string>
+#include <glm/fwd.hpp>
+#include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
+
+#include "forge/ecs/component_field.hpp"
+#include "forge/ecs/ecs.hpp"
+
+class ExportFieldTestComponent : public forge::IComponent
+{
+public:
+	float f1 = 10;
+	float f2 = 20;
+	int integer = 500;
+	bool boolean = false;
+	std::string string;
+	glm::vec4 vec4;
+	glm::vec3 vec3;
+	glm::vec2 vec2;
+	glm::quat quat;
+	glm::vec4 color;
+	int watched_int;
+
+	forge::ButtonField test_button =
+	{
+		[]
+		{
+			log::info("Button pressed");
+		}
+	};
+
+	void on_watched_field_changed(forge::FieldVar field)
+	{
+		log::info("field changed to {}", *std::get<int*>(field));
+	}
+
+	forge::WatchedField watched_field = WATCH_FIELD(&watched_int, &ExportFieldTestComponent::on_watched_field_changed);
+
+	EXPORT_FIELDS(
+		forge::FieldSeperator{"primitives"},
+		&f1, &f2, &integer, &boolean,
+		forge::FieldSeperator{"controls"},
+		test_button, COLOR_FIELD(&color), &watched_field,
+		forge::FieldSeperator{"linear algebra"},
+		&vec4, &vec3, &vec2, &quat);
+};

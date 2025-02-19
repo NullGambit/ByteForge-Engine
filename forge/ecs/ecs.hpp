@@ -103,6 +103,9 @@ namespace forge
         template<class T>
         T* add_component();
 
+        template<class T, class I>
+        T* add_component_as();
+
         u8* add_component(std::type_index index);
 
         template<class ...Args>
@@ -565,6 +568,11 @@ namespace forge
     T* Entity::add_component()
     {
         return m_nexus->add_component<T>(this);
+    }
+
+    template<class T, class I>
+    T * Entity::add_component_as()
+    {
     }
 
     template<class ... Args>

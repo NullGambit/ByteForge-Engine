@@ -15,6 +15,11 @@ void on_framebuffer_resize_callback(GLFWwindow *window, int width, int height)
 	windowPtr->on_resize(width, height);
 }
 
+void on_window_should_close_callback(GLFWwindow *window)
+{
+	g_engine.quit();
+}
+
 void on_mouse_callback(GLFWwindow *window, double xpos, double ypos)
 {
 	if (ImGui::GetCurrentContext() != nullptr)
@@ -187,6 +192,7 @@ bool forge::Window::open(std::string_view name, int width, int height)
 	glfwSetKeyCallback(m_handle, on_key_callback);
 	glfwSetCursorPosCallback(m_handle, on_mouse_callback);
 	glfwSetScrollCallback(m_handle, on_scroll_callback);
+	glfwSetWindowCloseCallback(m_handle, on_window_should_close_callback);
 	glfwSwapInterval(0);
 
 	return true;

@@ -2,7 +2,6 @@
 
 #include <set>
 #include <glm/ext/matrix_clip_space.hpp>
-#include <glm/ext/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <utility>
 
@@ -17,7 +16,7 @@
 #include "forge/system/fs_monitor.hpp"
 #include "forge/util/macros.hpp"
 #include "forge/memory/defs.hpp"
-#include "forge/util/random.hpp"
+#include "forge/system/window_sub_system.hpp"
 
 #define CAMERA_POOL_SIZE sizeof(forge::Camera) * 16
 #define RENDER_DATA_POOL_SIZE MB(2048)
@@ -34,7 +33,7 @@ std::string forge::OglRenderer::init(const EngineInitOptions &options)
 	glClearColor(0, 255, 76, 255);
 
 	// TODO: remove connection
-	g_engine.window.on_resize.connect(this, &OglRenderer::handle_framebuffer_resize);
+	g_main_window->on_resize.connect(this, &OglRenderer::handle_framebuffer_resize);
 
 	// load builtin shaders
 
@@ -171,7 +170,7 @@ std::vector<forge::DependencyStorage> forge::OglRenderer::get_dependencies()
 {
 	std::vector<DependencyStorage> dependencies;
 
-#ifdef SHADER_HOT_RELOAD
+#ifdef FORGE_SHADER_HOT_RELOAD
 	dependencies.emplace_back(make_dependency<FsMonitor>());
 #endif
 

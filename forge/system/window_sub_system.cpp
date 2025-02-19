@@ -16,7 +16,9 @@ std::string forge::WindowSubSystem::init(const EngineInitOptions &options)
 		return "could not init glfw";
 	}
 
-	ok = g_engine.window.open(options.window_title, options.window_width, options.window_height);
+	g_main_window = &m_windows.emplace();
+
+	ok = g_main_window->open(options.window_title, options.window_width, options.window_height);
 
 	if (!ok)
 	{
@@ -28,6 +30,10 @@ std::string forge::WindowSubSystem::init(const EngineInitOptions &options)
 
 void forge::WindowSubSystem::shutdown()
 {
+	for (auto &window : m_windows)
+	{
+		window.close();
+	}
 	glfwTerminate();
 }
 
@@ -37,12 +43,30 @@ void forge::WindowSubSystem::update()
 
 void forge::WindowSubSystem::post_update()
 {
+	for (auto &window : m_windows)
+	{
+		window.swap_buffers();
+		window.reset_input();
+	}
+
 	glfwPollEvents();
 }
 
-void forge::WindowSubSystem::poll_events()
+forge::Window * forge::WindowSubSystem::create_window()
 {
+	return &m_windows.emplace();
+}
 
+void forge::WindowSubSystem::destroy_window(Window *window)
+{
+	assert(window != g_main_window);
+
+	m_windows.free(window);
+}
+
+forge::Window * forge::WindowSubSystem::get_main_window()
+{
+	return m_windows.get(0);
 }
 
 float forge::WindowSubSystem::get_runtime() const
