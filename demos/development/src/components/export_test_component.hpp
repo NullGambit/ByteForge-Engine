@@ -8,6 +8,16 @@
 #include "forge/ecs/component_field.hpp"
 #include "forge/ecs/ecs.hpp"
 
+enum class TestColors
+{
+	Red,
+	Green,
+	Blue,
+	Yellow,
+	Purple,
+	Orange
+};
+
 class ExportFieldTestComponent : public forge::IComponent
 {
 public:
@@ -22,6 +32,12 @@ public:
 	glm::quat quat;
 	glm::vec4 color;
 	int watched_int;
+	TestColors colors;
+
+	ExportFieldTestComponent()
+	{
+		colors = TestColors::Purple;
+	}
 
 	forge::ButtonField test_button =
 	{
@@ -44,5 +60,6 @@ public:
 		forge::FieldSeperator{"controls"},
 		test_button, COLOR_FIELD(&color), &watched_field,
 		forge::FieldSeperator{"linear algebra"},
-		&vec4, &vec3, &vec2, &quat);
+		&vec4, &vec3, &vec2, &quat,
+		&colors);
 };

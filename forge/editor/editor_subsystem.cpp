@@ -437,6 +437,28 @@ protected:
 
 				return field_changed;
 			},
+			[&](const forge::EnumStorage &storage)
+			{
+				auto selected_index = storage.get_selected_index();
+
+				if (ImGui::BeginCombo(formatted.c_str(), storage.entries[selected_index].first.data()))
+				{
+					for (auto i = 0; i < storage.entries.size(); i++)
+					{
+						auto &entry = storage.entries[i];
+
+						auto is_selected = selected_index == i;
+
+						if (ImGui::Selectable(entry.first.data(), is_selected))
+						{
+							*storage.value = entry.second;
+						}
+					}
+
+					ImGui::EndCombo();
+				}
+				return true;
+			},
 		}, value);
 
 		ImGui::PopID();

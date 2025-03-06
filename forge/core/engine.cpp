@@ -36,7 +36,7 @@ forge::Engine::~Engine()
 
 void forge::Engine::quit()
 {
-	should_run = false;
+	m_should_run = false;
 }
 
 forge::EngineInitResult forge::Engine::initialize_subsystem(std::set<std::type_index> &initialized_subsystems,
@@ -147,7 +147,7 @@ forge::EngineInitResult forge::Engine::init(std::span<const char*> sys_args, con
 
 void forge::Engine::run()
 {
-	while (should_run)
+	while (m_should_run)
 	{
 		auto current_time = get_engine_runtime();
 

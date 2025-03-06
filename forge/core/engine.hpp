@@ -25,6 +25,9 @@ namespace forge
 	{
 	public:
 
+		Engine();
+		~Engine();
+
 		Engine(const Engine&) = delete;
 		Engine& operator=(const Engine&) = delete;
 
@@ -84,14 +87,12 @@ namespace forge
 
 		// TODO: create some sort of window factory class that will create windows and will swap their buffers in the main loop
 		DeltaTime time_scale = 1.0;
-		bool should_run = true;
-		Engine();
-		~Engine();
 
 	private:
 		DeltaTime m_delta_time;
 		DeltaTime m_previous_time;
 		DeltaTime m_fps;
+		bool m_should_run = true;
 
 		// subsystem storage for fast iteration
 		std::vector<std::unique_ptr<ISubSystem>> m_subsystems;

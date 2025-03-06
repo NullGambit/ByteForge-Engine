@@ -68,6 +68,10 @@ namespace forge
 
         virtual std::vector<ComponentField> export_fields() { return {}; }
 
+        // gets the type this component should be registered as useful for ensuring derived classes
+        // will always get registered as its base interface
+        virtual std::type_index get_register_type() { return typeid(IComponent); }
+
         virtual void on_editor_enter() {}
 
         [[nodiscard]]
@@ -102,9 +106,6 @@ namespace forge
 
         template<class T>
         T* add_component();
-
-        template<class T, class I>
-        T* add_component_as();
 
         u8* add_component(std::type_index index);
 
@@ -568,11 +569,6 @@ namespace forge
     T* Entity::add_component()
     {
         return m_nexus->add_component<T>(this);
-    }
-
-    template<class T, class I>
-    T * Entity::add_component_as()
-    {
     }
 
     template<class ... Args>

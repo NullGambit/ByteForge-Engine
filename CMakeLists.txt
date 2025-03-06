@@ -12,6 +12,7 @@ add_subdirectory(dep/glfw-3.3-stable/)
 add_subdirectory(dep/imgui)
 add_subdirectory(dep/glm)
 add_subdirectory(dep/rpmalloc-1.4.5)
+add_subdirectory(dep/magic_enum)
 
 add_library(ByteForgeEngine STATIC
 dep/glad/include/glad/glad.h
@@ -115,6 +116,7 @@ target_include_directories(ByteForgeEngine PUBLIC
         dep/rpmalloc-1.4.5
         dep/unordered_dense/include
         dep
+        dep/magic_enum/include
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 

@@ -118,7 +118,7 @@ void forge::Nexus::ComponentType::update(DeltaTime delta) const
 {
 	for (auto &component : mem_pool.get_iterator<IComponent>())
 	{
-		if (component.m_is_active && component.m_is_enabled)
+		if (component.m_is_active && component.m_is_enabled) [[likely]]
 		{
 			component.update(delta);
 		}
@@ -379,6 +379,11 @@ u8* forge::Nexus::add_component(Entity *entity, std::type_index index)
 	component->m_id = id;
 
 	component->on_create();
+
+	if (auto reg_index = component->get_register_type(); reg_index != typeid(IComponent))
+	{
+		index = reg_index;
+	}
 
 	entity->m_components[index] = component;
 

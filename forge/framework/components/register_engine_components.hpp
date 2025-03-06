@@ -2,7 +2,5 @@
 
 namespace forge
 {
-	class Nexus;
-
-	void register_engine_components(Nexus *nexus);
+	void register_engine_components();
 }
