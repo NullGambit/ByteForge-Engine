@@ -104,6 +104,9 @@ dep/glad/include/glad/glad.h
         forge/container/hash.hpp
         forge/framework/components/mesh_primitive_component.cpp
         forge/framework/components/mesh_primitive_component.hpp
+        forge/graphics/mesh.hpp
+        forge/graphics/mesh_generator.cpp
+        forge/graphics/mesh_generator.hpp
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
