@@ -546,6 +546,8 @@ namespace forge
             return table < m_entities_table.size() && slot < m_entities_table[table].entities.size();
         }
 
+        void clear();
+
     private:
         friend Entity;
         friend EntityView;

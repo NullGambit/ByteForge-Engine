@@ -425,3 +425,29 @@ void forge::Nexus::update()
 		m_entity_dirty_table.clear();
 	}
 }
+
+void forge::Nexus::clear()
+{
+	for (auto &[_, ct] : m_component_table)
+	{
+		for (auto &component : ct.mem_pool.get_iterator<IComponent>())
+		{
+			component.on_destroy();
+		}
+
+		ct.mem_pool.reset();
+	}
+
+	m_entity_dirty_table.clear();
+	m_groups.clear();
+	m_update_table.clear();
+	m_remove_queue.clear();
+	m_name_table.clear();
+	m_component_table.clear();
+
+	for (auto &[handle, entities] : m_entities_table)
+	{
+		entities.clear();
+		handle.reset();
+	}
+}

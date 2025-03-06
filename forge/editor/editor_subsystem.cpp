@@ -825,6 +825,23 @@ public:
 				ImGui::EndMenu();
 			}
 
+			if (ImGui::BeginMenu("Demos"))
+			{
+				auto *editor = g_engine.get_subsystem<forge::EditorSubsystem>();
+
+				for (auto &[name, callback] : editor->demos)
+				{
+					if (ImGui::Selectable(name.data()))
+					{
+						auto *nexus = g_engine.get_subsystem<forge::Nexus>();
+						nexus->clear();
+						callback();
+					}
+				}
+
+				ImGui::EndMenu();
+			}
+
 			ImGui::EndMainMenuBar();
 		}
 	}
