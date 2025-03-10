@@ -90,7 +90,8 @@ dep/glad/include/glad/glad.h
         forge/system/linux/linux_native_dialog.hpp
         forge/util/defer.hpp
         forge/fmt/fmt.cpp
-        forge/graphics/ogl_renderer/gl_buffers.cpp
+        forge/graphics/ogl_renderer/ogl_buffers.cpp
+        forge/graphics/ogl_renderer/ogl_buffers.hpp
         forge/config/arg_parser.cpp
         forge/config/arg_parser.hpp
         forge/framework/components/camera_component.cpp
