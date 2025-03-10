@@ -6,7 +6,7 @@
 
 namespace forge
 {
-    struct GlBuffers
+    struct OglBuffers
     {
         u32 vbo;
         u32 vao;
@@ -20,24 +20,31 @@ namespace forge
         }
     };
 
-    class GlBufferBuilder
+    class OglBufferBuilder
     {
     public:
-        GlBufferBuilder& start();
+        OglBufferBuilder& start();
 
-        GlBufferBuilder& vbo(const std::span<const f32> &verts);
+        OglBufferBuilder& vbo(const std::span<const f32> &verts);
 
-        GlBufferBuilder& ebo(const std::vector<u32> &verts);
+        OglBufferBuilder& ebo(const std::vector<u32> &verts);
 
-        GlBufferBuilder& stride(u32 value);
+        OglBufferBuilder& stride(u32 value);
 
-        GlBufferBuilder& attr(u32 size);
+        template<class ...Args>
+        OglBufferBuilder& stride()
+        {
+            m_stride = (sizeof(Args) + ...);
+            return *this;
+        }
+
+        OglBufferBuilder& attr(u32 size);
 
         [[nodiscard]]
-        GlBuffers finish() const;
+        OglBuffers finish() const;
 
     private:
-        GlBuffers m_buffer {};
+        OglBuffers m_buffer {};
         i32 m_layout = 0;
         u32 m_offset = 0;
         i32 m_stride = INT32_MAX;

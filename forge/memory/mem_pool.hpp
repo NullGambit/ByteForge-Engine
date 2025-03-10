@@ -158,7 +158,7 @@ namespace forge
 
 		void free_at(size_t index, bool destroy = true);
 
-		void reset(bool destroy = true);
+		void reset(bool destroy = true, DestroyFunc on_destroy = nullptr);
 
 		inline u8* get(size_t offset)
 		{

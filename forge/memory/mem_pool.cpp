@@ -78,13 +78,18 @@ void forge::MemPool::free_at(size_t index, bool destroy)
 	free(offset_to_free, destroy);
 }
 
-void forge::MemPool::reset(bool destroy)
+void forge::MemPool::reset(bool destroy, DestroyFunc on_destroy)
 {
 	if (destroy && m_destroy_func)
 	{
 		for (size_t i = 0; i < m_length; i++)
 		{
 			auto *ptr = m_memory + i * m_element_size;
+
+			if (on_destroy)
+			{
+				on_destroy(ptr);
+			}
 
 			m_destroy_func(ptr);
 		}

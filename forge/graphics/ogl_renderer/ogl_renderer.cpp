@@ -5,7 +5,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <utility>
 
-#include "gl_buffers.hpp"
+#include "ogl_buffers.hpp"
 #include "ogl_shader.hpp"
 #include "forge/fmt/fmt.hpp"
 #include "glad/glad.h"
@@ -51,9 +51,9 @@ std::string forge::OglRenderer::init(const EngineInitOptions &options)
 
 #undef C
 
-	m_cube_buffers = GlBufferBuilder()
+	m_cube_buffers = OglBufferBuilder()
 		.start()
-		.stride(sizeof(f32) * 8)
+		.stride<glm::vec3, glm::vec3, glm::vec2>()
 		.vbo(std::span{CUBE_VERTS, sizeof(CUBE_VERTS)})
 		.attr(3)
 		.attr(3)
@@ -95,6 +95,10 @@ void forge::OglRenderer::update()
 
 	const auto pv = m_active_camera->calculate_pv();
 
+	m_forward_shader.set("view_position", m_active_camera->position);
+	m_forward_shader.set("light_position", m_light_position);
+	m_forward_shader.set("light_color", m_light_color);
+
 	for (auto &data : m_render_data_pool.get_iterator<PrimitiveRenderData>())
 	{
 		if (data.is_valid && !data.primitive.is_hidden)
@@ -105,10 +109,7 @@ void forge::OglRenderer::update()
 
 			m_forward_shader.set("pvm", pvm);
 			m_forward_shader.set("model", model);
-			m_forward_shader.set("view_position", m_active_camera->position);
 			m_forward_shader.set("normal_matrix", data.primitive.m_normal_matrix);
-			m_forward_shader.set("light_position", m_light_position);
-			m_forward_shader.set("light_color", m_light_color);
 
 			static constexpr TextureList<std::array<std::string_view, 4>> properties
 			{

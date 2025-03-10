@@ -503,25 +503,7 @@ namespace forge
             return remove_component(entity, typeid(T));
         }
 
-        EcsResult remove_component(Entity *entity, std::type_index index)
-        {
-            auto iter = entity->m_components.find(index);
-
-            if (iter == entity->m_components.end())
-            {
-                return EcsResult::EntityDoesNotHaveComponent;
-            }
-
-            iter->second->on_destroy();
-
-            auto &ct = m_component_table[index];
-
-            ct.free(iter->second);
-
-            entity->m_components.erase(iter);
-
-            return EcsResult::Ok;
-        }
+        EcsResult remove_component(Entity *entity, std::type_index index);
 
         void update() override;
 

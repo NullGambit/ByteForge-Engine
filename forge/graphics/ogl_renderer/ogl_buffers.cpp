@@ -1,7 +1,7 @@
-#include "gl_buffers.hpp"
+#include "ogl_buffers.hpp"
 #include <cassert>
 
-forge::GlBufferBuilder& forge::GlBufferBuilder::start()
+forge::OglBufferBuilder& forge::OglBufferBuilder::start()
 {
     glGenVertexArrays(1, &m_buffer.vao);
     glBindVertexArray(m_buffer.vao);
@@ -9,13 +9,13 @@ forge::GlBufferBuilder& forge::GlBufferBuilder::start()
     return *this;
 }
 
-forge::GlBufferBuilder& forge::GlBufferBuilder::vbo(const std::span<const f32> &verts)
+forge::OglBufferBuilder& forge::OglBufferBuilder::vbo(const std::span<const f32> &verts)
 {
     set_vbo(verts.data(), sizeof(float) * verts.size());
     return *this;
 }
 
-forge::GlBufferBuilder& forge::GlBufferBuilder::ebo(const std::vector<u32> &verts)
+forge::OglBufferBuilder& forge::OglBufferBuilder::ebo(const std::vector<u32> &verts)
 {
     glGenBuffers(1, &m_buffer.ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_buffer.ebo);
@@ -25,14 +25,14 @@ forge::GlBufferBuilder& forge::GlBufferBuilder::ebo(const std::vector<u32> &vert
     return *this;
 }
 
-forge::GlBufferBuilder& forge::GlBufferBuilder::stride(u32 value)
+forge::OglBufferBuilder& forge::OglBufferBuilder::stride(u32 value)
 {
     m_stride = value;
 
     return *this;
 }
 
-forge::GlBufferBuilder& forge::GlBufferBuilder::attr(u32 size)
+forge::OglBufferBuilder& forge::OglBufferBuilder::attr(u32 size)
 {
     assert(m_stride != INT32_MAX && "stride has not been set");
 
@@ -46,14 +46,14 @@ forge::GlBufferBuilder& forge::GlBufferBuilder::attr(u32 size)
     return *this;
 }
 
-forge::GlBuffers forge::GlBufferBuilder::finish() const
+forge::OglBuffers forge::OglBufferBuilder::finish() const
 {
     glBindVertexArray(0);
 
     return m_buffer;
 }
 
-void forge::GlBufferBuilder::set_vbo(const void *data, size_t size)
+void forge::OglBufferBuilder::set_vbo(const void *data, size_t size)
 {
     glGenBuffers(1, &m_buffer.vbo);
     glBindBuffer(GL_ARRAY_BUFFER, m_buffer.vbo);

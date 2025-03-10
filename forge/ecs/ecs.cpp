@@ -109,6 +109,8 @@ void forge::Entity::update_dirty_array() const
 
 void forge::Nexus::ComponentType::free(IComponent *component)
 {
+	component->on_destroy();
+
 	component->m_is_active = false;
 
 	mem_pool.free(component->m_id);
@@ -395,6 +397,23 @@ u8* forge::Nexus::add_component(Entity *entity, std::type_index index)
 	return ptr;
 }
 
+forge::EcsResult forge::Nexus::remove_component(Entity *entity, std::type_index index)
+{
+	auto iter = entity->m_components.find(index);
+
+	if (iter == entity->m_components.end())
+	{
+		return EcsResult::EntityDoesNotHaveComponent;
+	}
+	auto &ct = m_component_table[index];
+
+	ct.free(iter->second);
+
+	entity->m_components.erase(iter);
+
+	return EcsResult::Ok;
+}
+
 void forge::Nexus::update()
 {
 	auto delta = g_engine.get_delta();
@@ -430,20 +449,24 @@ void forge::Nexus::clear()
 {
 	for (auto &[_, ct] : m_component_table)
 	{
-		for (auto &component : ct.mem_pool.get_iterator<IComponent>())
+		ct.mem_pool.reset(true, [](u8 *ptr)
 		{
-			component.on_destroy();
-		}
+			auto *component = (IComponent*)ptr;
 
-		ct.mem_pool.reset();
+			if (component->m_is_active)
+			{
+				component->m_is_active = false;
+				component->on_destroy();
+			}
+		});
 	}
 
 	m_entity_dirty_table.clear();
 	m_groups.clear();
-	m_update_table.clear();
+	// m_update_table.clear();
 	m_remove_queue.clear();
 	m_name_table.clear();
-	m_component_table.clear();
+	// m_component_table.clear();
 
 	for (auto &[handle, entities] : m_entities_table)
 	{
