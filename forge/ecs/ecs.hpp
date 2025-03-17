@@ -21,6 +21,7 @@
 
 // should get included as a part of ecs.hpp. don't remove this.
 #include "macro_warcrimes.hpp"
+#include "forge/events/timer.hpp"
 
 // the maximum amount of virtual memory that will be used for each component by default unless specified otherwise by the component
 #define DEFAULT_ECS_MAX_MAPPED_MEMORY MB(48)
@@ -63,6 +64,9 @@ namespace forge
         {
             return m_is_enabled;
         }
+
+        TimerID add_timer(TimerOptions &&options) const;
+        void stop_timer(TimerID id) const;
 
         virtual std::vector<std::type_index> get_bundle() { return {}; }
 
@@ -148,6 +152,12 @@ namespace forge
         inline std::string_view get_name() const
         {
             return m_name;
+        }
+
+        [[nodiscard]]
+        inline Nexus* get_nexus() const
+        {
+            return m_nexus;
         }
 
         void set_name(std::string_view new_name);
@@ -529,6 +539,8 @@ namespace forge
         }
 
         void clear();
+
+        Timer timer;
 
     private:
         friend Entity;

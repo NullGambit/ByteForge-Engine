@@ -19,6 +19,20 @@ void forge::IComponent::set_enabled(bool value)
 	}
 }
 
+forge::TimerID forge::IComponent::add_timer(TimerOptions &&options) const
+{
+	auto &owner = m_owner->get_entity();
+
+	return owner.get_nexus()->timer.add(std::forward<TimerOptions>(options));
+}
+
+void forge::IComponent::stop_timer(TimerID id) const
+{
+	auto &owner = m_owner->get_entity();
+
+	owner.get_nexus()->timer.stop(id);
+}
+
 u8* forge::Entity::add_component(std::type_index index)
 {
 	return m_nexus->add_component(this, index);
