@@ -108,6 +108,8 @@ dep/glad/include/glad/glad.h
         forge/graphics/mesh.hpp
         forge/graphics/mesh_generator.cpp
         forge/graphics/mesh_generator.hpp
+        forge/events/timer.cpp
+        forge/events/timer.hpp
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")

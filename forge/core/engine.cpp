@@ -23,8 +23,8 @@ forge::Engine::Engine()
 	// to avoid smart pointers all together
 	m_subsystems.reserve(64);
 
-	add_subsystem<WindowSubSystem>();
 	add_subsystem<OglRenderer>();
+	add_subsystem<WindowSubSystem>();
 	add_subsystem<Nexus>();
 	add_subsystem<EditorSubsystem>();
 }
@@ -56,7 +56,7 @@ forge::EngineInitResult forge::Engine::initialize_subsystem(std::set<std::type_i
 	{
 		const auto &type_index = dependency.get_type_index();
 
-		if (!initialized_subsystems.contains(type_index) && !m_subsystem_table.contains(type_index))
+		if (!initialized_subsystems.contains(type_index))
 		{
 			auto &ptr = m_subsystems.emplace_back(dependency.construct());
 

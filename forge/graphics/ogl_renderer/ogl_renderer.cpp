@@ -171,6 +171,8 @@ std::vector<forge::DependencyStorage> forge::OglRenderer::get_dependencies()
 {
 	std::vector<DependencyStorage> dependencies;
 
+	dependencies.emplace_back(make_dependency<WindowSubSystem>());
+
 #ifdef FORGE_SHADER_HOT_RELOAD
 	dependencies.emplace_back(make_dependency<FsMonitor>());
 #endif

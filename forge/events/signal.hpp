@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <limits>
 
 namespace forge
 {
@@ -12,6 +13,9 @@ namespace forge
 
     template<class T>
     class Signal;
+
+    template<class T>
+    class Delegate;
 
     using ConnectionID = u32;
 
@@ -35,10 +39,11 @@ namespace forge
     };
 
     template<class R, class ...A>
-    class Delegate
+    class Delegate<R(A...)>
     {
     public:
-        bool is_active = true;
+
+        Delegate() = default;
 
         template<class Obj, IsFunction Fn>
         Delegate(Obj *obj, Fn fn)
@@ -52,10 +57,7 @@ namespace forge
         template<IsFunction Fn>
         Delegate(Fn fn)
         {
-            m_delegate = [fn](A ...a)
-            {
-                return fn(a...);
-            };
+            m_delegate = fn;
         }
 
         R operator()(A ...a) const
@@ -63,24 +65,26 @@ namespace forge
             return m_delegate(a...);
         }
 
-        bool is_alive() const
+        [[nodiscard]]
+        inline bool is_alive() const
         {
-            return m_is_alive;
+            return m_delegate != nullptr;
+        }
+
+       inline void kill()
+        {
+            m_delegate = nullptr;
         }
 
     private:
-        friend Signal<R(A...)>;
-
         std::function<R(A...)> m_delegate;
-
-        bool m_is_alive = true;
     };
 
     template<class R, class ...A>
     class Signal<R(A...)>
     {
     public:
-        using Delegate = Delegate<R, A...>;
+        using Delegate = Delegate<R(A...)>;
 
     private:
         // value used to represent that there is no free slot index here
@@ -123,7 +127,7 @@ namespace forge
         {
             auto &[delegate, _] = m_connections[id];
 
-            delegate.m_is_alive = false;
+            delegate.kill();
 
             if (m_free_slot != NO_FREE_SLOTS)
             {
@@ -137,7 +141,7 @@ namespace forge
         {
             for (const auto &[delegate, _] : m_connections)
             {
-                if (delegate.is_active && delegate.m_is_alive)
+                if (delegate.is_alive())
                 {
                     delegate(a...);
                 }
@@ -152,7 +156,7 @@ namespace forge
 
             for (const auto &[delegate, _] : m_connections)
             {
-                if (delegate.is_active && delegate.m_is_alive)
+                if (delegate.is_alive())
                 {
                     values.emplace_back(delegate(a...));
                 }

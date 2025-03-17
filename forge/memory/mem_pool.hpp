@@ -162,6 +162,11 @@ namespace forge
 
 		inline u8* get(size_t offset)
 		{
+			if (offset >= m_offset)
+			{
+				return nullptr;
+			}
+			
 			return m_memory + offset;
 		}
 

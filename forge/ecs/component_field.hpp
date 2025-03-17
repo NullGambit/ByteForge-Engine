@@ -94,10 +94,10 @@ namespace forge
 	struct WatchedField
 	{
 		FieldVar field;
-		Delegate<void, FieldVar> on_changed;
+		Delegate<void(FieldVar)> on_changed;
 	};
 
-#define WATCH_FIELD(field, method) forge::WatchedField{field, forge::Delegate<void, forge::FieldVar>(this, method)}
+#define WATCH_FIELD(field, method) forge::WatchedField{field, forge::Delegate<void(forge::FieldVar)>(this, method)}
 
 	struct ComponentField
 	{
