@@ -41,6 +41,7 @@ public:
 
 	forge::ButtonField test_button =
 	{
+		"Test button",
 		[]
 		{
 			log::info("Button pressed");

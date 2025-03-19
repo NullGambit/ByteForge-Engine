@@ -10,7 +10,7 @@ forge::Timer::Timer(size_t max_timers)
 forge::TimerID forge::Timer::add(TimerOptions &&options)
 {
 	auto [ptr, id] = m_timers.emplace<TimerOptions>(std::forward<TimerOptions>(options));
-	ptr->remaining = ptr->time_sec;
+	ptr->remaining = ptr->duration;
 	return id;
 }
 
@@ -52,7 +52,7 @@ void forge::Timer::process()
 				}
 				else
 				{
-					timer.remaining = timer.time_sec;
+					timer.remaining = timer.duration;
 				}
 			}
 		}

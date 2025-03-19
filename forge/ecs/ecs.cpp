@@ -444,6 +444,8 @@ void forge::Nexus::update()
 		iter->second.update(delta);
 	}
 
+	timer.process();
+
 	if (!m_entity_dirty_table.empty())
 	{
 		std::scoped_lock lock {m_dirty_table_mutex};

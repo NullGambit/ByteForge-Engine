@@ -6,6 +6,7 @@
 
 #include "components/bob_component.hpp"
 #include "components/export_test_component.hpp"
+#include "components/lifetime_component.hpp"
 #include "components/player_controller.hpp"
 #include "forge/editor/editor_subsystem.hpp"
 #include "forge/events/timer.hpp"
@@ -20,6 +21,7 @@ void register_demo_components()
 	nexus->register_component<PlayerController>();
 	nexus->register_component<BobComponent>();
 	nexus->register_component<ExportFieldTestComponent>();
+	nexus->register_component<LifetimeComponent>();
 }
 
 void export_test_demo()
@@ -55,6 +57,12 @@ void cube_demo()
 	cube_position.z = -2;
 
 	cube_entity.set_local_position(cube_position);
+
+	auto lifetime = cube_entity.add_component<LifetimeComponent>();
+
+	lifetime->duration = std::chrono::seconds{2};
+
+	lifetime->start();
 }
 
 void bobbing_cluster()
@@ -88,60 +96,34 @@ void bobbing_cluster()
 
 int main(int argc, const char **argv)
 {
-	forge::Timer timer;
-
-	forge::Delegate<void(int, float)> test =
-		[](int a, float b)
-		{
-			log::info("{} {}", a, b);
-		};
-
-	test(10, 5.5);
-
-	timer.add(forge::TimerOptions
+	auto result = g_engine.init(std::span{argv, (size_t)argc},
 	{
-		.time_sec = std::chrono::milliseconds(500),
-		.on_timeout = []
-		{
-			log::info("hello");
-		},
-		.one_shot = true
+		.window_title = "ByteForge Engine",
+		.window_width = 1920,
+		.window_height = 1080,
+		.log_flags = log::LogTime
 	});
 
-	for (auto i = 0; i < 50; i++)
+	if (result == forge::EngineInitResult::HaltWithNoError)
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds{100});
-		timer.process();
+		return 0;
+	}
+	if (result != forge::EngineInitResult::Ok)
+	{
+		return -1;
 	}
 
-	// auto result = g_engine.init(std::span{argv, (size_t)argc},
-	// {
-	// 	.window_title = "ByteForge Engine",
-	// 	.window_width = 1920,
-	// 	.window_height = 1080,
-	// 	.log_flags = log::LogTime
-	// });
-	//
-	// if (result == forge::EngineInitResult::HaltWithNoError)
-	// {
-	// 	return 0;
-	// }
-	// if (result != forge::EngineInitResult::Ok)
-	// {
-	// 	return -1;
-	// }
-	//
-	// forge::register_engine_components();
-	//
-	// register_demo_components();
-	//
-	// auto *editor = g_engine.get_subsystem<forge::EditorSubsystem>();
-	//
-	// editor->demos.emplace_back("export test", export_test_demo);
-	// editor->demos.emplace_back("cube", cube_demo);
-	// editor->demos.emplace_back("bobbing cluster", bobbing_cluster);
-	//
-	// g_engine.run();
-	//
-	// g_engine.shutdown();
+	forge::register_engine_components();
+
+	register_demo_components();
+
+	auto *editor = g_engine.get_subsystem<forge::EditorSubsystem>();
+
+	editor->demos.emplace_back("export test", export_test_demo);
+	editor->demos.emplace_back("cube", cube_demo);
+	editor->demos.emplace_back("bobbing cluster", bobbing_cluster);
+
+	g_engine.run();
+
+	g_engine.shutdown();
 }

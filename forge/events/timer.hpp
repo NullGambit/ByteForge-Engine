@@ -14,7 +14,7 @@ namespace forge
 
 	struct TimerOptions
 	{
-		TimerDuration time_sec;
+		TimerDuration duration;
 		TimerDuration remaining;
 		Delegate<void()> on_timeout {};
 		bool one_shot = false;
@@ -30,6 +30,7 @@ namespace forge
 		}
 	};
 
+    // TODO: implement a scoped timer handle
 	struct TimerHandle
 	{
 

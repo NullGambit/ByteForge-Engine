@@ -13,7 +13,9 @@ add_executable(DevDemo
         src/components/bob_component.hpp
         src/components/export_test_component.hpp
         src/components/player_controller.hpp
-        src/components/player_controller.cpp)
+        src/components/player_controller.cpp
+        src/components/lifetime_component.cpp
+        src/components/lifetime_component.hpp)
 
 target_link_libraries(DevDemo PUBLIC ByteForgeEngine)
 

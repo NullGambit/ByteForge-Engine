@@ -20,6 +20,7 @@ namespace forge
 			callback(callback)
 		{}
 
+
 		ButtonField(std::function<void()> callback) :
 			callback(callback)
 		{}
@@ -83,7 +84,7 @@ namespace forge
 	std::string*,			\
 	ButtonField, ColorField, FieldSeperator,\
 	glm::vec4*, glm::vec3*, glm::vec2*, glm::quat*, \
-	EnumStorage \
+	EnumStorage, std::chrono::duration<float>* \
 
 	using BaseFieldVar = std::variant<BASE_FIELD_VAR_SET>;
 

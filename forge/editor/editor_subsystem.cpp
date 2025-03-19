@@ -437,6 +437,32 @@ protected:
 
 				return field_changed;
 			},
+			[&](std::chrono::duration<float> *value)
+			{
+				auto hour = std::floor(value->count() / 3600.0f);
+				auto minute = std::floor((value->count() - (hour * 3600.0f)) / 60.0f);
+				auto second = value->count() - (hour * 3600.0f) - (minute * 60.0f);
+
+				ImGui::PushItemWidth(50);
+
+				ImGui::InputFloat("H", &hour);
+				ImGui::SameLine();
+				ImGui::InputFloat("M", &minute);
+				ImGui::SameLine();
+				ImGui::InputFloat("S", &second);
+				ImGui::SameLine();
+				ImGui::Text("%s", formatted.c_str());
+
+				ImGui::PopItemWidth();
+
+				std::chrono::duration<float> duration {};
+
+				auto total_seconds = (hour * 3600.0f) + (minute * 60.0f) + second;
+
+				*value = std::chrono::duration<float>{total_seconds};
+
+				return true;
+			},
 			[&](const forge::EnumStorage &storage)
 			{
 				auto selected_index = storage.get_selected_index();
