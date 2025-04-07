@@ -20,5 +20,11 @@ add_executable(DevDemo
 target_link_libraries(DevDemo PUBLIC ByteForgeEngine)
 
 target_include_directories(DevDemo PUBLIC ${FORGE_DIR})
+target_compile_definitions(DevDemo PUBLIC
+        GLM_ENABLE_EXPERIMENTAL
+        FORGE_USE_UNIFORM_CACHE
+        DEMO_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets/"
+        DEMO_CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/config/"
+)
 
 #target_precompile_headers(byte_forge_demo PUBLIC ${FORGE_DIR}/forge/core/forge_intrinsic.hpp)

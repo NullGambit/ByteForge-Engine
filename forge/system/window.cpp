@@ -22,19 +22,19 @@ void on_window_should_close_callback(GLFWwindow *window)
 
 void on_mouse_callback(GLFWwindow *window, double xpos, double ypos)
 {
+	auto *windowPtr = (forge::Window*)glfwGetWindowUserPointer(window);
+
 	if (ImGui::GetCurrentContext() != nullptr)
 	{
 	    auto &io = ImGui::GetIO();
 
 	    io.AddMousePosEvent(xpos, ypos);
 
-	    if (io.WantCaptureMouse)
+	    if (io.WantCaptureMouse && windowPtr->get_cursor_mode() != forge::CursorMode::Disabled)
 	    {
 	        return;
 	    }
 	}
-
-	auto *windowPtr = (forge::Window*)glfwGetWindowUserPointer(window);
 
 	auto &data = windowPtr->get_input_event_data();
 
@@ -240,7 +240,7 @@ bool forge::Window::is_key_pressed(Key key, KeyModifier mod) const
 
 bool forge::Window::is_key_held(Key key) const
 {
-	bool imgui_wants_keyboard = false;
+	auto imgui_wants_keyboard = false;
 
 	if (ImGui::GetCurrentContext() != nullptr)
 	{
@@ -294,16 +294,6 @@ glm::ivec2 forge::Window::get_size() const
 	glfwGetWindowSize(m_handle, &out.x, &out.y);
 
 	return out;
-}
-
-bool was_key_called(forge::WindowKeyEventData key_event, int action, int mod)
-{
-	if (key_event.called && key_event.action == action && key_event.mods == mod)
-	{
-		return true;
-	}
-
-	return false;
 }
 
 bool forge::Window::get_mouse_button(int button, int action, int mod) const

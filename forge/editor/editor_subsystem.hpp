@@ -14,8 +14,9 @@ namespace forge
 
 		std::vector<DependencyStorage> get_dependencies() override;
 
-		std::vector<std::pair<std::string_view, std::function<void()>>> demos;
+		void load_demo(std::string_view name);
 
+		HashMap<std::string_view, std::function<void()>> demos;
 
 	private:
 		Nexus m_nexus {};

@@ -41,6 +41,11 @@ void forge::WindowSubSystem::update()
 {
 }
 
+void forge::WindowSubSystem::pre_update()
+{
+	glfwPollEvents();
+}
+
 void forge::WindowSubSystem::post_update()
 {
 	for (auto &window : m_windows)
@@ -48,8 +53,6 @@ void forge::WindowSubSystem::post_update()
 		window.swap_buffers();
 		window.reset_input();
 	}
-
-	glfwPollEvents();
 }
 
 forge::Window * forge::WindowSubSystem::create_window()

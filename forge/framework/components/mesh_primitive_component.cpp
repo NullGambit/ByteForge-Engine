@@ -17,6 +17,11 @@ void MeshPrimitiveComponent::set_texture(std::string_view path, u32 type)
 	m_renderer->create_texture(m_data->get_id(), path, type);
 }
 
+forge::Texture& MeshPrimitiveComponent::get_texture(u32 type)
+{
+	return m_data->material.textures[type];
+}
+
 std::vector<forge::ComponentField> MeshPrimitiveComponent::export_fields()
 {
 	std::vector<forge::ComponentField> out;

@@ -10,13 +10,6 @@ class GLFWwindow;
 
 namespace forge
 {
-	struct WindowKeyEventData
-	{
-		bool called;
-		u8 action;
-		u8 mods;
-	};
-
 	struct WindowInputEventData
 	{
 		glm::vec2 mouse_cords;

@@ -20,6 +20,8 @@ public:
 
 	void set_texture(std::string_view path, u32 type);
 
+	forge::Texture& get_texture(u32 type);
+
 	forge::Material& get_material()
 	{
 		return m_data->material;

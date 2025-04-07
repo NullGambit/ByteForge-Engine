@@ -4,13 +4,16 @@
 
 forge::Timer::Timer(size_t max_timers)
 {
+	m_previous_time = std::chrono::high_resolution_clock::now();
 	m_timers.init<TimerOptions>(max_timers * sizeof(TimerOptions));
 }
 
 forge::TimerID forge::Timer::add(TimerOptions &&options)
 {
 	auto [ptr, id] = m_timers.emplace<TimerOptions>(std::forward<TimerOptions>(options));
+
 	ptr->remaining = ptr->duration;
+
 	return id;
 }
 

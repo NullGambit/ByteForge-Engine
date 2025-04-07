@@ -1,5 +1,6 @@
 
 #include <thread>
+#include <unordered_set>
 #include <forge/core/engine.hpp>
 #include <forge/core/logging.hpp>
 #include <forge/framework/components/mesh_primitive_component.hpp>
@@ -8,6 +9,8 @@
 #include "components/export_test_component.hpp"
 #include "components/lifetime_component.hpp"
 #include "components/player_controller.hpp"
+#include "forge/container/array.hpp"
+#include "forge/container/set.hpp"
 #include "forge/editor/editor_subsystem.hpp"
 #include "forge/events/timer.hpp"
 #include "forge/framework/components/camera_component.hpp"
@@ -38,7 +41,7 @@ void make_player()
 	nexus->create_entity<forge::CameraComponent, PlayerController>("player");
 }
 
-void cube_demo()
+void diseappring_cube_demo()
 {
 	auto *nexus = g_engine.get_subsystem<forge::Nexus>();
 
@@ -63,6 +66,85 @@ void cube_demo()
 	lifetime->duration = std::chrono::seconds{2};
 
 	lifetime->start();
+}
+
+template <typename T> int get_sign(T val)
+{
+	return (T(0) < val) - (val < T(0));
+}
+
+void crates_demo()
+{
+	auto *nexus = g_engine.get_subsystem<forge::Nexus>();
+
+	make_player();
+
+	auto &ground_ent = nexus->create_entity("ground");
+
+	auto *ground_mesh = ground_ent.add_component<MeshPrimitiveComponent>();
+
+	ground_mesh->set_texture(DEMO_ASSET_DIR"textures/concrete.jpg", forge::TextureType::Diffuse);
+
+	ground_mesh->get_texture(forge::TextureType::Specular).strength = 2;
+	ground_mesh->get_texture(forge::TextureType::Diffuse).scale = 5;
+
+	auto ground_pos = ground_ent.get_local_position();
+
+	ground_pos.x = 2;
+	ground_pos.y = -1.5;
+	ground_pos.z = 0;
+
+	ground_ent.set_local_position(ground_pos);
+
+	auto ground_scale = ground_ent.get_local_scale();
+
+	ground_scale.x = 20;
+	ground_scale.y = 0.5;
+	ground_scale.z = 20;
+
+	ground_ent.set_local_scale(ground_scale);
+
+	forge::Array<glm::vec3> positions;
+
+	srand(1);
+
+	for (int i = 0; i < 15; i++)
+	{
+		auto &entity = nexus->create_entity(fmt::format("crate_{}", i));
+		auto *crate = entity.add_component<MeshPrimitiveComponent>();
+
+		crate->set_texture(FORGE_ENGINE_ASSET_DIR"textures/container2.png", forge::TextureType::Diffuse);
+		crate->set_texture(FORGE_ENGINE_ASSET_DIR"textures/container2_specular.png", forge::TextureType::Specular);
+
+		auto position = util::rand_vec3(-8, 8);
+
+		position.y = -0.75;
+
+		auto length = glm::length(position);
+
+		for (const auto &other_pos : positions)
+		{
+			auto diff = std::abs(glm::length(other_pos) - length);
+
+			if (diff <= 5)
+			{
+				auto x_sign = -get_sign(other_pos.x);
+				auto z_sign = -get_sign(other_pos.z);
+
+				position.x *= x_sign;
+				position.z *= z_sign;
+			}
+		}
+
+		auto rotation = util::rand_vec3(-360, 360);
+		rotation.x = 0;
+		rotation.z = 0;
+
+		entity.set_local_position(position);
+		entity.set_local_rotation(rotation);
+
+		positions.emplace_back(position);
+	}
 }
 
 void bobbing_cluster()
@@ -119,9 +201,12 @@ int main(int argc, const char **argv)
 
 	auto *editor = g_engine.get_subsystem<forge::EditorSubsystem>();
 
-	editor->demos.emplace_back("export test", export_test_demo);
-	editor->demos.emplace_back("cube", cube_demo);
-	editor->demos.emplace_back("bobbing cluster", bobbing_cluster);
+	editor->demos.emplace("export test", export_test_demo);
+	editor->demos.emplace("disappearing cube", diseappring_cube_demo);
+	editor->demos.emplace("bobbing cluster", bobbing_cluster);
+	editor->demos.emplace("crates", crates_demo);
+
+	editor->load_demo("crates");
 
 	g_engine.run();
 

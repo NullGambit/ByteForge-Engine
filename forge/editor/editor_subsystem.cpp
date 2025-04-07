@@ -914,3 +914,13 @@ std::vector<forge::DependencyStorage> forge::EditorSubsystem::get_dependencies()
 {
 	return { make_dependency<ImGuiSubsystem>() };
 }
+
+void forge::EditorSubsystem::load_demo(std::string_view name)
+{
+	auto iter = demos.find(name);
+
+	if (iter != demos.end())
+	{
+		iter->second();
+	}
+}

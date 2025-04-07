@@ -10,5 +10,5 @@ namespace forge
 			  class KeyEqual = std::equal_to<Key>,
 			  class AllocatorOrContainer = std::allocator<Key>,
 			  class Bucket = ankerl::unordered_dense::bucket_type::standard>
-	using HashSet = ankerl::unordered_dense::set<Key, void, Hash, KeyEqual, AllocatorOrContainer, Bucket, false>;
+	using HashSet = ankerl::unordered_dense::set<Key, Hash, KeyEqual, AllocatorOrContainer, Bucket>;
 }

@@ -17,6 +17,7 @@ namespace forge
 		void shutdown() override;
 		void update() override;
 		bool is_critical() override { return true; }
+		void pre_update() override;
 		void post_update() override;
 
 		// set to highest update order so it will be able to swap buffers after everything is done rendering
