@@ -90,7 +90,7 @@ namespace forge
 
 	struct WatchedField;
 
-	using FieldVar = std::variant<BASE_FIELD_VAR_SET, WatchedField*>;
+	using FieldVar = std::variant<BASE_FIELD_VAR_SET>;
 
 	struct WatchedField
 	{
@@ -104,34 +104,5 @@ namespace forge
 	{
 		std::string_view name;
 		FieldVar var;
-
-		// ComponentField() = default;
-		//
-		// template<class T>
-		// ComponentField(std::string_view name, T value) :
-		// 	name(name)
-		// {
-		// 	if constexpr (std::is_enum_v<T>)
-		// 	{
-		// 		auto values = magic_enum::enum_values<T>();
-		// 		auto names = magic_enum::enum_names<T>();
-		//
-		// 		EnumStorage storage;
-		//
-		// 		storage.value = (int*)&value;
-		//
-		// 		for (auto i = 0; auto &n : names)
-		// 		{
-		// 			storage.entries.emplace_back(n, values[i++]);
-		// 		}
-		//
-		// 		this->name = name;
-		// 		var = storage;
-		// 	}
-		// 	else
-		// 	{
-		// 		var = value;
-		// 	}
-		// }
 	};
 }

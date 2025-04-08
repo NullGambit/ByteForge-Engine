@@ -95,10 +95,6 @@ void forge::OglRenderer::update()
 
 	const auto pv = m_active_camera->calculate_pv();
 
-	m_forward_shader.set("view_position", m_active_camera->position);
-	m_forward_shader.set("light_position", m_light_position);
-	m_forward_shader.set("light_color", m_light_color);
-
 	for (auto &data : m_render_data_pool.get_iterator<PrimitiveRenderData>())
 	{
 		if (data.is_valid && !data.primitive.is_hidden)
@@ -110,6 +106,25 @@ void forge::OglRenderer::update()
 			m_forward_shader.set("pvm", pvm);
 			m_forward_shader.set("model", model);
 			m_forward_shader.set("normal_matrix", data.primitive.m_normal_matrix);
+			m_forward_shader.set("view_position", m_active_camera->position);
+
+			for (auto i = 0; const auto &light : m_lights)
+			{
+				if (light.enabled)
+				{
+					auto index = fmt::format("[{}]", i++);
+
+					m_forward_shader.set(fmt::format("lights{}.position", index), light.position);
+					m_forward_shader.set(fmt::format("lights{}.direction", index), light.direction);
+					m_forward_shader.set(fmt::format("lights{}.color", index), light.color);
+					m_forward_shader.set(fmt::format("lights{}.cutoff", index), light.cutoff);
+					m_forward_shader.set(fmt::format("lights{}.outer_cutoff", index), light.outer_cutoff);
+					m_forward_shader.set(fmt::format("lights{}.linear", index), light.linear);
+					m_forward_shader.set(fmt::format("lights{}.quadratic", index), light.quadratic);
+					m_forward_shader.set(fmt::format("lights{}.enabled", index), light.enabled);
+					m_forward_shader.set(fmt::format("lights{}.type", index), (int)light.type);
+				}
+			}
 
 			static constexpr TextureList<std::array<std::string_view, 4>> properties
 			{
@@ -165,7 +180,9 @@ void forge::OglRenderer::update()
 }
 
 void forge::OglRenderer::shutdown()
-{}
+{
+	m_render_data_pool.destroy();
+}
 
 std::vector<forge::DependencyStorage> forge::OglRenderer::get_dependencies()
 {
@@ -273,6 +290,40 @@ void forge::OglRenderer::create_texture(u32 id, std::string_view path, u32 type)
 	texture_data.is_valid = true;
 }
 
+forge::Light * forge::OglRenderer::create_light()
+{
+	Light *light = nullptr;
+
+	for (auto &l : m_lights)
+	{
+		if (l.is_available)
+		{
+			light = &l;
+		}
+	}
+
+	if (light == nullptr)
+	{
+		return nullptr;
+	}
+
+	light->is_available = false;
+	light->enabled      = true;
+
+	return light;
+}
+
+void forge::OglRenderer::destroy_light(Light *light)
+{
+	if (light == nullptr)
+	{
+		return;
+	}
+
+	light->is_available = true;
+	light->enabled = false;
+}
+
 void forge::OglRenderer::handle_framebuffer_resize(int width, int height)
 {
 	m_command_buffer.emplace([width, height]
@@ -280,4 +331,6 @@ void forge::OglRenderer::handle_framebuffer_resize(int width, int height)
 		glViewport(0, 0, width, height);
 	});
 }
+
+
 

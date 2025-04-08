@@ -9,10 +9,13 @@
 #include "forge/concurrency/command_buffer.hpp"
 #include "forge/core/isub_system.hpp"
 #include "forge/graphics/camera.hpp"
+#include "forge/graphics/lights.hpp"
 #include "forge/graphics/material.hpp"
 #include "forge/memory/mem_pool.hpp"
 
 class GLFWwindow;
+
+#define OGL_MAX_LIGHTS 8
 
 namespace forge
 {
@@ -100,17 +103,15 @@ namespace forge
 
 		void create_texture(u32 id, std::string_view path, u32 type);
 
-		void update_light(glm::vec3 position, glm::vec3 color)
-		{
-			m_light_color = color;
-			m_light_position = position;
-		}
-
 		// allows for manually adding a command that will be run the next frame
 		void add_command(CommandBuffer<>::Callback &&command)
 		{
 			m_command_buffer.emplace(std::forward<CommandBuffer<>::Callback>(command));
 		}
+
+		Light* create_light();
+
+		void destroy_light(Light *light);
 
 	private:
 		bool m_draw_wireframe = false;
@@ -119,10 +120,10 @@ namespace forge
 		CommandBuffer<> m_command_buffer;
 		RenderStatistics m_statistics;
 		RenderResource<OglTexture> m_texture_resource;
-		glm::vec3 m_light_position {};
-		glm::vec3 m_light_color {1.0};
 
 		OglRendererArgConfig m_arg_config;
+
+		std::array<Light, OGL_MAX_LIGHTS> m_lights {};
 
 		Camera m_default_camera;
 		Camera *m_active_camera;

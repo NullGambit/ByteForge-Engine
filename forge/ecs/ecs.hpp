@@ -21,6 +21,7 @@
 
 // should get included as a part of ecs.hpp. don't remove this.
 #include "macro_warcrimes.hpp"
+#include "forge/container/array.hpp"
 #include "forge/events/timer.hpp"
 
 // the maximum amount of virtual memory that will be used for each component by default unless specified otherwise by the component
@@ -68,9 +69,9 @@ namespace forge
         TimerID add_timer(TimerOptions &&options) const;
         void stop_timer(TimerID id) const;
 
-        virtual std::vector<std::type_index> get_bundle() { return {}; }
+        virtual Array<std::type_index> get_bundle() { return {}; }
 
-        virtual std::vector<ComponentField> export_fields() { return {}; }
+        virtual Array<ComponentField> export_fields() { return {}; }
 
         // gets the type this component should be registered as useful for ensuring derived classes
         // will always get registered as its base interface

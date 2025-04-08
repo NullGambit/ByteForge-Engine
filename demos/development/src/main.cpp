@@ -8,6 +8,7 @@
 #include "components/bob_component.hpp"
 #include "components/export_test_component.hpp"
 #include "components/lifetime_component.hpp"
+#include "components/light_component.hpp"
 #include "components/player_controller.hpp"
 #include "forge/container/array.hpp"
 #include "forge/container/set.hpp"
@@ -103,6 +104,14 @@ void crates_demo()
 	ground_scale.z = 20;
 
 	ground_ent.set_local_scale(ground_scale);
+
+	auto &light_ent = nexus->create_entity("light");
+
+	auto *light = light_ent.add_component<LightComponent>()->get_light();
+
+	light->type = forge::LightType::Direction;
+
+	light->direction = {-0.2f, -1.0f, -0.3f};
 
 	forge::Array<glm::vec3> positions;
 

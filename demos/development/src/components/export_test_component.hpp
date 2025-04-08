@@ -53,13 +53,11 @@ public:
 		log::info("field changed to {}", *std::get<int*>(field));
 	}
 
-	forge::WatchedField watched_field = WATCH_FIELD(&watched_int, &ExportFieldTestComponent::on_watched_field_changed);
-
 	EXPORT_FIELDS(
 		forge::FieldSeperator{"primitives"},
 		&f1, &f2, &integer, &boolean,
 		forge::FieldSeperator{"controls"},
-		test_button, COLOR_FIELD(&color), &watched_field,
+		test_button, COLOR_FIELD(&color),
 		forge::FieldSeperator{"linear algebra"},
 		&vec4, &vec3, &vec2, &quat,
 		&colors);

@@ -15,7 +15,9 @@ add_executable(DevDemo
         src/components/player_controller.hpp
         src/components/player_controller.cpp
         src/components/lifetime_component.cpp
-        src/components/lifetime_component.hpp)
+        src/components/lifetime_component.hpp
+        src/components/light_component.cpp
+        src/components/light_component.hpp)
 
 target_link_libraries(DevDemo PUBLIC ByteForgeEngine)
 

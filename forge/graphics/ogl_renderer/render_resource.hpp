@@ -68,6 +68,6 @@ namespace forge
 		}
 
 	private:
-		std::unordered_map<std::string, std::pair<T, i32>, ENABLE_TRANSPARENT_HASH> m_resources;
+		HashMap<std::string, std::pair<T, i32>, ENABLE_TRANSPARENT_HASH> m_resources;
 	};
 }

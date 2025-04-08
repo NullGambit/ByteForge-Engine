@@ -15,9 +15,9 @@ void main()
 {
     vec4 position = vec4(a_pos, 1.0);
 
-    gl_Position = pvm * position;
-
     tex_coords      = a_tex_coords;
     normal          = mat3(normal_matrix) * a_normal;
-    frag_position   = vec3(model * position);
+    frag_position   = vec3(model * vec4(a_pos, 1.0));
+
+    gl_Position = pvm * position;
 }

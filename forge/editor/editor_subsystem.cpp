@@ -272,7 +272,7 @@ protected:
 		m_nexus = g_engine.get_subsystem<forge::Nexus>();
 	}
 
-	void vec_drag_control(std::string_view label, float *values, int components, bool *uniform = nullptr,
+	bool vec_drag_control(std::string_view label, float *values, int components, bool *uniform = nullptr,
 		float speed = 1, float min_steps = 0, float max_steps = 0)
 	{
 		static const char *component_table[] = {"X", "Y", "Z", "W"};
@@ -289,11 +289,13 @@ protected:
 
 		ImGui::PushItemWidth(50);
 
+		auto dragged = false;
+
 		for (auto i = 0; i < components; i++)
 		{
 			ImGui::PushID(values + i);
 
-			ImGui::DragFloat(component_table[i], &values[i], speed, min_steps, max_steps);
+			dragged = !dragged && ImGui::DragFloat(component_table[i], &values[i], speed, min_steps, max_steps);
 
 			ImGui::PopID();
 
@@ -304,14 +306,16 @@ protected:
 		}
 
 		ImGui::PopItemWidth();
+
+		return dragged;
 	}
 
 	template<class T>
-	void vec_drag_control(std::string_view label, T &values, bool *uniform = nullptr,
+	bool vec_drag_control(std::string_view label, T &values, bool *uniform = nullptr,
 		float speed = 0.01, float min_steps = 0, float max_steps = 0)
 	{
 		auto *ptr = glm::value_ptr(values);
-		vec_drag_control(label, ptr, sizeof(T) / sizeof(ptr[0]), uniform, speed, min_steps, max_steps);
+		return vec_drag_control(label, ptr, sizeof(T) / sizeof(ptr[0]), uniform, speed, min_steps, max_steps);
 	}
 
 	static u32 find_last_member_index(std::string_view name)
@@ -529,9 +533,10 @@ protected:
 
 				auto scale = entity.get_local_scale();
 
-				vec_drag_control("Scale", scale, &uniform_scale);
+				// TODO: fix this garbage uniform scaling code
+				auto changed_scale = vec_drag_control("Scale", scale, &uniform_scale);
 
-				entity.set_local_scale(uniform_scale ? glm::vec3{scale[0]} : scale);
+				entity.set_local_scale(uniform_scale && changed_scale ? glm::vec3{scale[0]} : scale);
 
 				auto position = entity.get_local_position();
 

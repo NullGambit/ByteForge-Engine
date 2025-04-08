@@ -112,6 +112,7 @@ dep/glad/include/glad/glad.h
         forge/events/timer.hpp
         forge/container/array.hpp
         forge/container/string.hpp
+        forge/graphics/lights.hpp
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")

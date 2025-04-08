@@ -23,9 +23,9 @@ forge::Engine::Engine()
 	// to avoid smart pointers all together
 	m_subsystems.reserve(64);
 
+	add_subsystem<Nexus>();
 	add_subsystem<OglRenderer>();
 	add_subsystem<WindowSubSystem>();
-	add_subsystem<Nexus>();
 	add_subsystem<EditorSubsystem>();
 }
 
