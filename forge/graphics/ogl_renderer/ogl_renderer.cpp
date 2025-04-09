@@ -21,8 +21,6 @@
 #define CAMERA_POOL_SIZE sizeof(forge::Camera) * 16
 #define RENDER_DATA_POOL_SIZE MB(2048)
 
-static std::array<std::array<std::string, LIGHT_FIELD_COUNT>, OGL_MAX_LIGHTS> g_light_uniform_names;
-
 std::string forge::OglRenderer::init(const EngineInitOptions &options)
 {
 	auto ok = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
@@ -81,25 +79,6 @@ std::string forge::OglRenderer::init(const EngineInitOptions &options)
 	m_active_camera = &m_default_camera;
 
 	m_render_data_pool.init<PrimitiveRenderData>(RENDER_DATA_POOL_SIZE);
-
-	std::array<std::string_view, LIGHT_FIELD_COUNT> fmt_str
-	{
-		"lights[{}].position",
-		"lights[{}].direction",
-		"lights[{}].color",
-		"lights[{}].cutoff",
-		"lights[{}].outer_cutoff",
-		"lights[{}].max_distance",
-		"lights[{}].type",
-	};;
-
-	for (auto i = 0; i < OGL_MAX_LIGHTS; i++)
-	{
-		for (auto ii = 0; ii < LIGHT_FIELD_COUNT; ii++)
-		{
-			g_light_uniform_names[i][ii] = fmt::format(fmt_str[ii], ii);
-		}
-	}
 
 	return {};
 }

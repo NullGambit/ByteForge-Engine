@@ -129,7 +129,7 @@ vec3 calculate_point_spot_light(Light light)
     }
 
     result.diffuse  *= intensity * attenuation;
-    result.specular *= intensity * attenuation;
+    result.ambient  *= intensity * attenuation;
     result.specular *= intensity * attenuation;
 
     return sum_light(result);
@@ -139,7 +139,7 @@ void main()
 {
     g_object_color = get_texture(material.diffuse, vec4(1.0));
 
-    vec3 result;
+    vec3 result = vec3(0.0);
 
     for (int i = 0; i < MAX_LIGHTS; i++)
     {
