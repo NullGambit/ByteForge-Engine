@@ -32,9 +32,8 @@ struct Light
 
     float cutoff;
     float outer_cutoff;
+    float max_distance;
 
-    float linear;
-    float quadratic;
     bool enabled;
 
     int type;
@@ -52,7 +51,7 @@ vec4 get_texture(Texture t, vec4 default_value)
     }
 }
 
-#define MAX_LIGHTS 8
+#define MAX_LIGHTS 16
 
 uniform Material material;
 uniform Light[MAX_LIGHTS] lights;
@@ -92,9 +91,12 @@ vec3 sum_light(LightingResult result)
     return result.ambient + result.diffuse + result.specular + result.emissive;
 }
 
-float attenuate(float distance, float linear, float quadratic)
+float attenuate(float distance, float max_distance)
 {
-    return 1.0 / (1.0 + linear * distance + quadratic * (distance * distance));
+    float Kl = 2.0 / max_distance;
+    float Kq = 1.0 / (max_distance * max_distance);
+
+    return 1.0 / (1.0 + Kl * distance + Kq * (distance * distance));
 }
 
 vec3 calculate_dir_light(Light light)
@@ -106,31 +108,17 @@ vec3 calculate_dir_light(Light light)
     return sum_light(result);
 }
 
-//vec3 calculate_point_light(Light light)
-//{
-//    vec3 light_direction = normalize(light.position - FragPos);
-//
-//    LightingResult result = calculate_lighting(light_direction);
-//
-//    float d = length(light.position - FragPos);
-//    float attenuation = attenuate(d, light.linear, light.quadratic);
-//
-//    result.ambient *= attenuation;
-//    result.diffuse *= attenuation;
-//    result.specular *= attenuation;
-//
-//    return sum_light(result);
-//}
-
 vec3 calculate_point_spot_light(Light light)
 {
     vec3 light_direction = normalize(light.position - frag_position);
 
     LightingResult result = calculate_lighting(light_direction, light.color);
 
+    light.max_distance = max(light.max_distance, 1.0);
+
     float intensity     = 1;
     float d             = length(light.position - frag_position);
-    float attenuation   = attenuate(d, light.linear, light.quadratic);
+    float attenuation   = attenuate(d, light.max_distance);
 
     if (light.type == LIGHT_SPOT)
     {

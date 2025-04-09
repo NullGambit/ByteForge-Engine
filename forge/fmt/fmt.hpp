@@ -98,10 +98,27 @@ namespace fmt
         return result;
     }
 
-    std::string do_format(std::string_view fmt, const std::string &buffer);
+    std::string_view do_format(std::string_view fmt, const std::string &buffer);
 
     template<class... A>
     std::string format(std::string_view fmt, A&&... a)
+    {
+        if constexpr (sizeof...(a) == 0)
+            return fmt.data();
+
+        thread_local std::string buffer;
+
+        ((buffer += string_of(a) + '\0'), ...);
+
+        auto output = do_format(fmt, buffer);
+
+        buffer.clear();
+
+        return std::string{output};
+    }
+
+    template<class... A>
+    std::string_view format_view(std::string_view fmt, A&&... a)
     {
         if constexpr (sizeof...(a) == 0)
             return fmt.data();

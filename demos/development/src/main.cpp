@@ -111,7 +111,7 @@ void crates_demo()
 
 	light->type = forge::LightType::Direction;
 
-	light->direction = {-0.2f, -1.0f, -0.3f};
+	light_ent.set_local_rotation({-0.2f, -1.0f, -0.3f});
 
 	forge::Array<glm::vec3> positions;
 

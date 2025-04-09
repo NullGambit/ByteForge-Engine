@@ -32,6 +32,14 @@ void PlayerController::handle_look()
 	m_camera->pitch += offset.y;
 
 	m_camera->pitch = glm::clamp(m_camera->pitch, -90.0f, 90.0f);
+
+	auto &owner = m_owner->get_entity();
+	auto rotation = owner.get_euler_rotation();
+
+	rotation.y = -m_camera->yaw;
+	rotation.z = m_camera->pitch;
+
+	owner.set_local_rotation(rotation);
 }
 
 bool PlayerController::is_cursor_active() const

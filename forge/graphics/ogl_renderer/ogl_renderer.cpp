@@ -21,6 +21,8 @@
 #define CAMERA_POOL_SIZE sizeof(forge::Camera) * 16
 #define RENDER_DATA_POOL_SIZE MB(2048)
 
+static std::array<std::array<std::string, LIGHT_FIELD_COUNT>, OGL_MAX_LIGHTS> g_light_uniform_names;
+
 std::string forge::OglRenderer::init(const EngineInitOptions &options)
 {
 	auto ok = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
@@ -80,6 +82,25 @@ std::string forge::OglRenderer::init(const EngineInitOptions &options)
 
 	m_render_data_pool.init<PrimitiveRenderData>(RENDER_DATA_POOL_SIZE);
 
+	std::array<std::string_view, LIGHT_FIELD_COUNT> fmt_str
+	{
+		"lights[{}].position",
+		"lights[{}].direction",
+		"lights[{}].color",
+		"lights[{}].cutoff",
+		"lights[{}].outer_cutoff",
+		"lights[{}].max_distance",
+		"lights[{}].type",
+	};;
+
+	for (auto i = 0; i < OGL_MAX_LIGHTS; i++)
+	{
+		for (auto ii = 0; ii < LIGHT_FIELD_COUNT; ii++)
+		{
+			g_light_uniform_names[i][ii] = fmt::format(fmt_str[ii], ii);
+		}
+	}
+
 	return {};
 }
 
@@ -110,20 +131,20 @@ void forge::OglRenderer::update()
 
 			for (auto i = 0; const auto &light : m_lights)
 			{
+				auto index = fmt::format("[{}]", i++);
+
 				if (light.enabled)
 				{
-					auto index = fmt::format("[{}]", i++);
-
-					m_forward_shader.set(fmt::format("lights{}.position", index), light.position);
-					m_forward_shader.set(fmt::format("lights{}.direction", index), light.direction);
-					m_forward_shader.set(fmt::format("lights{}.color", index), light.color);
-					m_forward_shader.set(fmt::format("lights{}.cutoff", index), light.cutoff);
-					m_forward_shader.set(fmt::format("lights{}.outer_cutoff", index), light.outer_cutoff);
-					m_forward_shader.set(fmt::format("lights{}.linear", index), light.linear);
-					m_forward_shader.set(fmt::format("lights{}.quadratic", index), light.quadratic);
-					m_forward_shader.set(fmt::format("lights{}.enabled", index), light.enabled);
-					m_forward_shader.set(fmt::format("lights{}.type", index), (int)light.type);
+					m_forward_shader.set(fmt::format_view("lights{}.position", index), light.position);
+					m_forward_shader.set(fmt::format_view("lights{}.direction", index), light.direction);
+					m_forward_shader.set(fmt::format_view("lights{}.color", index), light.color);
+					m_forward_shader.set(fmt::format_view("lights{}.cutoff", index), light.cutoff);
+					m_forward_shader.set(fmt::format_view("lights{}.outer_cutoff", index), light.outer_cutoff);
+					m_forward_shader.set(fmt::format_view("lights{}.max_distance", index), light.max_distance);
+					m_forward_shader.set(fmt::format_view("lights{}.type", index), (int)light.type);
 				}
+
+				m_forward_shader.set(fmt::format("lights{}.enabled", index), light.enabled);
 			}
 
 			static constexpr TextureList<std::array<std::string_view, 4>> properties

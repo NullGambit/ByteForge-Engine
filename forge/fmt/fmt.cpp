@@ -1,9 +1,11 @@
 #include "fmt.hpp"
 
-std::string fmt::do_format(std::string_view fmt, const std::string& buffer)
+std::string_view fmt::do_format(std::string_view fmt, const std::string& buffer)
 {
-	std::string output;
+	thread_local std::string output;
 	u32 offset {};
+
+	output.clear();
 
 	for (auto i = 0; i < fmt.size(); i++)
 	{

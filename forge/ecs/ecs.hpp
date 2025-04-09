@@ -235,7 +235,10 @@ namespace forge
         inline void set_local_rotation(glm::vec3 euler_rotation)
         {
             update_dirty_array();
-            m_transform.set_local_rotation(euler_rotation);
+            m_transform.set_local_rotation(
+                {   glm::radians(euler_rotation.x),
+                    glm::radians(euler_rotation.y),
+                    glm::radians(euler_rotation.z)});
         }
 
         inline void set_local_rotation(glm::quat rotation)
@@ -251,7 +254,7 @@ namespace forge
 
         inline glm::vec3 get_local_euler_rotation() const
         {
-            return glm::eulerAngles(m_transform.m_rotation);
+            return m_transform.get_local_euler_rotation();
         }
 
         inline void set_local_scale(glm::vec3 scale)

@@ -15,7 +15,7 @@
 
 class GLFWwindow;
 
-#define OGL_MAX_LIGHTS 8
+#define OGL_MAX_LIGHTS 16
 
 namespace forge
 {

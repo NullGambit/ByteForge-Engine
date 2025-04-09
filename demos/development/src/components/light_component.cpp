@@ -12,8 +12,15 @@ void LightComponent::on_create()
 	m_light = renderer->create_light();
 
 	m_light->type = forge::LightType::Point;
-	m_light->linear = 0.09f;
-	m_light->quadratic = 0.032f;
+
+	auto &owner = m_owner->get_entity();
+
+	owner.on_transform_update.connect([&light = m_light](forge::Entity &entity)
+	{
+		const auto &transform = entity.get_top_most_parent_transform();
+		light->position = transform.get_local_position();
+		light->direction = transform.get_local_euler_rotation();
+	});
 }
 
 void LightComponent::on_destroy()
@@ -38,24 +45,15 @@ forge::Array<forge::ComponentField> LightComponent::export_fields()
 	fields.emplace_back("", forge::FieldSeperator{"Properties"});
 	fields.emplace_back("", forge::ColorField{"color", &m_light->color});
 
-	switch (m_light->type)
+	if (m_light->type == forge::LightType::Spot)
 	{
-		case forge::LightType::Direction:
-			fields.emplace_back("direction", &m_light->direction);
-			break;
-		case forge::LightType::Spot:
-			fields.emplace_back("position", &m_light->position);
-			fields.emplace_back("direction", &m_light->direction);
-			fields.emplace_back("cutoff", &m_light->cutoff);
-			fields.emplace_back("outer cutoff", &m_light->outer_cutoff);
-			fields.emplace_back("linear", &m_light->linear);
-			fields.emplace_back("quadratic", &m_light->quadratic);
-			break;
-		case forge::LightType::Point:
-			fields.emplace_back("position", &m_light->position);
-			fields.emplace_back("linear", &m_light->linear);
-			fields.emplace_back("quadratic", &m_light->quadratic);
-			break;
+		fields.emplace_back("cutoff", &m_light->cutoff);
+		fields.emplace_back("outer cutoff", &m_light->outer_cutoff);
+	}
+
+	if (m_light->type != forge::LightType::Direction)
+	{
+		fields.emplace_back("max distance", &m_light->max_distance);
 	}
 
 	return fields;

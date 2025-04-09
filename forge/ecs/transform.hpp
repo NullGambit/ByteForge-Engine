@@ -47,7 +47,9 @@ namespace forge
 
 		inline glm::vec3 get_local_euler_rotation() const
 		{
-			return glm::eulerAngles(m_rotation);
+			auto radians = glm::eulerAngles(m_rotation);
+
+			return {glm::degrees(radians.x), glm::degrees(radians.y), glm::degrees(radians.z)};
 		}
 
 		inline void set_local_scale(glm::vec3 scale)

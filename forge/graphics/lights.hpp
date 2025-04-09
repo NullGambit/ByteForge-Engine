@@ -1,6 +1,8 @@
 #pragma once
 #include <glm/vec3.hpp>
 
+#define LIGHT_FIELD_COUNT 8
+
 namespace forge
 {
 	enum class LightType : u8
@@ -16,13 +18,14 @@ namespace forge
 		glm::vec3  direction;
 		glm::vec3  color {1};
 
-		float cutoff;
-		float outer_cutoff;
+		float cutoff = 0.5;
+		float outer_cutoff = 0.3;
+		float max_distance = 15;
 
-		float linear;
-		float quadratic;
 		bool enabled;
 		bool is_available = true;
+
 		LightType type;
 	};
+
 }
