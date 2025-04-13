@@ -20,7 +20,6 @@ namespace forge
 			callback(callback)
 		{}
 
-
 		ButtonField(std::function<void()> callback) :
 			callback(callback)
 		{}

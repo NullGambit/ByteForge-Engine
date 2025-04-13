@@ -1,5 +1,7 @@
 #pragma once
-#include <glm/vec4.hpp>
+
+#include <array>
+#include <string_view>
 
 namespace forge
 {

@@ -1,9 +1,10 @@
 #pragma once
-#pragma once
 #include <string>
 
 namespace forge
 {
-	template<class Allocator = std::allocator<char>>
-	using String = std::string<char, std::char_traits<char>, Allocator>;
+	using String = std::basic_string<char, std::char_traits<char>, std::allocator<char>>;
+
+	template<class Allocator>
+	using StringA = std::basic_string<char, std::char_traits<char>, Allocator>;
 }

@@ -3,6 +3,7 @@
 #include <set>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "../loaders/gltf.hpp"
 #include <utility>
 
 #include "ogl_buffers.hpp"
@@ -12,14 +13,40 @@
 #include "GLFW/glfw3.h"
 #include "forge/core/engine.hpp"
 #include "forge/core/logging.hpp"
+#include "forge/ecs/transform.hpp"
+#include "forge/graphics/mesh.hpp"
 #include "forge/graphics/mesh_primitives.hpp"
 #include "forge/system/fs_monitor.hpp"
 #include "forge/util/macros.hpp"
 #include "forge/memory/defs.hpp"
 #include "forge/system/window_sub_system.hpp"
+#include "stb/stb_image.h"
 
 #define CAMERA_POOL_SIZE sizeof(forge::Camera) * 16
 #define RENDER_DATA_POOL_SIZE MB(2048)
+
+static constexpr forge::TextureList<std::array<std::string_view, 4>> g_material_prop_str
+{
+	std::array<std::string_view, 4>
+	{
+		"material.diffuse.texture",
+		"material.diffuse.enabled",
+		"material.diffuse.scale",
+		"material.diffuse.strength",
+	},
+	{
+		"material.specular.texture",
+		"material.specular.enabled",
+		"material.specular.scale",
+		"material.specular.strength",
+	},
+	{
+		"material.emissive.texture",
+		"material.emissive.enabled",
+		"material.emissive.scale",
+		"material.emissive.strength",
+	}
+};
 
 std::string forge::OglRenderer::init(const EngineInitOptions &options)
 {
@@ -78,7 +105,7 @@ std::string forge::OglRenderer::init(const EngineInitOptions &options)
 
 	m_active_camera = &m_default_camera;
 
-	m_render_data_pool.init<PrimitiveRenderData>(RENDER_DATA_POOL_SIZE);
+	m_render_data.init<RenderData>(RENDER_DATA_POOL_SIZE);
 
 	return {};
 }
@@ -91,21 +118,17 @@ void forge::OglRenderer::update()
 
 	m_forward_shader.use();
 
-	glBindVertexArray(m_cube_buffers.vao);
-
 	const auto pv = m_active_camera->calculate_pv();
 
-	for (auto &data : m_render_data_pool.get_iterator<PrimitiveRenderData>())
+	for (const auto &data : m_render_data.get_iterator<RenderData>())
 	{
-		if (data.is_valid && !data.primitive.is_hidden)
+		if (data.in_use && data.object.flags & R_VISIBLE)
 		{
-			const auto &model = data.primitive.m_model;
-
-			const auto pvm = pv * model;
+			const auto pvm = pv * data.object.model;
 
 			m_forward_shader.set("pvm", pvm);
-			m_forward_shader.set("model", model);
-			m_forward_shader.set("normal_matrix", data.primitive.m_normal_matrix);
+			m_forward_shader.set("model", data.object.model);
+			m_forward_shader.set("normal_matrix", data.object.normal_matrix);
 			m_forward_shader.set("view_position", m_active_camera->position);
 
 			for (auto i = 0; const auto &light : m_lights)
@@ -117,6 +140,7 @@ void forge::OglRenderer::update()
 					m_forward_shader.set(fmt::format_view("lights{}.position", index), light.position);
 					m_forward_shader.set(fmt::format_view("lights{}.direction", index), light.direction);
 					m_forward_shader.set(fmt::format_view("lights{}.color", index), light.color);
+					m_forward_shader.set(fmt::format_view("lights{}.intensity", index), light.intensity);
 					m_forward_shader.set(fmt::format_view("lights{}.cutoff", index), light.cutoff);
 					m_forward_shader.set(fmt::format_view("lights{}.outer_cutoff", index), light.outer_cutoff);
 					m_forward_shader.set(fmt::format_view("lights{}.max_distance", index), light.max_distance);
@@ -126,40 +150,17 @@ void forge::OglRenderer::update()
 				m_forward_shader.set(fmt::format("lights{}.enabled", index), light.enabled);
 			}
 
-			static constexpr TextureList<std::array<std::string_view, 4>> properties
-			{
-				std::array<std::string_view, 4>
-				{
-					"material.diffuse.texture",
-					"material.diffuse.enabled",
-					"material.diffuse.scale",
-					"material.diffuse.strength",
-				},
-				{
-					"material.specular.texture",
-					"material.specular.enabled",
-					"material.specular.scale",
-					"material.specular.strength",
-				},
-				{
-					"material.emissive.texture",
-					"material.emissive.enabled",
-					"material.emissive.scale",
-					"material.emissive.strength",
-				}
-			};
-
-			auto &material = data.primitive.material;
+			auto &material = data.object.material;
 
 			for (auto i = 0; auto &texture : material.textures)
 			{
 				auto &texture_data = data.textures[i];
 
-				texture_data.texture.bind(i);
+				texture_data.bind(i);
 
-				auto &props = properties[i];
+				auto &props = g_material_prop_str[i];
 
-				auto enable_texture = texture_data.is_valid && texture.enabled;
+				auto enable_texture = texture.enabled;
 
 				m_forward_shader.set(props[1], enable_texture);
 
@@ -170,18 +171,20 @@ void forge::OglRenderer::update()
 				i++;
 			}
 
-			glDrawArrays(GL_TRIANGLES, 0, 36);
+			data.buffers.bind();
+
+			glDrawElements(GL_TRIANGLES, data.index_size, GL_UNSIGNED_INT, 0);
+
+			data.buffers.unbind();
 
 			m_statistics.draw_calls++;
 		}
 	}
-
-	glBindVertexArray(0);
 }
 
 void forge::OglRenderer::shutdown()
 {
-	m_render_data_pool.destroy();
+	m_render_data.destroy();
 }
 
 std::vector<forge::DependencyStorage> forge::OglRenderer::get_dependencies()
@@ -248,46 +251,221 @@ forge::Camera* forge::OglRenderer::get_active_camera()
 	return m_active_camera;
 }
 
-forge::PrimitiveModel* forge::OglRenderer::create_primitive(glm::mat4 model)
+template<class T>
+void read_accessor(cgltf_accessor *accessor, std::vector<T> &out)
 {
-	auto [data, id] = m_render_data_pool.emplace<PrimitiveRenderData>();
+	out.reserve(accessor->count);
 
-	data->primitive = PrimitiveModel {model};
-	data->primitive.m_id = id;
-	data->is_valid = true;
+	for (cgltf_size i = 0; i < accessor->count; ++i)
+	{
+		T vec {};
 
-	return &data->primitive;
+		cgltf_accessor_read_float(accessor, i, glm::value_ptr(vec), vec.length());
+
+		out.emplace_back(vec);
+	}
 }
 
-void forge::OglRenderer::destroy_primitive(u32 id)
+namespace forge
 {
-	auto *data = m_render_data_pool.get<PrimitiveRenderData>(id);
-	data->is_valid = false;
-
-	for (auto &texture_data : data->textures)
+	struct LoaderNode
 	{
-		m_texture_resource.remove(texture_data.path);
+		Mesh mesh;
+		Transform transform;
+		Material material;
+		OglTexture texture;
+	};
+}
+
+std::optional<forge::LoaderNode> load_mesh(std::string_view filepath, forge::MeshLoadOptions options)
+{
+	forge::LoaderNode out {};
+	cgltf_options gltf_options {};
+	cgltf_data* data = nullptr;
+	cgltf_result result = cgltf_parse_file(&gltf_options, filepath.data(), &data);
+
+	if (result != cgltf_result_success)
+	{
+		return std::nullopt;
 	}
+
+	result = cgltf_load_buffers(&gltf_options, data, "model.gltf");
+
+	if (result != cgltf_result_success)
+	{
+		return std::nullopt;
+	}
+
+	for (cgltf_size n = 0; n < data->nodes_count; ++n)
+	{
+		auto *node = &data->nodes[n];
+
+		if (!node->mesh)
+		{
+			continue;
+		}
+
+		auto *mesh = node->mesh;
+
+		if (node->has_scale)
+		{
+			out.transform.set_local_scale(glm::make_vec3(node->scale));
+		}
+		if (node->has_translation)
+		{
+			out.transform.set_local_position(glm::make_vec3(node->translation));
+		}
+		if (node->has_rotation)
+		{
+			out.transform.set_local_rotation(glm::make_quat(node->rotation));
+		}
+
+		auto model = node->has_matrix ? glm::make_mat4(node->matrix) : glm::mat4{1.0};
+		glm::mat4 parent {1.0};
+
+		if (node->parent)
+		{
+			parent *= glm::make_mat4(node->parent->matrix);
+		}
+
+		out.transform.set_model(model * parent);
+		out.transform.compute_local_transform();
+
+		for (cgltf_size p = 0; p < mesh->primitives_count; ++p)
+		{
+			auto *prim = &mesh->primitives[p];
+
+			cgltf_accessor *pos_accessor = nullptr;
+			cgltf_accessor *tex_accessor = nullptr;
+			cgltf_accessor *norm_accessor = nullptr;
+
+			for (cgltf_size a = 0; a < prim->attributes_count; ++a)
+			{
+				auto *attr = &prim->attributes[a];
+				auto *accessor = attr->data;
+
+				if (strcmp(attr->name, "POSITION") == 0)
+				{
+					pos_accessor = accessor;
+				}
+				else if (strcmp(attr->name, "NORMAL") == 0)
+				{
+					norm_accessor = accessor;
+				}
+				else if (strcmp(attr->name, "TEXCOORD_0") == 0)
+				{
+					tex_accessor = accessor;
+				}
+			}
+
+			for (cgltf_size i = 0; i < pos_accessor->count; i++)
+			{
+				forge::Vertex vertex {};
+
+				cgltf_accessor_read_float(pos_accessor, i, glm::value_ptr(vertex.position), 3);
+				cgltf_accessor_read_float(tex_accessor, i, glm::value_ptr(vertex.texture), 2);
+				cgltf_accessor_read_float(norm_accessor, i, glm::value_ptr(vertex.normals), 3);
+
+				vertex.position *= options.uniform_scale;
+
+				out.mesh.vertices.emplace_back(vertex);
+			}
+
+			for (cgltf_size i = 0; i < prim->indices->count; i++)
+			{
+				auto index = cgltf_accessor_read_index(prim->indices, i);
+
+				out.mesh.indices.emplace_back(index);
+			}
+
+			// Material
+			if (prim->material && prim->material->has_pbr_metallic_roughness)
+			{
+				cgltf_texture* texture = prim->material->pbr_metallic_roughness.base_color_texture.texture;
+				cgltf_image* image = texture->image;
+
+				std::string_view buffer;
+
+				if (image->uri)
+				{
+					buffer = image->uri;
+				}
+				else
+				{
+					auto *view = image->buffer_view;
+
+					buffer = std::string_view{(char*)view->buffer->data + view->offset, view->size};
+				}
+
+				out.texture.load(buffer,
+				{
+					.image_options =
+					{
+						.from_memory = image->uri == nullptr
+					}
+				});
+
+				out.material.textures[forge::TextureType::Diffuse] =
+				{
+					.enabled = true,
+				};
+			}
+		}
+	}
+
+	cgltf_free(data);
+
+	return out;
+}
+
+forge::LoadMeshResult forge::OglRenderer::create_render_object(std::string_view filepath, MeshLoadOptions options)
+{
+	auto mesh_opt = load_mesh(filepath, options);
+
+	if (!mesh_opt)
+	{
+		return {};
+	}
+
+	auto [rd, id] = m_render_data.emplace<RenderData>();
+
+	rd->object.id = id;
+	rd->object.flags = R_DEFAULT;
+	rd->in_use = true;
+
+	const auto &node = mesh_opt.value();
+	const auto &mesh = node.mesh;
+
+	rd->object.compute_model(node.transform.get_model());
+	rd->object.material = node.material;
+	rd->textures[TextureType::Diffuse] = node.texture;
+	rd->index_size = mesh.indices.size();
+
+	rd->buffers = OglBufferBuilder()
+		.start()
+		.stride<Vertex>()
+		.vbo(mesh.vertices)
+		.ebo(mesh.indices)
+		.attr(3)
+		.attr(3)
+		.attr(2)
+		.finish();
+
+	return {&rd->object, node.transform};
+}
+
+void forge::OglRenderer::destroy_render_object(RenderObject *object)
+{
+	auto *data = m_render_data.get<RenderData>(object->id);
+
+	data->in_use = false;
+
+	m_render_data.free(object->id);
 }
 
 void forge::OglRenderer::destroy_texture(std::string_view path)
 {
 	m_texture_resource.remove(path);
-}
-
-void forge::OglRenderer::create_texture(u32 id, std::string_view path, u32 type)
-{
-	auto *data = m_render_data_pool.get<PrimitiveRenderData>(id);
-	auto &texture_data = data->textures[type];
-
-	if (!texture_data.path.empty())
-	{
-		destroy_texture(texture_data.path);
-	}
-
-	texture_data.texture = m_texture_resource.add(path);
-	texture_data.path = path;
-	texture_data.is_valid = true;
 }
 
 forge::Light * forge::OglRenderer::create_light()

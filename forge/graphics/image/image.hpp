@@ -5,7 +5,12 @@
 
 namespace forge
 {
-	// TODO: make this into a resource
+	struct ImageLoadOptions
+	{
+		bool flip = false;
+		bool from_memory = false;
+	};
+
 	struct Image
 	{
 		int width;
@@ -13,11 +18,9 @@ namespace forge
 		int channels;
 		uint8_t *data = nullptr;
 
-		Image() = default;
-		Image(std::string_view path, bool load_flipped = false);
 		~Image();
 
-		bool load(std::string_view path, bool load_flipped = false);
+		bool load(std::string_view path, ImageLoadOptions options = {});
 		void unload();
 	};
 }

@@ -3,6 +3,6 @@
 
 namespace forge
 {
-	template<class T, class Allocator = std::allocator<T> >
+	template<class T, class Allocator = std::allocator<T>>
 	using Array = std::vector<T, Allocator>;
 }

@@ -9,47 +9,52 @@ void Benchmarker::run_cases(size_t amount)
 {
 	using namespace std::chrono;
 
-	std::atomic_int32_t remaining {};
-
 	for (auto &test_case : cases)
 	{
-		std::thread t {[&test_case, amount, &remaining]()
+		Duration total {};
+
+		for (size_t i = 0; i < amount; i++)
 		{
-			remaining++;
+			auto start = high_resolution_clock::now();
 
-			Duration total {};
+			test_case.on_run();
 
-			test_case.on_start();
+			auto end = high_resolution_clock::now();
 
-			for (size_t i = 0; i < amount; i++)
-			{
-				auto start = high_resolution_clock::now();
+			total += end-start;
+		}
 
-				test_case.on_run();
-
-				auto end = high_resolution_clock::now();
-
-				total += end-start;
-			}
-
-			test_case.result = total / amount;
-
-			test_case.on_finish();
-
-			remaining--;
-
-		}};
-
-		t.detach();
+		test_case.result = total / amount;
 	}
 
-	while (remaining > 0);
 }
 
 void Benchmarker::display_results()
 {
-	for (const auto &test_case : cases)
+	using namespace std::chrono;
+
+	for (const auto &bench_case : cases)
 	{
-		std::cout << test_case.label << ": " << test_case.result << '\n';
+		std::cout << bench_case.label << ": ";
+		auto count = bench_case.result.count();
+
+		if (count >= 1000000000)
+		{
+			std::cout << count / 1000000000 << "s";
+		}
+		else if (count >= 1000000)
+		{
+			std::cout << count / 1000000 << "ms";
+		}
+		else if (count >= 1000)
+		{
+			std::cout << count / 1000 << "us";
+		}
+		else
+		{
+			std::cout << count << "ns";
+		}
+
+		std::cout << '\n';
 	}
 }

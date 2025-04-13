@@ -1,109 +1,122 @@
 
-#include <thread>
-#include <forge/core/engine.hpp>
-#include <forge/core/logging.hpp>
+
+#include <iostream>
 #include <forge/framework/components/mesh_primitive_component.hpp>
 
 #include "cpu_benchmark.hpp"
 #include "forge/editor/editor_subsystem.hpp"
-#include "forge/events/timer.hpp"
-#include "forge/framework/components/camera_component.hpp"
-#include "forge/framework/components/register_engine_components.hpp"
+
 #include "forge/util/random.hpp"
 
-#define ROCKET_COUNT 200'000
-#define TEST_COUNT 5000
-
-struct RocketComponent : forge::IComponent
+struct RenderObject
 {
-	glm::vec3 position {};
-	glm::vec3 velocity {};
+	u32 flags = 0;
+	forge::Material material;
+	glm::mat4 normal_matrix {5.0};
+	glm::mat4 model {1.0};
+	u32 id;
 
-	void update(forge::DeltaTime delta) override
+	void compute_model(const glm::mat4 &new_model)
 	{
-		position += glm::vec3{1.0f};
-		velocity.y += 1;
+		model = new_model;
+		normal_matrix = glm::transpose(glm::inverse(model));
 	}
 };
 
-struct RocketManagerComponent : forge::IComponent
+struct RenderDataSoa
 {
-	std::vector<glm::vec3> positions {};
-	std::vector<glm::vec3> velocities {};
-
-	RocketManagerComponent()
-	{
-		positions.resize(ROCKET_COUNT);
-		velocities.resize(ROCKET_COUNT);
-	}
-
-	void update(forge::DeltaTime delta) override
-	{
-		for (auto i = 0; i < ROCKET_COUNT; i++)
-		{
-			positions[i] += glm::vec3{1.0f};
-			velocities[i].y += 1;
-		}
-	}
+	forge::Array<char[120]> padding;
+	forge::Array<bool> is_available;
 };
 
-static forge::Nexus g_nexus;
-
-void update_nexus()
+struct RenderData
 {
-	g_nexus.update();
-}
+	RenderObject object;
+	char padding[120];
+	bool is_available;
+};
 
-void clear_nexus()
-{
-	g_nexus.update();
-}
-
-int main(int argc, const char **argv)
+int main()
 {
 	Benchmarker bench;
 
-	g_nexus.init({});
+	static forge::MemPool render_objects;
+	static RenderDataSoa data_soa;
+	static forge::MemPool data;
 
-	bench.cases.emplace_back("component based", []
+	constexpr auto COUNT = 5000;
+	constexpr size_t FREED = COUNT / 2.5f;
+
+	render_objects.init<RenderObject>(sizeof(RenderObject) * COUNT);
+
+	for (auto i = 0; i < COUNT; i++)
 	{
-		for (auto i = 0; i < ROCKET_COUNT; i++)
+		auto [obj, id] = render_objects.emplace<RenderObject>();
+
+		obj->id = id;
+
+		data_soa.is_available.emplace_back(true);
+	}
+
+	srand(1);
+
+	for (auto i = 0; i < FREED; i++)
+	{
+		auto index = rand() % COUNT - 1;
+
+		render_objects.free_at(index);
+
+		data_soa.is_available[index] = false;
+	}
+
+	data.init<RenderData>(sizeof(RenderData) * COUNT);
+
+	for (auto i = 0; i < COUNT; i++)
+	{
+		auto [rd, id] = data.emplace<RenderData>();
+
+		rd->object.id = id;
+		rd->is_available = true;
+	}
+
+	srand(1);
+
+	for (auto i = 0; i < FREED; i++)
+	{
+		auto index = rand() % COUNT - 1;
+
+		auto *rd = data.get_from_index<RenderData>(index);
+		rd->is_available = false;
+		data.free_at(index);
+	}
+
+	bench.cases.emplace_back("SOA",
+	[]
+	{
+		for (size_t i = 0; i < render_objects.get_length(); i++)
 		{
-			g_nexus.create_entity<RocketComponent>();
+			if (data_soa.is_available[i])
+			{
+				auto *obj = render_objects.get_from_index<RenderObject>(i);
+				auto model = glm::inverse(obj->model);
+				obj->compute_model(model);
+			}
 		}
+	});
 
-	}, update_nexus, clear_nexus);
-
-	bench.cases.emplace_back("manager based based", []
+	bench.cases.emplace_back("Normal",
+	[]
 	{
-		g_nexus.create_entity<RocketManagerComponent>();
+		for (auto &rd : data.get_iterator<RenderData>())
+		{
+			if (rd.is_available)
+			{
+				auto model = glm::inverse(rd.object.model);
+				rd.object.compute_model(model);
+			}
+		}
+	});
 
-	}, update_nexus, clear_nexus);
-
-	bench.run_cases(TEST_COUNT);
-
+	bench.run_cases(100);
 	bench.display_results();
-	// auto result = g_engine.init(std::span{argv, (size_t)argc},
-	// {
-	// 	.window_title = "ByteForge Benchmarks",
-	// 	.window_width = 1920,
-	// 	.window_height = 1080,
-	// 	.log_flags = log::LogTime
-	// });
-	//
-	// if (result == forge::EngineInitResult::HaltWithNoError)
-	// {
-	// 	return 0;
-	// }
-	// if (result != forge::EngineInitResult::Ok)
-	// {
-	// 	return -1;
-	// }
-	//
-	// forge::register_engine_components();
-	//
-	//
-	// g_engine.run();
-	//
-	// g_engine.shutdown();
 }

@@ -8,7 +8,7 @@ bool forge::OglTexture::load(std::string_view path, TextureOptions options)
 {
 	Image image;
 
-	if (!image.load(path, options.flip_on_load))
+	if (!image.load(path, options.image_options))
 	{
 		return false;
 	}
@@ -50,7 +50,7 @@ void forge::OglTexture::destroy()
 	}
 }
 
-void forge::OglTexture::bind(int unit)
+void forge::OglTexture::bind(int unit) const
 {
 	if (is_valid())
 	{

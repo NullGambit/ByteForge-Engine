@@ -12,12 +12,10 @@ namespace forge
         u32 vao;
         u32 ebo;
 
-        void free() const
-        {
-            glDeleteVertexArrays(1, &vao);
-            glDeleteBuffers(1, &vbo);
-            glDeleteBuffers(1, &ebo);
-        }
+        void bind() const;
+        void unbind() const;
+
+        void free() const;
     };
 
     class OglBufferBuilder
@@ -27,7 +25,14 @@ namespace forge
 
         OglBufferBuilder& vbo(const std::span<const f32> &verts);
 
-        OglBufferBuilder& ebo(const std::vector<u32> &verts);
+        template<class T>
+        OglBufferBuilder& vbo(const std::vector<T> &verts)
+        {
+            set_vbo(verts.data(), sizeof(T) * verts.size());
+            return *this;
+        }
+
+        OglBufferBuilder& ebo(const std::vector<u32> &indices);
 
         OglBufferBuilder& stride(u32 value);
 

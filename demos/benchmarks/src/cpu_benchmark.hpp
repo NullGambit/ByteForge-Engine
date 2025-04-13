@@ -10,9 +10,7 @@ struct Benchmarker
 	struct Case
 	{
 		std::string_view label;
-		std::function<void()> on_start;
 		std::function<void()> on_run;
-		std::function<void()> on_finish;
 		Duration result {};
 	};
 

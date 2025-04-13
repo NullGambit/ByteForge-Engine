@@ -9,6 +9,7 @@
 #include "components/export_test_component.hpp"
 #include "components/lifetime_component.hpp"
 #include "components/light_component.hpp"
+#include "components/mesh_renderer_component.hpp"
 #include "components/player_controller.hpp"
 #include "forge/container/array.hpp"
 #include "forge/container/set.hpp"
@@ -26,6 +27,8 @@ void register_demo_components()
 	nexus->register_component<BobComponent>();
 	nexus->register_component<ExportFieldTestComponent>();
 	nexus->register_component<LifetimeComponent>();
+	nexus->register_component<LightComponent>();
+	nexus->register_component<MeshRendererComponent>();
 }
 
 void export_test_demo()
@@ -185,6 +188,25 @@ void bobbing_cluster()
 	}
 }
 
+void mesh_loading_demo()
+{
+	auto *nexus = g_engine.get_subsystem<forge::Nexus>();
+
+	make_player();
+
+	auto &dumpster = nexus->create_entity<MeshRendererComponent>("dumpster");
+
+	dumpster.set_local_position(glm::vec3{2, -1, 0});
+
+	auto &sun_ent = nexus->create_entity("sun");
+
+	auto *sun = sun_ent.add_component<LightComponent>();
+
+	sun->get_light()->type = forge::LightType::Direction;
+
+	sun_ent.set_local_rotation(glm::vec3{11.6, 0, 5.4});
+}
+
 int main(int argc, const char **argv)
 {
 	auto result = g_engine.init(std::span{argv, (size_t)argc},
@@ -214,8 +236,10 @@ int main(int argc, const char **argv)
 	editor->demos.emplace("disappearing cube", diseappring_cube_demo);
 	editor->demos.emplace("bobbing cluster", bobbing_cluster);
 	editor->demos.emplace("crates", crates_demo);
+	editor->demos.emplace("mesh loading", mesh_loading_demo);
 
-	editor->load_demo("crates");
+	// editor->load_demo("crates");
+	editor->load_demo("mesh loading");
 
 	g_engine.run();
 

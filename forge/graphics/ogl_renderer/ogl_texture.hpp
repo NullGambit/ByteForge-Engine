@@ -1,5 +1,6 @@
 #pragma once
 
+#include "forge/graphics/image/image.hpp"
 #include "forge/resources/resource.hpp"
 #include "glad/glad.h"
 
@@ -15,6 +16,7 @@ namespace forge
 
 	struct TextureOptions
 	{
+		ImageLoadOptions image_options {};
 		uint32_t target = GL_TEXTURE_2D;
 		TextureWrap wrap_mode = TextureWrap::Repeat;
 		bool flip_on_load = false;
@@ -26,7 +28,7 @@ namespace forge
 
 		void destroy();
 
-		void bind(int unit = 0);
+		void bind(int unit = 0) const;
 
 		void unbind();
 

@@ -30,6 +30,7 @@ struct Light
     vec3  direction;
     vec3  color;
 
+    float intensity;
     float cutoff;
     float outer_cutoff;
     float max_distance;
@@ -64,31 +65,32 @@ struct LightingResult
     vec3 diffuse;
     vec3 specular;
     vec3 emissive;
+    float intensity;
 };
 
 vec4 g_object_color;
 
-LightingResult calculate_lighting(vec3 light_direction, vec3 color)
+LightingResult calculate_lighting(Light light, vec3 light_direction)
 {
-    vec3 ambient = color * 0.1 * g_object_color.rgb;
+    vec3 ambient = light.color * 0.1 * g_object_color.rgb;
 
     float diffuse_factor = max(dot(normalize(normal), light_direction), 0.0);
-    vec3 diffuse = color * diffuse_factor * g_object_color.rgb;
+    vec3 diffuse = light.color * diffuse_factor * g_object_color.rgb;
 
     vec3 view_direction = normalize(view_position - frag_position);
     vec3 reflection_direction = reflect(-light_direction, normal);
 
     float specular_factor = pow(max(dot(view_direction, reflection_direction), 0.0), material.specular.strength);
-    vec3 specular = color * specular_factor * get_texture(material.specular, vec4(0)).rgb;
+    vec3 specular = light.color * specular_factor * get_texture(material.specular, vec4(0)).rgb;
 
     vec3 emissive = get_texture(material.emissive, vec4(0.0)).rgb * material.emissive.strength;
 
-    return LightingResult(ambient, diffuse, specular, emissive);
+    return LightingResult(ambient, diffuse, specular, emissive, light.intensity);
 }
 
 vec3 sum_light(LightingResult result)
 {
-    return result.ambient + result.diffuse + result.specular + result.emissive;
+    return result.ambient + result.diffuse + result.specular + result.emissive + (result.intensity * 0.001);
 }
 
 float attenuate(float distance, float max_distance)
@@ -103,7 +105,7 @@ vec3 calculate_dir_light(Light light)
 {
     vec3 light_direction = normalize(-light.direction);
 
-    LightingResult result = calculate_lighting(light_direction, light.color);
+    LightingResult result = calculate_lighting(light, light_direction);
 
     return sum_light(result);
 }
@@ -112,7 +114,7 @@ vec3 calculate_point_spot_light(Light light)
 {
     vec3 light_direction = normalize(light.position - frag_position);
 
-    LightingResult result = calculate_lighting(light_direction, light.color);
+    LightingResult result = calculate_lighting(light, light_direction);
 
     light.max_distance = max(light.max_distance, 1.0);
 

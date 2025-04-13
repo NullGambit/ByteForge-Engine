@@ -15,5 +15,9 @@ add_executable(ForgeBenchmarks
 
 target_link_libraries(ForgeBenchmarks PUBLIC ByteForgeEngine)
 
+target_compile_definitions(ForgeBenchmarks PUBLIC
+        GLM_ENABLE_EXPERIMENTAL
+        FORGE_USE_UNIFORM_CACHE
+)
 target_include_directories(ForgeBenchmarks PUBLIC ${FORGE_DIR})
 

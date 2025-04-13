@@ -14,7 +14,7 @@ public:
 
 	~MeshPrimitiveComponent() override
 	{
-		m_renderer->destroy_primitive(m_data->get_id());
+		// m_renderer->destroy_primitive(m_data->get_id());
 		m_owner->get_entity().on_transform_update.disconnect(m_on_update_connection);
 	}
 
@@ -24,27 +24,27 @@ public:
 
 	forge::Material& get_material()
 	{
-		return m_data->material;
+		static forge::Material m;
+		return m;
 	}
 
 	std::vector<forge::ComponentField> export_fields() override;
 
 private:
-	forge::PrimitiveModel *m_data;
 	forge::OglRenderer *m_renderer;
 	forge::ConnectionID m_on_update_connection;
 
 protected:
 	void on_create() override;
 
-	void on_disabled() override
-	{
-		m_data->is_hidden = true;
-	}
-
-	void on_enabled() override
-	{
-		m_data->is_hidden = false;
-	}
+	// void on_disabled() override
+	// {
+	// 	m_data->is_hidden = true;
+	// }
+	//
+	// void on_enabled() override
+	// {
+	// 	m_data->is_hidden = false;
+	// }
 
 };

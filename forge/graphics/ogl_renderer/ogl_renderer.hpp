@@ -8,9 +8,11 @@
 #include "render_resource.hpp"
 #include "forge/concurrency/command_buffer.hpp"
 #include "forge/core/isub_system.hpp"
+#include "forge/ecs/transform.hpp"
 #include "forge/graphics/camera.hpp"
 #include "forge/graphics/lights.hpp"
 #include "forge/graphics/material.hpp"
+#include "forge/graphics/loaders/mesh_load_options.hpp"
 #include "forge/memory/mem_pool.hpp"
 
 class GLFWwindow;
@@ -31,38 +33,32 @@ namespace forge
 
 	class OglRenderer;
 
-	struct PrimitiveModel
+	constexpr u8 R_VISIBLE		= 1 << 0;
+	constexpr u8 R_CAST_SHADOW	= 1 << 1;
+	constexpr u8 R_WIREFRAME	= 1 << 2;
+	constexpr u8 R_IS_CULLED	= 1 << 3;
+
+	constexpr u32 R_DEFAULT = R_VISIBLE | R_CAST_SHADOW;
+
+	struct RenderObject
 	{
+		u32 flags = R_DEFAULT;
 		Material material;
+		glm::mat4 normal_matrix;
+		glm::mat4 model;
+		u32 id;
 
-		// if false this primitive should not be drawn
-		bool is_hidden = false;
-
-		PrimitiveModel() = default;
-
-		PrimitiveModel(glm::mat4 model, Material material = {}) :
-			material(material)
+		void compute_model(const glm::mat4 &new_model)
 		{
-			update_model(model);
+			model = new_model;
+			normal_matrix = glm::transpose(glm::inverse(model));
 		}
+	};
 
-		void update_model(const glm::mat4 &model)
-		{
-			m_model = model;
-			m_normal_matrix = glm::transpose(glm::inverse(model));
-		}
-
-		u32 get_id() const
-		{
-			return m_id;
-		}
-
-	private:
-		friend OglRenderer;
-
-		glm::mat4 m_normal_matrix;
-		glm::mat4 m_model;
-		u32 m_id;
+	struct LoadMeshResult
+	{
+		RenderObject *object = nullptr;
+		Transform transform;
 	};
 
 	class OglRenderer final : public ISubSystem
@@ -95,7 +91,10 @@ namespace forge
 
 		Camera* get_active_camera();
 
-		PrimitiveModel* create_primitive(glm::mat4 model = {});
+		LoadMeshResult create_render_object(std::string_view filepath, MeshLoadOptions options = {});
+		void destroy_render_object(RenderObject *object);
+
+		// PrimitiveModel* create_primitive(glm::mat4 model = {});
 
 		void destroy_primitive(u32 id);
 
@@ -128,7 +127,7 @@ namespace forge
 		Camera m_default_camera;
 		Camera *m_active_camera;
 
-		MemPool m_render_data_pool;
+		MemPool m_render_data;
 
 		struct TextureData
 		{
@@ -137,13 +136,13 @@ namespace forge
 			bool is_valid = false;
 		};
 
-		struct PrimitiveRenderData
+		struct RenderData
 		{
-			PrimitiveModel primitive;
-			// if false this entry is freed
-			bool is_valid = true;
-
-			TextureList<TextureData> textures;
+			RenderObject object;
+			TextureList<OglTexture> textures;
+			OglBuffers buffers;
+			u32 index_size {};
+			bool in_use = true;
 		};
 
 		void handle_framebuffer_resize(int width, int height);

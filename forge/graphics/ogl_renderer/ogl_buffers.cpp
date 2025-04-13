@@ -1,6 +1,23 @@
 #include "ogl_buffers.hpp"
 #include <cassert>
 
+void forge::OglBuffers::bind() const
+{
+    glBindVertexArray(vao);
+}
+
+void forge::OglBuffers::unbind() const
+{
+    glBindVertexArray(0);
+}
+
+void forge::OglBuffers::free() const
+{
+    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ebo);
+}
+
 forge::OglBufferBuilder& forge::OglBufferBuilder::start()
 {
     glGenVertexArrays(1, &m_buffer.vao);
@@ -15,12 +32,12 @@ forge::OglBufferBuilder& forge::OglBufferBuilder::vbo(const std::span<const f32>
     return *this;
 }
 
-forge::OglBufferBuilder& forge::OglBufferBuilder::ebo(const std::vector<u32> &verts)
+forge::OglBufferBuilder& forge::OglBufferBuilder::ebo(const std::vector<u32> &indices)
 {
     glGenBuffers(1, &m_buffer.ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_buffer.ebo);
 
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(u32) * verts.size(), verts.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(u32) * indices.size(), indices.data(), GL_STATIC_DRAW);
 
     return *this;
 }
@@ -38,8 +55,8 @@ forge::OglBufferBuilder& forge::OglBufferBuilder::attr(u32 size)
 
     auto layout = m_layout++;
 
-    glVertexAttribPointer(layout, size, GL_FLOAT, GL_FALSE, m_stride, (void*)(m_offset * sizeof(f32)));
     glEnableVertexAttribArray(layout);
+    glVertexAttribPointer(layout, size, GL_FLOAT, GL_FALSE, m_stride, (void*)(m_offset * sizeof(f32)));
 
     m_offset += size;
 

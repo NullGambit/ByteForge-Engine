@@ -43,6 +43,7 @@ forge::Array<forge::ComponentField> LightComponent::export_fields()
 
 	fields.emplace_back("type", &m_light->type);
 	fields.emplace_back("", forge::FieldSeperator{"Properties"});
+	fields.emplace_back("Intensity", &m_light->intensity);
 	fields.emplace_back("", forge::ColorField{"color", &m_light->color});
 
 	if (m_light->type == forge::LightType::Spot)

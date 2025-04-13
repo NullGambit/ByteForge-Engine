@@ -113,6 +113,9 @@ dep/glad/include/glad/glad.h
         forge/container/array.hpp
         forge/container/string.hpp
         forge/graphics/lights.hpp
+        forge/graphics/loaders/gltf.cpp
+        forge/graphics/loaders/gltf.hpp
+        forge/graphics/loaders/mesh_load_options.hpp
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")

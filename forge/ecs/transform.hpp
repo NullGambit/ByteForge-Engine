@@ -86,6 +86,12 @@ namespace forge
 			m_is_dirty = true;
 		}
 
+		inline void set_model(glm::mat4 model)
+		{
+			m_model = model;
+			m_is_dirty = true;
+		}
+
 		inline glm::quat get_rotation(glm::quat parent) const
 		{
 			return parent * m_rotation;
@@ -107,7 +113,12 @@ namespace forge
 			return parent * m_scale;
 		}
 
-		inline MatT get_model() const
+		inline const MatT& get_model() const
+		{
+			return m_model;
+		}
+
+		inline MatT get_model()
 		{
 			return m_model;
 		}
@@ -115,6 +126,19 @@ namespace forge
 		inline bool is_dirty() const
 		{
 			return m_is_dirty;
+		}
+
+		inline MatT& compute_local_transform()
+		{
+			auto rotation_matrix	= glm::toMat4(m_rotation);
+			auto translation_matrix = glm::translate(glm::mat4(1.0f), m_position);
+			auto scale_matrix		= glm::scale(glm::mat4(1.0f), m_scale);
+
+			m_is_dirty = false;
+
+			m_model = translation_matrix * rotation_matrix * scale_matrix;
+
+			return m_model;
 		}
 
 	private:
@@ -126,18 +150,6 @@ namespace forge
 		glm::vec3 m_scale {1.0};
 		glm::quat m_rotation {1.0f, 0.0f, 0.0f, 0.0f};
 		MatT m_model {1.0};
-
-		[[nodiscard]]
-		inline MatT compute_local_transform()
-		{
-			auto rotation_matrix	= glm::toMat4(m_rotation);
-			auto translation_matrix = glm::translate(glm::mat4(1.0f), m_position);
-			auto scale_matrix		= glm::scale(glm::mat4(1.0f), m_scale);
-
-			m_is_dirty = false;
-
-			return translation_matrix * rotation_matrix * scale_matrix;
-		}
 	};
 
 	using Transform = TransformBase<float>;

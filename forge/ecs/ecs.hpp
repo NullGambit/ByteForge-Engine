@@ -149,6 +149,11 @@ namespace forge
             return m_transform;
         }
 
+        inline void set_transform(const Transform &transform)
+        {
+            m_transform = transform;
+        }
+
         [[nodiscard]]
         inline std::string_view get_name() const
         {
