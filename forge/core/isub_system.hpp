@@ -81,6 +81,9 @@ namespace forge
 		// will be called at the end of the update loop
 		virtual void post_update() {}
 
+		// called right before the engine loop.
+		virtual void on_run() {}
+
 		virtual bool should_update() { return true; }
 
 		// if true the system init call must succeed or else the engine will fail to init

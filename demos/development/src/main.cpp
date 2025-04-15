@@ -8,13 +8,14 @@
 #include "components/bob_component.hpp"
 #include "components/export_test_component.hpp"
 #include "components/lifetime_component.hpp"
-#include "components/light_component.hpp"
-#include "components/mesh_renderer_component.hpp"
+#include "../../../forge/framework/components/light_component.hpp"
+#include "../../../forge/framework/components/mesh_renderer_component.hpp"
 #include "components/player_controller.hpp"
 #include "forge/container/array.hpp"
 #include "forge/container/set.hpp"
 #include "forge/editor/editor_subsystem.hpp"
 #include "forge/events/timer.hpp"
+#include "forge/framework/mesh_loading.hpp"
 #include "forge/framework/components/camera_component.hpp"
 #include "forge/framework/components/register_engine_components.hpp"
 #include "forge/util/random.hpp"
@@ -194,17 +195,12 @@ void mesh_loading_demo()
 
 	make_player();
 
-	auto &dumpster = nexus->create_entity<MeshRendererComponent>("dumpster");
+	auto &player_ent = nexus->get_entity("player")->get_entity();
 
-	dumpster.set_local_position(glm::vec3{2, -1, 0});
+	player_ent.set_local_position(glm::vec3{3.296, 1.75, 3.571});
+	player_ent.set_local_rotation(glm::vec3{-175, 25, 175});
 
-	auto &sun_ent = nexus->create_entity("sun");
-
-	auto *sun = sun_ent.add_component<LightComponent>();
-
-	sun->get_light()->type = forge::LightType::Direction;
-
-	sun_ent.set_local_rotation(glm::vec3{11.6, 0, 5.4});
+	forge::load_meshes_hierarchy(DEMO_ASSET_DIR"models/room_test.glb");
 }
 
 int main(int argc, const char **argv)

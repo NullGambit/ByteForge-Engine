@@ -28,18 +28,31 @@ void PlayerController::handle_look()
 
 	offset *= m_mouse_sensitivity;
 
-	m_camera->yaw	+= offset.x;
 	m_camera->pitch += offset.y;
+	m_camera->yaw += offset.x;
 
-	m_camera->pitch = glm::clamp(m_camera->pitch, -90.0f, 90.0f);
+	m_camera->pitch = glm::clamp(m_camera->pitch, -89.0f, 89.0f);
 
 	auto &owner = m_owner->get_entity();
-	auto rotation = owner.get_euler_rotation();
 
-	rotation.y = -m_camera->yaw;
-	rotation.z = m_camera->pitch;
-
-	owner.set_local_rotation(rotation);
+	// glm::vec3 front;
+	// front.x = cos(glm::radians(m_pitch)) * sin(glm::radians(m_yaw));
+	// front.y = sin(glm::radians(m_pitch));
+	// front.z = cos(glm::radians(m_pitch)) * cos(glm::radians(m_yaw));
+	// front = glm::normalize(front);
+	//
+	// // Construct a look rotation or quaternion from the direction
+	// glm::vec3 world_up = glm::vec3(0, 1, 0);
+	// glm::vec3 right = glm::normalize(glm::cross(world_up, front));
+	// glm::vec3 up = glm::normalize(glm::cross(front, right));
+	//
+	// glm::mat4 view = glm::lookAt(glm::vec3(0), front, up);
+	//
+	// // Extract rotation from view matrix (or convert to quaternion)
+	// glm::quat rotation = glm::quat_cast(glm::inverse(view));
+	//
+	// // Apply to entity
+	// owner.set_local_rotation(rotation);
 }
 
 bool PlayerController::is_cursor_active() const

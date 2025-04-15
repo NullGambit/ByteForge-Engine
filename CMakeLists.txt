@@ -113,9 +113,16 @@ dep/glad/include/glad/glad.h
         forge/container/array.hpp
         forge/container/string.hpp
         forge/graphics/lights.hpp
-        forge/graphics/loaders/gltf.cpp
-        forge/graphics/loaders/gltf.hpp
-        forge/graphics/loaders/mesh_load_options.hpp
+        forge/graphics/loaders/gltf_loader.cpp
+        forge/graphics/loaders/gltf_loader.hpp
+        forge/graphics/loaders/mesh_loader.hpp
+        forge/graphics/render_object.hpp
+        forge/framework/mesh_loading.cpp
+        forge/framework/mesh_loading.hpp
+        forge/framework/components/light_component.cpp
+        forge/framework/components/light_component.hpp
+        forge/framework/components/mesh_renderer_component.cpp
+        forge/framework/components/mesh_renderer_component.hpp
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")

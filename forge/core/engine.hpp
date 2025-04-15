@@ -12,6 +12,10 @@
 
 namespace forge
 {
+	class OglRenderer;
+	class Window;
+	class Nexus;
+
 	enum class EngineInitResult
 	{
 		Ok,
@@ -85,8 +89,11 @@ namespace forge
 			return m_subsystem_table.contains(typeid(T));
 		}
 
-		// TODO: create some sort of window factory class that will create windows and will swap their buffers in the main loop
 		DeltaTime time_scale = 1.0;
+
+		OglRenderer *renderer = nullptr;
+		Window *window = nullptr;
+		Nexus *nexus = nullptr;
 
 	private:
 		DeltaTime m_delta_time;

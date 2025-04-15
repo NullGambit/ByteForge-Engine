@@ -24,6 +24,10 @@ namespace forge
 
 	struct OglTexture
 	{
+		uint32_t target;
+		u32 id = UINT32_MAX;
+
+		bool load(const Image &image, TextureOptions options = {});
 		bool load(std::string_view path, TextureOptions options = {});
 
 		void destroy();
@@ -35,18 +39,14 @@ namespace forge
 		[[nodiscard]]
 		u32 get_id() const
 		{
-			return m_id;
+			return id;
 		}
 
 		[[nodiscard]]
 		bool is_valid() const
 		{
-			return m_id == UINT32_MAX;
+			return id == UINT32_MAX;
 		}
-
-	private:
-		TextureOptions m_options;
-		u32 m_id = UINT32_MAX;
 	};
 }
 

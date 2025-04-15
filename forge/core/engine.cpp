@@ -23,10 +23,10 @@ forge::Engine::Engine()
 	// to avoid smart pointers all together
 	m_subsystems.reserve(64);
 
-	add_subsystem<Nexus>();
 	add_subsystem<OglRenderer>();
 	add_subsystem<WindowSubSystem>();
 	add_subsystem<EditorSubsystem>();
+	add_subsystem<Nexus>();
 }
 
 forge::Engine::~Engine()
@@ -147,6 +147,15 @@ forge::EngineInitResult forge::Engine::init(std::span<const char*> sys_args, con
 
 void forge::Engine::run()
 {
+	renderer = get_subsystem<OglRenderer>();
+	window = g_main_window;
+	nexus = get_subsystem<Nexus>();
+
+	for (auto &subsystem : m_subsystems)
+	{
+		subsystem->on_run();
+	}
+
 	while (m_should_run)
 	{
 		auto current_time = get_engine_runtime();

@@ -71,6 +71,184 @@ void open_context_menu(std::string_view name, const std::vector<ContextMenuItem>
 	}
 }
 
+static u32 find_last_member_index(std::string_view name)
+{
+	for (auto i = name.size(); auto c : std::ranges::reverse_view(name))
+	{
+		if (c == '.' || c == '>')
+		{
+			return i;
+		}
+
+		i--;
+	}
+
+	return 0;
+}
+
+bool render_field(std::string_view name, forge::FieldVar value, u32 id)
+	{
+		auto format_field = [](std::string_view name)
+		{
+			name = name.substr(find_last_member_index(name));
+			// will likely start with an & because of taking the member address
+			auto offset = name.starts_with('&');
+			auto formatted = std::string{name.substr(offset)};
+
+			if (formatted.starts_with("m_"))
+			{
+				formatted.erase(formatted.begin(), formatted.begin()+2);
+			}
+
+			return formatted;
+		};
+
+		auto formatted = format_field(name);
+
+		std::replace(formatted.begin(), formatted.end(), '_', ' ');
+
+		ImGui::PushID(id);
+
+		auto out = std::visit(util::overload
+		{
+			[&formatted](float *value)
+			{
+				return ImGui::DragFloat(formatted.data(), value);
+			},
+			[&formatted](double *value)
+			{
+				return ImGui::DragFloat(formatted.data(), (float*)value);
+			},
+			[&formatted](int *value)
+			{
+				return ImGui::DragInt(formatted.data(), value);
+			},
+			[&formatted](bool *value)
+			{
+				return ImGui::Checkbox(formatted.data(), value);
+			},
+			[&formatted](std::string *value)
+			{
+				return ImGui::InputText(formatted.data(), value);
+			},
+			[&formatted](forge::ButtonField &value)
+			{
+				auto button_name = value.name.empty() ? formatted : value.name;
+
+				if (ImGui::Button(button_name.data()))
+				{
+					value.callback();
+					return true;
+				}
+
+				return false;
+			},
+			[](forge::FieldSeperator value)
+			{
+				if (value.name.empty())
+				{
+					ImGui::Separator();
+				}
+				else
+				{
+					ImGui::SeparatorText(value.name.data());
+				}
+
+				return false;
+			},
+			[&formatted](glm::vec4 *value)
+			{
+				return ImGui::DragFloat4(formatted.data(), glm::value_ptr(*value));
+			},
+			[&formatted](glm::vec3 *value)
+			{
+				return ImGui::DragFloat3(formatted.data(), glm::value_ptr(*value));
+			},
+			[&formatted](glm::vec2 *value)
+			{
+				return ImGui::DragFloat2(formatted.data(), glm::value_ptr(*value));
+			},
+			[&formatted](glm::quat *value)
+			{
+				return ImGui::DragFloat4(formatted.data(), glm::value_ptr(*value));
+			},
+			[&format_field](forge::ColorField value)
+			{
+				if (value.color_value.index() == 0)
+				{
+					return ImGui::ColorEdit3(format_field(value.name).data(), glm::value_ptr(*std::get<0>(value.color_value)));
+				}
+				else
+				{
+					return ImGui::ColorEdit4(format_field(value.name).data(), glm::value_ptr(*std::get<1>(value.color_value)));
+				}
+			},
+			[&](forge::WatchedField *value)
+			{
+				auto field_changed = render_field(formatted, value->field, id++);
+
+				if (field_changed)
+				{
+					value->on_changed(value->field);
+				}
+
+				return field_changed;
+			},
+			[&](std::chrono::duration<float> *value)
+			{
+				auto hour = std::floor(value->count() / 3600.0f);
+				auto minute = std::floor((value->count() - (hour * 3600.0f)) / 60.0f);
+				auto second = value->count() - (hour * 3600.0f) - (minute * 60.0f);
+
+				ImGui::PushItemWidth(50);
+
+				ImGui::InputFloat("H", &hour);
+				ImGui::SameLine();
+				ImGui::InputFloat("M", &minute);
+				ImGui::SameLine();
+				ImGui::InputFloat("S", &second);
+				ImGui::SameLine();
+				ImGui::Text("%s", formatted.c_str());
+
+				ImGui::PopItemWidth();
+
+				std::chrono::duration<float> duration {};
+
+				auto total_seconds = (hour * 3600.0f) + (minute * 60.0f) + second;
+
+				*value = std::chrono::duration<float>{total_seconds};
+
+				return true;
+			},
+			[&](const forge::EnumStorage &storage)
+			{
+				auto selected_index = storage.get_selected_index();
+
+				if (ImGui::BeginCombo(formatted.c_str(), storage.entries[selected_index].first.data()))
+				{
+					for (auto i = 0; i < storage.entries.size(); i++)
+					{
+						auto &entry = storage.entries[i];
+
+						auto is_selected = selected_index == i;
+
+						if (ImGui::Selectable(entry.first.data(), is_selected))
+						{
+							*storage.value = entry.second;
+						}
+					}
+
+					ImGui::EndCombo();
+				}
+				return true;
+			},
+		}, value);
+
+		ImGui::PopID();
+
+		return out;
+	}
+
 class IEditorWindow : public forge::IComponent
 {
 public:
@@ -112,8 +290,6 @@ public:
 	float last_frame {};
 	float last_engine_delta {};
 	forge::DeltaTime elapsed_time {};
-
-	REGISTER_UPDATE_FUNC
 
 	StatisticsEditorWindow() : IEditorWindow("Statistics") {}
 
@@ -318,183 +494,7 @@ protected:
 		return vec_drag_control(label, ptr, sizeof(T) / sizeof(ptr[0]), uniform, speed, min_steps, max_steps);
 	}
 
-	static u32 find_last_member_index(std::string_view name)
-	{
-		for (auto i = name.size(); auto c : std::ranges::reverse_view(name))
-		{
-			if (c == '.' || c == '>')
-			{
-				return i;
-			}
 
-			i--;
-		}
-
-		return 0;
-	}
-
-	bool render_field(std::string_view name, forge::FieldVar &value, u32 id)
-	{
-		auto format_field = [](std::string_view name)
-		{
-			name = name.substr(find_last_member_index(name));
-			// will likely start with an & because of taking the member address
-			auto offset = name.starts_with('&');
-			auto formatted = std::string{name.substr(offset)};
-
-			if (formatted.starts_with("m_"))
-			{
-				formatted.erase(formatted.begin(), formatted.begin()+2);
-			}
-
-			return formatted;
-		};
-
-		auto formatted = format_field(name);
-
-		std::replace(formatted.begin(), formatted.end(), '_', ' ');
-
-		ImGui::PushID(id);
-
-		auto out = std::visit(util::overload
-		{
-			[&formatted](float *value)
-			{
-				return ImGui::DragFloat(formatted.data(), value);
-			},
-			[&formatted](double *value)
-			{
-				return ImGui::DragFloat(formatted.data(), (float*)value);
-			},
-			[&formatted](int *value)
-			{
-				return ImGui::DragInt(formatted.data(), value);
-			},
-			[&formatted](bool *value)
-			{
-				return ImGui::Checkbox(formatted.data(), value);
-			},
-			[&formatted](std::string *value)
-			{
-				return ImGui::InputText(formatted.data(), value);
-			},
-			[&formatted](forge::ButtonField &value)
-			{
-				auto button_name = value.name.empty() ? formatted : value.name;
-
-				if (ImGui::Button(button_name.data()))
-				{
-					value.callback();
-					return true;
-				}
-
-				return false;
-			},
-			[](forge::FieldSeperator value)
-			{
-				if (value.name.empty())
-				{
-					ImGui::Separator();
-				}
-				else
-				{
-					ImGui::SeparatorText(value.name.data());
-				}
-
-				return false;
-			},
-			[&formatted](glm::vec4 *value)
-			{
-				return ImGui::DragFloat4(formatted.data(), glm::value_ptr(*value));
-			},
-			[&formatted](glm::vec3 *value)
-			{
-				return ImGui::DragFloat3(formatted.data(), glm::value_ptr(*value));
-			},
-			[&formatted](glm::vec2 *value)
-			{
-				return ImGui::DragFloat2(formatted.data(), glm::value_ptr(*value));
-			},
-			[&formatted](glm::quat *value)
-			{
-				return ImGui::DragFloat4(formatted.data(), glm::value_ptr(*value));
-			},
-			[&format_field](forge::ColorField value)
-			{
-				if (value.color_value.index() == 0)
-				{
-					return ImGui::ColorEdit3(format_field(value.name).data(), glm::value_ptr(*std::get<0>(value.color_value)));
-				}
-				else
-				{
-					return ImGui::ColorEdit4(format_field(value.name).data(), glm::value_ptr(*std::get<1>(value.color_value)));
-				}
-			},
-			[&](forge::WatchedField *value)
-			{
-				auto field_changed = render_field(formatted, value->field, id++);
-
-				if (field_changed)
-				{
-					value->on_changed(value->field);
-				}
-
-				return field_changed;
-			},
-			[&](std::chrono::duration<float> *value)
-			{
-				auto hour = std::floor(value->count() / 3600.0f);
-				auto minute = std::floor((value->count() - (hour * 3600.0f)) / 60.0f);
-				auto second = value->count() - (hour * 3600.0f) - (minute * 60.0f);
-
-				ImGui::PushItemWidth(50);
-
-				ImGui::InputFloat("H", &hour);
-				ImGui::SameLine();
-				ImGui::InputFloat("M", &minute);
-				ImGui::SameLine();
-				ImGui::InputFloat("S", &second);
-				ImGui::SameLine();
-				ImGui::Text("%s", formatted.c_str());
-
-				ImGui::PopItemWidth();
-
-				std::chrono::duration<float> duration {};
-
-				auto total_seconds = (hour * 3600.0f) + (minute * 60.0f) + second;
-
-				*value = std::chrono::duration<float>{total_seconds};
-
-				return true;
-			},
-			[&](const forge::EnumStorage &storage)
-			{
-				auto selected_index = storage.get_selected_index();
-
-				if (ImGui::BeginCombo(formatted.c_str(), storage.entries[selected_index].first.data()))
-				{
-					for (auto i = 0; i < storage.entries.size(); i++)
-					{
-						auto &entry = storage.entries[i];
-
-						auto is_selected = selected_index == i;
-
-						if (ImGui::Selectable(entry.first.data(), is_selected))
-						{
-							*storage.value = entry.second;
-						}
-					}
-
-					ImGui::EndCombo();
-				}
-				return true;
-			},
-		}, value);
-
-		ImGui::PopID();
-
-		return out;
-	}
 
 	void draw_right_side()
 	{
@@ -881,6 +881,53 @@ private:
 	bool m_show_demo_window;
 };
 
+class ResourcesWindow : public IEditorWindow
+{
+public:
+
+	ResourcesWindow() : IEditorWindow("Resources") {}
+
+	void on_window() override
+	{
+		if (ImGui::BeginTabBar("ResourcesBar"))
+		{
+			if (ImGui::BeginTabItem("Lights"))
+			{
+				draw_active_lights();
+				ImGui::EndTabItem();
+			}
+
+			ImGui::EndTabBar();
+		}
+	}
+
+private:
+	void draw_active_lights()
+	{
+		auto lights = g_engine.renderer->get_active_lights();
+
+		auto number = 0;
+
+		for (auto &light : lights)
+		{
+			auto seperator_label = fmt::format("Light #{}", ++number);
+			auto id = number;
+
+			render_field(seperator_label, forge::FieldSeperator{seperator_label}, id++);
+
+			render_field("enabled", &light->enabled, id++);
+			render_field("type", &light->type, id++);
+			render_field("color", forge::ColorField{"color", &light->color}, id++);
+			render_field("intensity", &light->intensity, id++);
+			render_field("max_distance", &light->max_distance, id++);
+			render_field("position", &light->position, id++);
+			render_field("direction", &light->direction, id++);
+			render_field("outer_cutoff", &light->outer_cutoff, id++);
+			// render_field("is_available", &light->is_available, id++);
+		}
+	}
+};
+
 std::string forge::EditorSubsystem::init(const EngineInitOptions &options)
 {
 	auto result = m_nexus.init(options);
@@ -893,7 +940,7 @@ std::string forge::EditorSubsystem::init(const EngineInitOptions &options)
 	// entity for all editor windows
 	auto &windows_entity = m_nexus.create_entity("windows");
 
-	windows_entity.add_components<StatisticsEditorWindow, SettingsEditorWindow, SceneOutlineEditorWindow>();
+	windows_entity.add_components<StatisticsEditorWindow, SettingsEditorWindow, SceneOutlineEditorWindow, ResourcesWindow>();
 
 	windows_entity.on_editor_enter();
 
@@ -926,6 +973,15 @@ void forge::EditorSubsystem::load_demo(std::string_view name)
 
 	if (iter != demos.end())
 	{
-		iter->second();
+		pending_demo = iter->second;
+	}
+}
+
+void forge::EditorSubsystem::on_run()
+{
+	if (pending_demo)
+	{
+		pending_demo();
+		pending_demo = nullptr;
 	}
 }

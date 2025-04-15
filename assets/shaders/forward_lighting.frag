@@ -141,6 +141,11 @@ void main()
 {
     g_object_color = get_texture(material.diffuse, vec4(1.0));
 
+    if (g_object_color.a < 0.1)
+    {
+        discard;
+    }
+
     vec3 result = vec3(0.0);
 
     for (int i = 0; i < MAX_LIGHTS; i++)

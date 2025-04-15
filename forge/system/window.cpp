@@ -17,6 +17,7 @@ void on_framebuffer_resize_callback(GLFWwindow *window, int width, int height)
 
 void on_window_should_close_callback(GLFWwindow *window)
 {
+	// TODO: this should only be done for the main window
 	g_engine.quit();
 }
 

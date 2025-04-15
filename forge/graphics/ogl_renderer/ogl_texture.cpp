@@ -4,25 +4,18 @@
 #include "forge/graphics/image/image.hpp"
 #include "glad/glad.h"
 
-bool forge::OglTexture::load(std::string_view path, TextureOptions options)
+bool forge::OglTexture::load(const Image &image, TextureOptions options)
 {
-	Image image;
+	target = options.target;
 
-	if (!image.load(path, options.image_options))
-	{
-		return false;
-	}
-
-	m_options = options;
-
-	glGenTextures(1, &m_id);
+	glGenTextures(1, &id);
 
 	bind(0);
 
-	glTexParameteri(m_options.target, GL_TEXTURE_WRAP_S, (int)m_options.wrap_mode);
-	glTexParameteri(m_options.target, GL_TEXTURE_WRAP_T, (int)m_options.wrap_mode);
-	glTexParameteri(m_options.target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameteri(m_options.target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(target, GL_TEXTURE_WRAP_S, (int)options.wrap_mode);
+	glTexParameteri(target, GL_TEXTURE_WRAP_T, (int)options.wrap_mode);
+	glTexParameteri(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	int format;
 
@@ -35,18 +28,30 @@ bool forge::OglTexture::load(std::string_view path, TextureOptions options)
 		default: return false;
 	}
 
-	glTexImage2D(m_options.target, 0, GL_RGB, image.width, image.height, 0, format, GL_UNSIGNED_BYTE, image.data);
-	glGenerateMipmap(m_options.target);
+	glTexImage2D(options.target, 0, GL_RGBA, image.width, image.height, 0, format, GL_UNSIGNED_BYTE, image.data);
+	glGenerateMipmap(options.target);
 
 	return true;
 }
 
+bool forge::OglTexture::load(std::string_view path, TextureOptions options)
+{
+	Image image;
+
+	if (!image.load(path, options.image_options))
+	{
+		return false;
+	}
+
+	return load(image, options);
+}
+
 void forge::OglTexture::destroy()
 {
-	if (m_id > 0)
+	if (id > 0)
 	{
-		glDeleteTextures(1, &m_id);
-		m_id = 0;
+		glDeleteTextures(1, &id);
+		id = 0;
 	}
 }
 
@@ -58,10 +63,10 @@ void forge::OglTexture::bind(int unit) const
 	}
 
 	glActiveTexture(GL_TEXTURE0 + unit);
-	glBindTexture(m_options.target, m_id);
+	glBindTexture(target, id);
 }
 
 void forge::OglTexture::unbind()
 {
-	glBindTexture(m_options.target, 0);
+	glBindTexture(target, 0);
 }

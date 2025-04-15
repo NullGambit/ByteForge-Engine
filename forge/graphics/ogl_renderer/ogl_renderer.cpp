@@ -3,8 +3,9 @@
 #include <set>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "../loaders/gltf.hpp"
+#include "../loaders/gltf_loader.hpp"
 #include <utility>
+#include <GL/glext.h>
 
 #include "ogl_buffers.hpp"
 #include "ogl_shader.hpp"
@@ -99,6 +100,8 @@ std::string forge::OglRenderer::init(const EngineInitOptions &options)
 
 	glEnable(GL_MULTISAMPLE);
 	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
@@ -137,6 +140,7 @@ void forge::OglRenderer::update()
 
 				if (light.enabled)
 				{
+
 					m_forward_shader.set(fmt::format_view("lights{}.position", index), light.position);
 					m_forward_shader.set(fmt::format_view("lights{}.direction", index), light.direction);
 					m_forward_shader.set(fmt::format_view("lights{}.color", index), light.color);
@@ -157,6 +161,10 @@ void forge::OglRenderer::update()
 				auto &texture_data = data.textures[i];
 
 				texture_data.bind(i);
+
+				// Anisotropic filtering
+				// TODO: add global settings for this and add a per mesh override
+				glTexParameterf(texture_data.target, GL_TEXTURE_MAX_ANISOTROPY_EXT, 16);
 
 				auto &props = g_material_prop_str[i];
 
@@ -251,221 +259,95 @@ forge::Camera* forge::OglRenderer::get_active_camera()
 	return m_active_camera;
 }
 
-template<class T>
-void read_accessor(cgltf_accessor *accessor, std::vector<T> &out)
+
+forge::RenderObjectTree forge::OglRenderer::create_node_buffers(MeshLoaderNode &node)
 {
-	out.reserve(accessor->count);
+	RenderObjectTree out;
 
-	for (cgltf_size i = 0; i < accessor->count; ++i)
+	out.name = node.name;
+
+	if (node.light)
 	{
-		T vec {};
-
-		cgltf_accessor_read_float(accessor, i, glm::value_ptr(vec), vec.length());
-
-		out.emplace_back(vec);
-	}
-}
-
-namespace forge
-{
-	struct LoaderNode
-	{
-		Mesh mesh;
-		Transform transform;
-		Material material;
-		OglTexture texture;
-	};
-}
-
-std::optional<forge::LoaderNode> load_mesh(std::string_view filepath, forge::MeshLoadOptions options)
-{
-	forge::LoaderNode out {};
-	cgltf_options gltf_options {};
-	cgltf_data* data = nullptr;
-	cgltf_result result = cgltf_parse_file(&gltf_options, filepath.data(), &data);
-
-	if (result != cgltf_result_success)
-	{
-		return std::nullopt;
+		out.light = node.light;
 	}
 
-	result = cgltf_load_buffers(&gltf_options, data, "model.gltf");
-
-	if (result != cgltf_result_success)
+	for (auto &primitive : node.primitives)
 	{
-		return std::nullopt;
+		auto [rd, id] = m_render_data.emplace<RenderData>();
+
+		rd->object.id = id;
+		rd->object.flags = R_DEFAULT;
+		rd->in_use = true;
+
+		out.object = &rd->object;
+		out.transform = node.transform;
+
+		rd->object.compute_model(node.transform.get_model());
+		rd->object.material = primitive.material;
+		rd->textures[TextureType::Diffuse].load(primitive.texture);
+		rd->index_size = primitive.mesh.indices.size();
+
+		rd->buffers = OglBufferBuilder()
+			.start()
+			.stride<Vertex>()
+			.vbo(primitive.mesh.vertices)
+			.ebo(primitive.mesh.indices)
+			.attr(3)
+			.attr(3)
+			.attr(2)
+			.finish();
 	}
 
-	for (cgltf_size n = 0; n < data->nodes_count; ++n)
+	for (auto &child : node.children)
 	{
-		auto *node = &data->nodes[n];
-
-		if (!node->mesh)
-		{
-			continue;
-		}
-
-		auto *mesh = node->mesh;
-
-		if (node->has_scale)
-		{
-			out.transform.set_local_scale(glm::make_vec3(node->scale));
-		}
-		if (node->has_translation)
-		{
-			out.transform.set_local_position(glm::make_vec3(node->translation));
-		}
-		if (node->has_rotation)
-		{
-			out.transform.set_local_rotation(glm::make_quat(node->rotation));
-		}
-
-		auto model = node->has_matrix ? glm::make_mat4(node->matrix) : glm::mat4{1.0};
-		glm::mat4 parent {1.0};
-
-		if (node->parent)
-		{
-			parent *= glm::make_mat4(node->parent->matrix);
-		}
-
-		out.transform.set_model(model * parent);
-		out.transform.compute_local_transform();
-
-		for (cgltf_size p = 0; p < mesh->primitives_count; ++p)
-		{
-			auto *prim = &mesh->primitives[p];
-
-			cgltf_accessor *pos_accessor = nullptr;
-			cgltf_accessor *tex_accessor = nullptr;
-			cgltf_accessor *norm_accessor = nullptr;
-
-			for (cgltf_size a = 0; a < prim->attributes_count; ++a)
-			{
-				auto *attr = &prim->attributes[a];
-				auto *accessor = attr->data;
-
-				if (strcmp(attr->name, "POSITION") == 0)
-				{
-					pos_accessor = accessor;
-				}
-				else if (strcmp(attr->name, "NORMAL") == 0)
-				{
-					norm_accessor = accessor;
-				}
-				else if (strcmp(attr->name, "TEXCOORD_0") == 0)
-				{
-					tex_accessor = accessor;
-				}
-			}
-
-			for (cgltf_size i = 0; i < pos_accessor->count; i++)
-			{
-				forge::Vertex vertex {};
-
-				cgltf_accessor_read_float(pos_accessor, i, glm::value_ptr(vertex.position), 3);
-				cgltf_accessor_read_float(tex_accessor, i, glm::value_ptr(vertex.texture), 2);
-				cgltf_accessor_read_float(norm_accessor, i, glm::value_ptr(vertex.normals), 3);
-
-				vertex.position *= options.uniform_scale;
-
-				out.mesh.vertices.emplace_back(vertex);
-			}
-
-			for (cgltf_size i = 0; i < prim->indices->count; i++)
-			{
-				auto index = cgltf_accessor_read_index(prim->indices, i);
-
-				out.mesh.indices.emplace_back(index);
-			}
-
-			// Material
-			if (prim->material && prim->material->has_pbr_metallic_roughness)
-			{
-				cgltf_texture* texture = prim->material->pbr_metallic_roughness.base_color_texture.texture;
-				cgltf_image* image = texture->image;
-
-				std::string_view buffer;
-
-				if (image->uri)
-				{
-					buffer = image->uri;
-				}
-				else
-				{
-					auto *view = image->buffer_view;
-
-					buffer = std::string_view{(char*)view->buffer->data + view->offset, view->size};
-				}
-
-				out.texture.load(buffer,
-				{
-					.image_options =
-					{
-						.from_memory = image->uri == nullptr
-					}
-				});
-
-				out.material.textures[forge::TextureType::Diffuse] =
-				{
-					.enabled = true,
-				};
-			}
-		}
+		out.children.emplace_back(create_node_buffers(child));
 	}
-
-	cgltf_free(data);
 
 	return out;
 }
 
-forge::LoadMeshResult forge::OglRenderer::create_render_object(std::string_view filepath, MeshLoadOptions options)
+forge::RenderObjectTree forge::OglRenderer::create_render_object(std::string_view filepath, MeshLoadOptions options)
 {
-	auto mesh_opt = load_mesh(filepath, options);
+	GltfLoader loader;
+
+	auto mesh_opt = loader.load_mesh(filepath, options);
 
 	if (!mesh_opt)
 	{
 		return {};
 	}
 
-	auto [rd, id] = m_render_data.emplace<RenderData>();
-
-	rd->object.id = id;
-	rd->object.flags = R_DEFAULT;
-	rd->in_use = true;
-
-	const auto &node = mesh_opt.value();
-	const auto &mesh = node.mesh;
-
-	rd->object.compute_model(node.transform.get_model());
-	rd->object.material = node.material;
-	rd->textures[TextureType::Diffuse] = node.texture;
-	rd->index_size = mesh.indices.size();
-
-	rd->buffers = OglBufferBuilder()
-		.start()
-		.stride<Vertex>()
-		.vbo(mesh.vertices)
-		.ebo(mesh.indices)
-		.attr(3)
-		.attr(3)
-		.attr(2)
-		.finish();
-
-	return {&rd->object, node.transform};
+	return create_node_buffers(mesh_opt.value());
 }
 
 void forge::OglRenderer::destroy_render_object(RenderObject *object)
 {
-	auto *data = m_render_data.get<RenderData>(object->id);
+	auto *rd = m_render_data.get<RenderData>(object->id);
 
-	data->in_use = false;
+	rd->in_use = false;
 
 	m_render_data.free(object->id);
 }
 
 void forge::OglRenderer::destroy_texture(std::string_view path)
 {
-	m_texture_resource.remove(path);
+
+}
+
+bool forge::OglRenderer::create_texture(RenderObject *object, std::string_view path, u32 type, TextureOptions options)
+{
+	auto *rd = m_render_data.get<RenderData>(object->id);
+
+	auto ok = rd->textures[type].load(path, options);
+
+	if (!ok)
+	{
+		return false;
+	}
+
+	object->material.textures[type].enabled = true;
+
+	return true;
 }
 
 forge::Light * forge::OglRenderer::create_light()
@@ -500,6 +382,23 @@ void forge::OglRenderer::destroy_light(Light *light)
 
 	light->is_available = true;
 	light->enabled = false;
+}
+
+forge::Array<forge::Light*> forge::OglRenderer::get_active_lights()
+{
+	Array<Light*> out;
+
+	out.reserve(OGL_MAX_LIGHTS);
+
+	for (auto &light : m_lights)
+	{
+		if (!light.is_available)
+		{
+			out.emplace_back(&light);
+		}
+	}
+
+	return out;
 }
 
 void forge::OglRenderer::handle_framebuffer_resize(int width, int height)

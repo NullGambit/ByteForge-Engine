@@ -32,6 +32,8 @@ private:
 	float m_boost_speed = 2;
 	float m_mouse_sensitivity = 0.1;
 	bool m_pan_mode = false;
+	float m_pitch {};
+	float m_yaw {};
 	glm::vec2 m_last_mouse_coords;
 	forge::CameraComponent *m_camera;
 

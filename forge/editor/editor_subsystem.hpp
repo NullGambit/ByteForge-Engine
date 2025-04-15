@@ -16,9 +16,12 @@ namespace forge
 
 		void load_demo(std::string_view name);
 
+		void on_run() override;
+
 		HashMap<std::string_view, std::function<void()>> demos;
 
 	private:
 		Nexus m_nexus {};
+		std::function<void()> pending_demo = nullptr;
 	};
 }

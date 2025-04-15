@@ -30,8 +30,11 @@ void forge::CameraComponent::on_create()
 	auto &owner = m_owner->get_entity();
 
 	m_on_transform_update_connection =
-		owner.on_transform_update.connect([&position = position](auto &entity)
+		owner.on_transform_update.connect([&position = position, &yaw = yaw, &pitch = pitch](Entity &entity)
 	{
 		position = entity.get_local_position();
+		// auto rotation = entity.get_local_euler_rotation();
+		// yaw = rotation.y;
+		// pitch = rotation.x;
 	});
 }

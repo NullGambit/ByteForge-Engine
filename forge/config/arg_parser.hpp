@@ -25,7 +25,7 @@ namespace forge
 		{
 			case Int: return "number";
 			case Float: return "decimal";
-			case String: return "text";
+			case ArgValueType::String: return "text";
 			case Bool: return "bool";
 			default: return "?";
 		}

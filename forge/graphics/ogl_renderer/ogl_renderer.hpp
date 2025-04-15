@@ -7,13 +7,17 @@
 #include "ogl_texture.hpp"
 #include "render_resource.hpp"
 #include "forge/concurrency/command_buffer.hpp"
+#include "forge/container/array.hpp"
+#include "forge/container/string.hpp"
 #include "forge/core/isub_system.hpp"
 #include "forge/ecs/transform.hpp"
 #include "forge/graphics/camera.hpp"
 #include "forge/graphics/lights.hpp"
 #include "forge/graphics/material.hpp"
-#include "forge/graphics/loaders/mesh_load_options.hpp"
+#include "forge/graphics/mesh.hpp"
+#include "forge/graphics/loaders/mesh_loader.hpp"
 #include "forge/memory/mem_pool.hpp"
+#include "forge/graphics/render_object.hpp"
 
 class GLFWwindow;
 
@@ -21,6 +25,8 @@ class GLFWwindow;
 
 namespace forge
 {
+	struct MeshLoaderNode;
+
 	struct OglRendererArgConfig
 	{
 		std::string_view shader_path = FORGE_ENGINE_ASSET_DIR "shaders/";
@@ -40,25 +46,13 @@ namespace forge
 
 	constexpr u32 R_DEFAULT = R_VISIBLE | R_CAST_SHADOW;
 
-	struct RenderObject
+	struct RenderObjectTree
 	{
-		u32 flags = R_DEFAULT;
-		Material material;
-		glm::mat4 normal_matrix;
-		glm::mat4 model;
-		u32 id;
-
-		void compute_model(const glm::mat4 &new_model)
-		{
-			model = new_model;
-			normal_matrix = glm::transpose(glm::inverse(model));
-		}
-	};
-
-	struct LoadMeshResult
-	{
+		String name;
 		RenderObject *object = nullptr;
+		std::optional<Light> light;
 		Transform transform;
+		Array<RenderObjectTree> children;
 	};
 
 	class OglRenderer final : public ISubSystem
@@ -91,16 +85,12 @@ namespace forge
 
 		Camera* get_active_camera();
 
-		LoadMeshResult create_render_object(std::string_view filepath, MeshLoadOptions options = {});
+		RenderObjectTree create_render_object(std::string_view filepath, MeshLoadOptions options = {});
 		void destroy_render_object(RenderObject *object);
-
-		// PrimitiveModel* create_primitive(glm::mat4 model = {});
-
-		void destroy_primitive(u32 id);
 
 		void destroy_texture(std::string_view path);
 
-		void create_texture(u32 id, std::string_view path, u32 type);
+		bool create_texture(RenderObject *object, std::string_view path, u32 type, TextureOptions options = {});
 
 		// allows for manually adding a command that will be run the next frame
 		void add_command(CommandBuffer<>::Callback &&command)
@@ -111,6 +101,8 @@ namespace forge
 		Light* create_light();
 
 		void destroy_light(Light *light);
+
+		Array<Light*> get_active_lights();
 
 	private:
 		bool m_draw_wireframe = false;
@@ -146,6 +138,7 @@ namespace forge
 		};
 
 		void handle_framebuffer_resize(int width, int height);
+		RenderObjectTree create_node_buffers(MeshLoaderNode &node);
 	};
 
 }
