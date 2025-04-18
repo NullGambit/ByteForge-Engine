@@ -17,32 +17,38 @@ namespace forge
 	template<class T>
 	class VirtualArray
 	{
-		class Iterator;
-
-		enum : u8
-		{
-			FREE = 1 << 0,
-			IN_USE = 1 << 1
-		};
-
 		struct Header
 		{
-			u8 flags;
+			alignas(T)
+			u8 memory[sizeof(T)];
+			bool is_free = true;
 			u32 next_free;
 			u32 offset;
 		};
 
 	public:
-		explicit VirtualArray(i32 max_elements = -1)
+		class Iterator;
+
+		struct AllocateResult
+		{
+			T *ptr = nullptr;
+			bool reused = false;
+		};
+
+		bool is_initialized() const
+		{
+			return m_memory != nullptr;
+		}
+
+		void init(i32 max_elements = -1)
 		{
 			if (max_elements == -1)
 			{
-				auto base = DEFAULT_VIRTUAL_ARRAY_SIZE / sizeof(T);
-				m_map_size = base * (sizeof(Header) + sizeof(T));
+				m_map_size = DEFAULT_VIRTUAL_ARRAY_SIZE;
 			}
 			else
 			{
-				m_map_size = max_elements * (sizeof(Header) + sizeof(T));
+				m_map_size = max_elements * sizeof(Header);
 			}
 
 			m_memory = virtual_alloc(m_map_size);
@@ -51,7 +57,7 @@ namespace forge
 			m_length = 0;
 		}
 
-		~VirtualArray()
+		void destroy()
 		{
 			m_offset = 0;
 			m_length = 0;
@@ -64,31 +70,120 @@ namespace forge
 			}
 		}
 
+		~VirtualArray()
+		{
+			destroy();
+		}
+
+		Iterator begin() const
+		{
+			return m_memory;
+		}
+
+		Iterator end() const
+		{
+			return m_memory + m_offset;
+		}
+
 		template<class ...Args>
 		T& emplace(Args &&...args)
 		{
-			auto *mem = allocate();
+			auto [mem, _] = allocate();
 
 			auto *ptr = new (mem) T(std::forward<Args>(args)...);
 
 			return *ptr;
 		}
 
-		void free(T *ptr, bool destroy = true)
+		AllocateResult allocate()
 		{
-			free((u8*)ptr);
+			AllocateResult result;
 
+			if (m_memory == nullptr)
+			{
+				init(DEFAULT_VIRTUAL_ARRAY_SIZE);
+			}
+
+			constexpr auto header_size = sizeof(Header);
+
+			Header *header;
+
+			if (m_free_head)
+			{
+				header = (Header*)(m_memory + m_free_head->offset);
+
+				m_free_head->is_free = false;
+
+				if (m_free_head->next_free != UINT32_MAX)
+				{
+					auto *next_header = (Header*)(m_memory + m_free_head->next_free);
+					m_free_head = next_header;
+				}
+				else
+				{
+					m_free_head = nullptr;
+				}
+
+				result.reused = true;
+			}
+			else
+			{
+				assert(m_offset + header_size <= m_map_size && "VirtualArray size exceeded limit");
+
+				header = (Header*)(m_memory + m_offset);
+
+				*header =
+				{
+					.is_free = false,
+					.next_free = UINT32_MAX,
+					.offset = m_offset,
+				};
+
+				m_offset += header_size;
+			}
+
+			m_length++;
+
+			result.ptr = (T*)header->memory;
+
+			return result;
+		}
+
+		void free(T *memory, bool destroy = true)
+		{
 			if (destroy)
 			{
-				ptr->~T();
+				memory->~T();
 			}
+
+			auto *header = get_header(memory);
+
+			if (header->is_free)
+			{
+				return;
+			}
+
+			header->is_free = true;
+
+			if (m_free_head == nullptr)
+			{
+				m_free_head = header;
+				m_free_tail = header;
+			}
+			else
+			{
+				m_free_tail->next_free = header->offset;
+				m_free_tail = header;
+			}
+
+			m_length--;
 		}
 
 		void clear(bool destroy = true)
 		{
 			if (destroy)
 			{
-				for (auto &element : this)
+				for (auto &element : *this)
 				{
 					element.~T();
 				}
@@ -102,21 +197,46 @@ namespace forge
 		}
 
 		// will retrieve an element by index. if index has already been freed will return nullptr
-		// very unreliable dont use it please.
+		// element could be freed already. use with care.
 		inline T* get(size_t index)
 		{
-			auto offset = index * (sizeof(Header) + sizeof(T));
+			auto offset = index * sizeof(Header);
 
-			auto *ptr = (T*)m_memory + offset;
+			return get_from_offset(offset);
+		}
 
-			auto *header = (Header*)(ptr - sizeof(Header));
+		inline const T* get(size_t index) const
+		{
+			auto offset = index * sizeof(Header);
 
-			if (header->flags & FREE)
+			return get_from_offset(offset);
+		}
+
+		inline T* get_from_offset(size_t offset)
+		{
+			auto *header = (Header*)(m_memory + offset);
+
+			if (header->is_free)
 			{
 				return nullptr;
 			}
 
-			return ptr;
+			return (T*)header->memory;
+		}
+
+		inline bool is_free(T *mem) const
+		{
+			return get_header(mem)->is_free;
+		}
+
+		inline u32 get_offset_of_mem(T *mem) const
+		{
+			return get_header(mem)->offset;
+		}
+
+		inline u32 get_index_of_mem(T *mem) const
+		{
+			return get_offset_of_mem(mem) / sizeof(Header);
 		}
 
 		inline size_t get_length() const
@@ -139,96 +259,19 @@ namespace forge
 			return m_memory;
 		}
 
-		Iterator begin()
-		{
-			return {m_memory, sizeof(T)};
-		}
-
-		Iterator end()
-		{
-			return {m_memory + m_offset, sizeof(T)};
-		}
-
 	private:
-		u8 *m_memory;
-		u32 m_offset;
-		u32 m_length;
-		u32 m_map_size;
+		u8 *m_memory = nullptr;
+		u32 m_offset = 0;
+		u32 m_length = 0;
+		u32 m_map_size = 0;
 
 		// the start of the first free VirtualArray header
 		Header *m_free_head = nullptr;
 		Header *m_free_tail = nullptr;
 
-		void free(u8 *memory)
+		Header* get_header(T *mem)
 		{
-			auto *header = (Header*)(memory - sizeof(Header));
-
-			if (header->flags & FREE)
-			{
-				return;
-			}
-
-			header->flags = (header->flags | FREE) & ~IN_USE;
-
-			if (m_free_head == nullptr)
-			{
-				m_free_head = header;
-				m_free_tail = header;
-			}
-			else
-			{
-				m_free_tail->next_free = header->offset;
-				m_free_tail = header;
-			}
-
-			m_length--;
-		}
-
-		T* allocate()
-		{
-			constexpr auto header_size = sizeof(Header);
-
-			u8 *memory = nullptr;
-
-			if (m_free_head)
-			{
-				memory = m_memory + (m_free_head->offset + header_size);
-
-				m_free_head->flags = (m_free_head->flags | IN_USE) & ~FREE;
-
-				if (m_free_head->next_free != UINT32_MAX)
-				{
-					auto *next_header = (Header*)(m_memory + m_free_head->next_free);
-					m_free_head = next_header;
-				}
-				else
-				{
-					m_free_head = nullptr;
-				}
-			}
-			else
-			{
-				assert(m_offset + header_size + sizeof(T) <= m_map_size && "VirtualArray size exceeded limit");
-
-				Header header
-				{
-					.flags = IN_USE,
-					.next_free = UINT32_MAX,
-					.offset = m_offset,
-				};
-
-				memcpy(m_memory + m_offset, &header, header_size);
-
-				m_offset += header_size;
-
-				memory = m_memory + m_offset;
-
-				m_offset += sizeof(T);
-			}
-
-			m_length++;
-
-			return (T*)memory;
+			return (Header*)((u8*)mem - offsetof(Header, memory));
 		}
 	};
 
@@ -242,44 +285,26 @@ namespace forge
 		using reference = T&;
 		using iterator_category = std::forward_iterator_tag;
 
-		Iterator(u8 *memory, const size_t m_element_size) :
-			m_memory(memory),
-			m_element_size(m_element_size)
+		Iterator(u8 *memory) :
+			m_memory(memory)
 		{}
 
 		reference operator*()
 		{
-			auto *header = (Header*)m_memory;
-
-			// if the thing being dereferenced is actually free which would always happen if the first element is free
-			// then skip past this and any other free memory
-			if (header->flags & FREE)
-			{
-				this->operator++();
-			}
-
-			return *(pointer)(m_memory + sizeof(Header));
+			return *(pointer)((Header*)m_memory)->memory;
 		}
 
 		Iterator& operator++()
 		{
-			m_memory += m_element_size + sizeof(Header);
+			Header *header;
 
-			auto *header = (Header*)m_memory;
-
-			bool is_free = header->flags & FREE;
-
-			while (is_free)
+			do
 			{
-				auto *header = (Header*)m_memory;
+				m_memory += sizeof(Header);
 
-				is_free = header->flags & FREE;
+				header = (Header*)m_memory;
 
-				if (is_free)
-				{
-					m_memory += m_element_size + sizeof(Header);
-				}
-			}
+			} while (header->is_free);
 
 			return *this;
 		}
@@ -295,7 +320,6 @@ namespace forge
 		}
 
 	private:
-		u8* m_memory;
-		const size_t m_element_size;
+		u8 *m_memory;
 	};
 }

@@ -8,112 +8,72 @@
 
 #include "forge/util/random.hpp"
 
-struct RenderObject
-{
-	u32 flags = 0;
-	forge::Material material;
-	glm::mat4 normal_matrix {5.0};
-	glm::mat4 model {1.0};
-	u32 id;
 
-	void compute_model(const glm::mat4 &new_model)
+class Base
+{
+public:
+	virtual void update() {}
+};
+
+class Derived : public Base
+{
+public:
+	int counter = 0;
+
+	void update() override
 	{
-		model = new_model;
-		normal_matrix = glm::transpose(glm::inverse(model));
+		counter++;
 	}
 };
 
-struct RenderDataSoa
+template<class T>
+class CrtBase
 {
-	forge::Array<char[120]> padding;
-	forge::Array<bool> is_available;
+	void update()
+	{
+		((T*)this)->update();
+	}
 };
 
-struct RenderData
+class CrtDerived : public CrtBase<CrtDerived>
 {
-	RenderObject object;
-	char padding[120];
-	bool is_available;
+public:
+	// char padding[10];
+	int counter = 0;
+
+	void update()
+	{
+		counter++;
+	}
 };
 
 int main()
 {
 	Benchmarker bench;
 
-	static forge::MemPool render_objects;
-	static RenderDataSoa data_soa;
-	static forge::MemPool data;
+	constexpr auto COUNT = 10'000'000;
 
-	constexpr auto COUNT = 5000;
-	constexpr size_t FREED = COUNT / 2.5f;
+	std::vector<Derived> derived_counters;
+	derived_counters.resize(COUNT);
 
-	render_objects.init<RenderObject>(sizeof(RenderObject) * COUNT);
+	std::vector<CrtDerived> crt_counters;
+	crt_counters.resize(COUNT);
 
-	for (auto i = 0; i < COUNT; i++)
+	bench.cases.emplace_back("Derived",
+	[&derived_counters]
 	{
-		auto [obj, id] = render_objects.emplace<RenderObject>();
-
-		obj->id = id;
-
-		data_soa.is_available.emplace_back(true);
-	}
-
-	srand(1);
-
-	for (auto i = 0; i < FREED; i++)
-	{
-		auto index = rand() % COUNT - 1;
-
-		render_objects.free_at(index);
-
-		data_soa.is_available[index] = false;
-	}
-
-	data.init<RenderData>(sizeof(RenderData) * COUNT);
-
-	for (auto i = 0; i < COUNT; i++)
-	{
-		auto [rd, id] = data.emplace<RenderData>();
-
-		rd->object.id = id;
-		rd->is_available = true;
-	}
-
-	srand(1);
-
-	for (auto i = 0; i < FREED; i++)
-	{
-		auto index = rand() % COUNT - 1;
-
-		auto *rd = data.get_from_index<RenderData>(index);
-		rd->is_available = false;
-		data.free_at(index);
-	}
-
-	bench.cases.emplace_back("SOA",
-	[]
-	{
-		for (size_t i = 0; i < render_objects.get_length(); i++)
+		for (auto &counter : derived_counters)
 		{
-			if (data_soa.is_available[i])
-			{
-				auto *obj = render_objects.get_from_index<RenderObject>(i);
-				auto model = glm::inverse(obj->model);
-				obj->compute_model(model);
-			}
+			counter.update();
 		}
 	});
 
-	bench.cases.emplace_back("Normal",
-	[]
+	bench.cases.emplace_back("CRT",
+	[&crt_counters]
 	{
-		for (auto &rd : data.get_iterator<RenderData>())
+		for (auto &counter : crt_counters)
 		{
-			if (rd.is_available)
-			{
-				auto model = glm::inverse(rd.object.model);
-				rd.object.compute_model(model);
-			}
+			counter.update();
 		}
 	});
 

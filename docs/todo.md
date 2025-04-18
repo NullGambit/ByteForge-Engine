@@ -33,3 +33,4 @@ a list of tasks that need to be done. This might be outdated
   * Order independent transparency
   * Compute shaders
   * Tesselation
+  * Light mapping

@@ -59,9 +59,9 @@ std::vector<forge::ComponentField> MeshPrimitiveComponent::export_fields()
 void MeshPrimitiveComponent::on_create()
 {
 	m_renderer = g_engine.get_subsystem<forge::OglRenderer>();
-
-	auto &entity = m_owner->get_entity();
-	auto model = entity.get_model();
+	//
+	// auto &entity = m_owner->get_entity();
+	// auto model = entity.get_model();
 
 	// m_data = m_renderer->create_primitive(model);
 	//

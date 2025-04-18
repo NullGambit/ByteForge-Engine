@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 3.28.3)
 project(ByteForgeEngine)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -81,8 +81,6 @@ dep/glad/include/glad/glad.h
         forge/system/linux/linux_system_info.cpp
         forge/system/linux/linux_system_info.hpp
         forge/ecs/component_field.hpp
-        forge/ecs/ecs_views.cpp
-        forge/ecs/ecs_views.hpp
         forge/graphics/material.hpp
         forge/graphics/ogl_renderer/render_resource.hpp
         forge/system/native_dialog.hpp
@@ -123,6 +121,7 @@ dep/glad/include/glad/glad.h
         forge/framework/components/light_component.hpp
         forge/framework/components/mesh_renderer_component.cpp
         forge/framework/components/mesh_renderer_component.hpp
+        forge/container/view.hpp
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")

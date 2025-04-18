@@ -21,16 +21,12 @@ void forge::IComponent::set_enabled(bool value)
 
 forge::TimerID forge::IComponent::add_timer(TimerOptions &&options) const
 {
-	auto &owner = m_owner->get_entity();
-
-	return owner.get_nexus()->timer.add(std::forward<TimerOptions>(options));
+	return m_owner->get_nexus()->timer.add(std::forward<TimerOptions>(options));
 }
 
 void forge::IComponent::stop_timer(TimerID id) const
 {
-	auto &owner = m_owner->get_entity();
-
-	owner.get_nexus()->timer.stop(id);
+	m_owner->get_nexus()->timer.stop(id);
 }
 
 u8* forge::Entity::add_component(std::type_index index)
@@ -38,14 +34,14 @@ u8* forge::Entity::add_component(std::type_index index)
 	return m_nexus->add_component(this, index);
 }
 
-std::vector<forge::EntityEntry>& forge::Entity::get_children()
+forge::VirtualArray<forge::Entity> forge::Entity::get_children() const
 {
-	return m_nexus->m_entities_table[m_children_index].entities;
+	return m_children;
 }
 
-size_t forge::Entity::get_children_count()
+size_t forge::Entity::get_children_count() const
 {
-	return get_children().size();
+	return m_children.get_length();
 }
 
 void forge::Entity::set_name(std::string_view new_name)
@@ -57,10 +53,10 @@ void forge::Entity::set_name(std::string_view new_name)
 
 	m_name = new_name;
 
-	m_nexus->m_name_table[m_name] = get_view();
+	m_nexus->m_name_table[m_name] = this;
 }
 
-forge::EcsResult forge::Entity::remove_component(std::type_index index)
+void forge::Entity::remove_component(std::type_index index)
 {
 	return m_nexus->remove_component(this, index);
 }
@@ -77,7 +73,7 @@ void forge::Entity::update_hierarchy()
 {
 	if (m_parent != nullptr)
 	{
-		m_transform.m_model = m_parent->get_entity().m_transform.m_model * m_transform.compute_local_transform();
+		m_transform.m_model = m_parent->m_transform.m_model * m_transform.compute_local_transform();
 	}
 	else
 	{
@@ -86,20 +82,15 @@ void forge::Entity::update_hierarchy()
 
 	on_transform_update(*this);
 
-	if (m_children_index == 0)
+	if (m_children.get_length() == 0)
 	{
 		return;
 	}
 
-	for (auto &[child, _] : get_children())
+	for (auto &child : m_children)
 	{
 		child.update_hierarchy();
 	}
-}
-
-forge::EntityViewHandle forge::Entity::get_view() const
-{
-	return m_nexus->m_entities_table[m_table_index].entities[m_index].handle;
 }
 
 void forge::Entity::destroy()
@@ -107,17 +98,16 @@ void forge::Entity::destroy()
 	m_nexus->destroy_entity(this);
 }
 
-void forge::Entity::update_dirty_array() const
+void forge::Entity::update_dirty_array()
 {
 	std::scoped_lock lock {m_nexus->m_dirty_table_mutex};
 
 	auto top_most_parent = get_top_most_parent();
-	auto &entity = top_most_parent->get_entity();
 
-	if (!entity.m_is_queued_for_cleaning)
+	if (!top_most_parent->m_is_queued_for_cleaning)
 	{
 		m_nexus->m_entity_dirty_table.emplace_back(top_most_parent);
-		entity.m_is_queued_for_cleaning = true;
+		top_most_parent->m_is_queued_for_cleaning = true;
 	}
 }
 
@@ -125,7 +115,7 @@ void forge::Nexus::ComponentType::free(IComponent *component)
 {
 	component->on_destroy();
 
-	component->m_is_active = false;
+	component->m_is_valid = false;
 
 	mem_pool.free(component->m_id);
 }
@@ -134,7 +124,7 @@ void forge::Nexus::ComponentType::update(DeltaTime delta) const
 {
 	for (auto &component : mem_pool.get_iterator<IComponent>())
 	{
-		if (component.m_is_active && component.m_is_enabled) [[likely]]
+		if (component.m_is_valid && component.m_is_enabled) [[likely]]
 		{
 			component.update(delta);
 		}
@@ -143,8 +133,7 @@ void forge::Nexus::ComponentType::update(DeltaTime delta) const
 
 std::string forge::Nexus::init(const EngineInitOptions &options)
 {
-	// construct global entities vector
-	m_entities_table.emplace_back();
+	m_entities.init(ECS_ENTITY_POOL_SIZE);
 
 	return {};
 }
@@ -156,6 +145,9 @@ void forge::Nexus::shutdown()
 	{
 		unregister_component(type_index, false);
 	}
+
+	// call destructors so allocated memory will be freed
+	m_entities.clear();
 }
 
 void forge::Nexus::unregister_component(std::type_index type_index, bool remove_from_update_table)
@@ -182,46 +174,63 @@ void forge::Nexus::unregister_component(std::type_index type_index, bool remove_
 	}
 }
 
-forge::Entity & forge::Nexus::create_entity(std::string_view name)
+forge::Entity* forge::Nexus::create_entity(std::string_view name, Entity *parent)
 {
-	auto &entities = m_entities_table.front().entities;
-	auto index = entities.size();
-	auto &[entity, handle] = entities.emplace_back();
+	const auto is_child = parent != nullptr;
 
-	entity.m_nexus = this;
-	entity.m_table_index = 0;
-	entity.m_index = index;
-	entity.m_id = m_id_counter++;
+	if (is_child && !parent->m_children.is_initialized())
+	{
+		parent->m_children.init(ECS_CHILD_LIMIT);
+	}
 
-	handle = entity.make_handle();
+	auto [entity, reused] = is_child ? parent->m_children.allocate() : m_entities.allocate();
 
-	// TODO: resolve name collisions
+	if (!reused)
+	{
+		std::construct_at(entity);
+	}
+
+	if (is_child)
+	{
+		entity->m_parent = parent;
+		entity->m_top_most_parent = parent->get_top_most_parent();
+	}
+
+	entity->m_nexus = this;
+	entity->m_id = m_id_counter++;
+	entity->m_is_valid = true;
+
 	if (!name.empty())
 	{
-		entity.m_name = name;
-		m_name_table.emplace(entity.m_name, entity.get_view());
+		entity->m_name = name;
+		m_name_table.emplace(entity->m_name, entity);
 	}
 
 	return entity;
 }
 
-void forge::Nexus::add_to_group(std::string_view group_name, Entity& entity)
+void forge::Nexus::add_to_group(std::string_view group_name, Entity *entity)
 {
+	if (entity == nullptr)
+	{
+		return;
+	}
+
 	auto iter = m_groups.find(group_name);
 
 	if (iter == m_groups.end())
 	{
-		iter = m_groups.emplace(group_name, std::vector<EntityViewHandle>{}).first;
+		iter = m_groups.emplace(group_name, Array<Entity*>{}).first;
 	}
 
-	iter->second.emplace_back(entity.get_view());
+	iter->second.emplace_back(entity);
 }
 
-void forge::Nexus::remove_from_group(std::string_view group_name, Entity& entity)
+void forge::Nexus::remove_from_group(std::string_view group_name, Entity *entity)
 {
 	auto iter = m_groups.find(group_name);
 
-	if (iter == m_groups.end())
+	if (iter == m_groups.end() || entity == nullptr)
 	{
 		return;
 	}
@@ -230,9 +239,9 @@ void forge::Nexus::remove_from_group(std::string_view group_name, Entity& entity
 
 	for (auto i = 0; i < entities.size(); i++)
 	{
-		auto &view = entities[i];
+		auto *other = entities[i];
 
-		if (view->is_entity_valid() && view == entity.get_view())
+		if (other->is_valid() && other->get_id() == entity->get_id())
 		{
 			std::swap(entities[i], entities[entities.size()-1]);
 			entities.pop_back();
@@ -252,10 +261,10 @@ void forge::Nexus::create_group(std::string_view group_name)
 		return;
 	}
 
-	m_groups.emplace(group_name, std::vector<EntityViewHandle>{});
+	m_groups.emplace(group_name, std::vector<Entity*>{});
 }
 
-std::vector<forge::EntityViewHandle>* forge::Nexus::get_group(std::string_view group_name, bool trim_invalid_entities)
+std::vector<forge::Entity*>* forge::Nexus::get_group(std::string_view group_name, bool trim_invalid_entities)
 {
 	auto iter = m_groups.find(group_name);
 
@@ -272,7 +281,7 @@ std::vector<forge::EntityViewHandle>* forge::Nexus::get_group(std::string_view g
 		{
 			auto &view = entities[i];
 
-			if (!view->is_entity_valid())
+			if (!view->is_valid())
 			{
 				std::swap(entities[i], entities[entities.size()-1]);
 				entities.pop_back();
@@ -283,7 +292,7 @@ std::vector<forge::EntityViewHandle>* forge::Nexus::get_group(std::string_view g
 	return &entities;
 }
 
-forge::EntityViewHandle forge::Nexus::get_entity(std::string_view name)
+forge::Entity* forge::Nexus::get_entity(std::string_view name)
 {
 	auto it = m_name_table.find(name);
 
@@ -295,85 +304,33 @@ forge::EntityViewHandle forge::Nexus::get_entity(std::string_view name)
 	return it->second;
 }
 
-void forge::Nexus::destroy_children(Entity* entity)
+void forge::Nexus::destroy_entity(Entity *entity)
 {
-	if (entity->m_children_index == 0)
-	{
-		return;
-	}
-
-	auto &entry = m_entities_table[entity->m_children_index];
-
-	for (auto &[child_entity, _]: entry.entities)
-	{
-		destroy_entity(&child_entity);
-	}
-
-	auto table_size = m_entities_table.size();
-
-	// if it's at the end just pop it or if its just two values pop it so it doesn't do a weird swap with the top level table
-	if ((entry.owner->table == table_size-1 && table_size > 1) || table_size == 2)
-	{
-		m_entities_table.pop_back();
-		return;
-	}
-
-	auto old_index = entity->m_children_index;
-
-	auto last_table = std::move(m_entities_table.back());
-
-	m_entities_table[m_entities_table.size()-1] = std::move(entry);
-
-	last_table.owner->get_entity().m_table_index = old_index;
-
-	m_entities_table[old_index] = std::move(last_table);
-
-	m_entities_table.pop_back();
-}
-
-void forge::Nexus::destroy_entity(Entity* entity)
-{
-	// free components and call their destructors
 	for (auto &[index, component] : entity->m_components)
 	{
 		m_component_table[index].free(component);
 	}
 
-	destroy_children(entity);
+	entity->m_components.clear();
+
+	for (auto &child : entity->m_children)
+	{
+		destroy_entity(&child);
+	}
 
 	if (!entity->m_name.empty())
 	{
 		m_name_table.erase(entity->m_name);
 	}
 
-	// swaps the current entity with the last entity in the table and updates its index then pops it for a fast removal
+	entity->m_is_valid = false;
+	entity->m_children.clear(false);
+	entity->m_transform = {};
+	entity->m_name.clear();
+	entity->m_parent = nullptr;
+	entity->m_top_most_parent = nullptr;
 
-	auto old_index = entity->m_index;
-
-	auto table_index = entity->m_table_index;
-	auto &entities = m_entities_table[table_index].entities;
-
-	// if its already at the back just pop it and stop
-	if (entities.size() == 1)
-	{
-		entities.pop_back();
-		return;
-	}
-	if (entities.empty())
-	{
-		return;
-	}
-
-	auto temp = std::move(entities.back());
-
-	entities[temp.entity.m_index].entity = std::move(*entity);
-
-	temp.entity.m_index = old_index;
-	temp.handle->index = old_index;
-
-	entities[old_index] = std::move(temp);
-
-	entities.pop_back();
+	m_entities.free(entity, false);
 }
 
 u8* forge::Nexus::add_component(Entity *entity, std::type_index index)
@@ -389,10 +346,15 @@ u8* forge::Nexus::add_component(Entity *entity, std::type_index index)
 
 	auto *component = (IComponent*)ptr;
 
-	component->m_owner = entity->get_view();
-	component->m_is_active = true;
+	component->m_owner = entity;
+	component->m_is_valid = true;
 	component->m_is_enabled = true;
 	component->m_id = id;
+
+	for (const auto &index : component->get_bundle())
+	{
+		add_component(entity, index);
+	}
 
 	component->on_create();
 
@@ -403,29 +365,23 @@ u8* forge::Nexus::add_component(Entity *entity, std::type_index index)
 
 	entity->m_components[index] = component;
 
-	for (const auto &index : component->get_bundle())
-	{
-		add_component(entity, index);
-	}
-
 	return ptr;
 }
 
-forge::EcsResult forge::Nexus::remove_component(Entity *entity, std::type_index index)
+void forge::Nexus::remove_component(Entity *entity, std::type_index index)
 {
 	auto iter = entity->m_components.find(index);
 
 	if (iter == entity->m_components.end())
 	{
-		return EcsResult::EntityDoesNotHaveComponent;
+		return;
 	}
+
 	auto &ct = m_component_table[index];
 
 	ct.free(iter->second);
 
 	entity->m_components.erase(iter);
-
-	return EcsResult::Ok;
 }
 
 void forge::Nexus::update()
@@ -450,15 +406,19 @@ void forge::Nexus::update()
 	{
 		std::scoped_lock lock {m_dirty_table_mutex};
 
-		for (auto &handle : m_entity_dirty_table)
+		for (auto *entity : m_entity_dirty_table)
 		{
-			auto &entity = handle->get_entity();
-			entity.update_hierarchy();
-			entity.m_is_queued_for_cleaning = false;
+			entity->update_hierarchy();
+			entity->m_is_queued_for_cleaning = false;
 		}
 
 		m_entity_dirty_table.clear();
 	}
+}
+
+forge::VirtualArray<forge::Entity> forge::Nexus::get_entities()
+{
+	return m_entities;
 }
 
 void forge::Nexus::clear()
@@ -469,9 +429,9 @@ void forge::Nexus::clear()
 		{
 			auto *component = (IComponent*)ptr;
 
-			if (component->m_is_active)
+			if (component->m_is_valid)
 			{
-				component->m_is_active = false;
+				component->m_is_valid = false;
 				component->on_destroy();
 			}
 		});
@@ -480,13 +440,8 @@ void forge::Nexus::clear()
 	m_entity_dirty_table.clear();
 	m_groups.clear();
 	// m_update_table.clear();
-	m_remove_queue.clear();
 	m_name_table.clear();
 	// m_component_table.clear();
 
-	for (auto &[handle, entities] : m_entities_table)
-	{
-		entities.clear();
-		handle.reset();
-	}
+	m_entities.clear(false);
 }

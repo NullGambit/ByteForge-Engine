@@ -52,21 +52,21 @@ void diseappring_cube_demo()
 
 	make_player();
 
-	auto &cube_entity = nexus->create_entity("cube");
+	auto *cube_entity = nexus->create_entity("cube");
 
-	auto *cube = cube_entity.add_component<MeshPrimitiveComponent>();
+	auto *cube = cube_entity->add_component<MeshPrimitiveComponent>();
 
 	cube->set_texture(FORGE_ENGINE_ASSET_DIR"textures/container2.png", forge::TextureType::Diffuse);
 
-	auto cube_position = cube_entity.get_local_position();
+	auto cube_position = cube_entity->get_local_position();
 
 	cube_position.x = 3;
 	cube_position.y = -1;
 	cube_position.z = -2;
 
-	cube_entity.set_local_position(cube_position);
+	cube_entity->set_local_position(cube_position);
 
-	auto lifetime = cube_entity.add_component<LifetimeComponent>();
+	auto lifetime = cube_entity->add_component<LifetimeComponent>();
 
 	lifetime->duration = std::chrono::seconds{2};
 
@@ -84,38 +84,38 @@ void crates_demo()
 
 	make_player();
 
-	auto &ground_ent = nexus->create_entity("ground");
+	auto *ground_ent = nexus->create_entity("ground");
 
-	auto *ground_mesh = ground_ent.add_component<MeshPrimitiveComponent>();
+	auto *ground_mesh = ground_ent->add_component<MeshPrimitiveComponent>();
 
 	ground_mesh->set_texture(DEMO_ASSET_DIR"textures/concrete.jpg", forge::TextureType::Diffuse);
 
 	ground_mesh->get_texture(forge::TextureType::Specular).strength = 2;
 	ground_mesh->get_texture(forge::TextureType::Diffuse).scale = 5;
 
-	auto ground_pos = ground_ent.get_local_position();
+	auto ground_pos = ground_ent->get_local_position();
 
 	ground_pos.x = 2;
 	ground_pos.y = -1.5;
 	ground_pos.z = 0;
 
-	ground_ent.set_local_position(ground_pos);
+	ground_ent->set_local_position(ground_pos);
 
-	auto ground_scale = ground_ent.get_local_scale();
+	auto ground_scale = ground_ent->get_local_scale();
 
 	ground_scale.x = 20;
 	ground_scale.y = 0.5;
 	ground_scale.z = 20;
 
-	ground_ent.set_local_scale(ground_scale);
+	ground_ent->set_local_scale(ground_scale);
 
-	auto &light_ent = nexus->create_entity("light");
+	auto *light_ent = nexus->create_entity("light");
 
-	auto *light = light_ent.add_component<LightComponent>()->get_light();
+	auto *light = light_ent->add_component<LightComponent>()->get_light();
 
 	light->type = forge::LightType::Direction;
 
-	light_ent.set_local_rotation({-0.2f, -1.0f, -0.3f});
+	light_ent->set_local_rotation({-0.2f, -1.0f, -0.3f});
 
 	forge::Array<glm::vec3> positions;
 
@@ -123,8 +123,8 @@ void crates_demo()
 
 	for (int i = 0; i < 15; i++)
 	{
-		auto &entity = nexus->create_entity(fmt::format("crate_{}", i));
-		auto *crate = entity.add_component<MeshPrimitiveComponent>();
+		auto *entity = nexus->create_entity(fmt::format("crate_{}", i));
+		auto *crate = entity->add_component<MeshPrimitiveComponent>();
 
 		crate->set_texture(FORGE_ENGINE_ASSET_DIR"textures/container2.png", forge::TextureType::Diffuse);
 		crate->set_texture(FORGE_ENGINE_ASSET_DIR"textures/container2_specular.png", forge::TextureType::Specular);
@@ -153,8 +153,8 @@ void crates_demo()
 		rotation.x = 0;
 		rotation.z = 0;
 
-		entity.set_local_position(position);
-		entity.set_local_rotation(rotation);
+		entity->set_local_position(position);
+		entity->set_local_rotation(rotation);
 
 		positions.emplace_back(position);
 	}
@@ -171,21 +171,21 @@ void bobbing_cluster()
 
 	for (auto i = 0; i < COUNT; i++)
 	{
-		auto &cube_entity = nexus->create_entity(fmt::format("cube_{}", i));
+		auto *cube_entity = nexus->create_entity(fmt::format("cube_{}", i));
 
-		auto *cube = cube_entity.add_component<MeshPrimitiveComponent>();
-		auto *bob = cube_entity.add_component<BobComponent>();
+		auto *cube = cube_entity->add_component<MeshPrimitiveComponent>();
+		auto *bob = cube_entity->add_component<BobComponent>();
 
 		bob->amplitude = util::rand_float(0.1, 2);
 		bob->amplitude = util::rand_float(0.1, 2);
 
 		cube->set_texture(FORGE_ENGINE_ASSET_DIR"textures/container2.png", forge::TextureType::Diffuse);
 
-		cube_entity.set_local_position(util::rand_vec3(-DISTANCE, DISTANCE));
+		cube_entity->set_local_position(util::rand_vec3(-DISTANCE, DISTANCE));
 
-		cube_entity.set_local_scale(glm::vec3{util::rand_float(0.1, 2)});
+		cube_entity->set_local_scale(glm::vec3{util::rand_float(0.1, 2)});
 
-		cube_entity.set_local_rotation(util::rand_vec3(-360, 360));
+		cube_entity->set_local_rotation(util::rand_vec3(-360, 360));
 	}
 }
 
@@ -195,12 +195,41 @@ void mesh_loading_demo()
 
 	make_player();
 
-	auto &player_ent = nexus->get_entity("player")->get_entity();
+	auto *player_ent = nexus->get_entity("player");
 
-	player_ent.set_local_position(glm::vec3{3.296, 1.75, 3.571});
-	player_ent.set_local_rotation(glm::vec3{-175, 25, 175});
+	player_ent->set_local_position(glm::vec3{3.296, 1.75, 3.571});
+	player_ent->set_local_rotation(glm::vec3{-175, 25, 175});
 
 	forge::load_meshes_hierarchy(DEMO_ASSET_DIR"models/room_test.glb");
+}
+
+// this component will make its entities transform become dirty in order to force it to update
+struct TransformDirtierComponent : forge::IComponent
+{
+	REGISTER_UPDATE_FUNC
+
+	void update(forge::DeltaTime delta) override
+	{
+		m_owner->set_local_position(glm::vec3{});
+	}
+};
+
+void ecs_stress_test()
+{
+	for (int i = 0; i < 100'000; i++)
+	{
+		auto *entity = g_engine.nexus->create_entity();
+
+		for (int j = 0; j < 8; j++)
+		{
+			auto *child = entity->emplace_child();
+
+			for (int k = 0; k < 4; k++)
+			{
+				child->emplace_child();
+			}
+		}
+	}
 }
 
 int main(int argc, const char **argv)
@@ -233,6 +262,7 @@ int main(int argc, const char **argv)
 	editor->demos.emplace("bobbing cluster", bobbing_cluster);
 	editor->demos.emplace("crates", crates_demo);
 	editor->demos.emplace("mesh loading", mesh_loading_demo);
+	editor->demos.emplace("ecs stress test", ecs_stress_test);
 
 	// editor->load_demo("crates");
 	editor->load_demo("mesh loading");

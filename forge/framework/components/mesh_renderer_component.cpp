@@ -77,11 +77,9 @@ void MeshRendererComponent::set_mesh(forge::RenderObjectTree &tree)
 {
 	m_object = tree.object;
 
-	auto &owner = m_owner->get_entity();
+	m_owner->set_transform(tree.transform);
 
-	owner.set_transform(tree.transform);
-
-	m_transform_update_con = owner.on_transform_update.connect([&object = m_object](const forge::Entity &entity)
+	m_transform_update_con = m_owner->on_transform_update.connect([&object = m_object](const forge::Entity &entity)
 	{
 		object->compute_model(entity.get_model());
 	});
@@ -98,9 +96,7 @@ void MeshRendererComponent::reset_mesh()
 
 	m_object = nullptr;
 
-	auto &owner = m_owner->get_entity();
-
-	owner.on_transform_update.disconnect(m_transform_update_con);
+	m_owner->on_transform_update.disconnect(m_transform_update_con);
 }
 
 void MeshRendererComponent::on_destroy()

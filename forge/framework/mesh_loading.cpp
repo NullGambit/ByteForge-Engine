@@ -10,11 +10,11 @@ namespace forge
 {
 	void create_entity_from_object(RenderObjectTree &node, Entity *parent)
 	{
-		auto &entity = parent ? parent->emplace_child(node.name) : g_engine.nexus->create_entity(node.name);
+		auto *entity = parent ? parent->emplace_child(node.name) : g_engine.nexus->create_entity(node.name);
 
 		if (node.light)
 		{
-			auto *light_comp = entity.add_component<LightComponent>();
+			auto *light_comp = entity->add_component<LightComponent>();
 
 			auto *light = light_comp->get_light();
 
@@ -25,14 +25,14 @@ namespace forge
 
 		if (node.object)
 		{
-			auto *mesh = entity.add_component<MeshRendererComponent>();
+			auto *mesh = entity->add_component<MeshRendererComponent>();
 
 			mesh->set_mesh(node);
 		}
 
 		for (auto &child : node.children)
 		{
-			create_entity_from_object(child, &entity);
+			create_entity_from_object(child, entity);
 		}
 	}
 }

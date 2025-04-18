@@ -15,7 +15,7 @@ public:
 	~MeshPrimitiveComponent() override
 	{
 		// m_renderer->destroy_primitive(m_data->get_id());
-		m_owner->get_entity().on_transform_update.disconnect(m_on_update_connection);
+		m_owner->on_transform_update.disconnect(m_on_update_connection);
 	}
 
 	void set_texture(std::string_view path, u32 type);

@@ -15,41 +15,26 @@
 #include "defs.hpp"
 
 #include "component_field.hpp"
-#include "ecs_views.hpp"
 #include "transform.hpp"
 #include "forge/util/types.hpp"
 
 // should get included as a part of ecs.hpp. don't remove this.
 #include "macro_warcrimes.hpp"
 #include "forge/container/array.hpp"
+#include "forge/container/view.hpp"
+#include "forge/container/virtual_array.hpp"
 #include "forge/events/timer.hpp"
 
 // the maximum amount of virtual memory that will be used for each component by default unless specified otherwise by the component
 #define DEFAULT_ECS_MAX_MAPPED_MEMORY MB(48)
+#define ECS_ENTITY_POOL_SIZE  500'000
+#define ECS_CHILD_LIMIT 32
 
 namespace forge
 {
-    enum class EcsResult
-    {
-        Ok,
-        ComponentAlreadyAddedToEntity,
-        ComponentNotRegistered,
-        ComponentAlreadyRegistered,
-        CouldNotAllocateComponentMemory,
-        CouldNotAddComponentToTypeMap,
-        EntityDoesNotHaveComponent,
-        EntityDoesNotExist,
-    };
+    class Nexus;
 
-    struct EntityEntry;
-
-    struct EntitiesTableEntry
-    {
-        EntityViewHandle owner;
-        std::vector<EntityEntry> entities;
-    };
-
-    using OnComponentDestroy = Signal<void()>;
+    using EntityID = u32;
 
     class IComponent
     {
@@ -65,9 +50,6 @@ namespace forge
         {
             return m_is_enabled;
         }
-
-        TimerID add_timer(TimerOptions &&options) const;
-        void stop_timer(TimerID id) const;
 
         virtual Array<std::type_index> get_bundle() { return {}; }
 
@@ -88,19 +70,24 @@ namespace forge
     private:
         friend Nexus;
         // if false this component has been freed
-        bool m_is_active = true;
+        bool m_is_valid = true;
         // if false this component should not be updated
         bool m_is_enabled = true;
 
         u32 m_id;
 
     protected:
-        EntityViewHandle m_owner;
+        Entity *m_owner;
 
         virtual void on_enabled() {}
         virtual void on_disabled() {}
         virtual void on_create() {}
         virtual void on_destroy() {}
+
+        // Convenience method to add a timer inside the nexus this component belongs to
+        TimerID add_timer(TimerOptions &&options) const;
+
+        void stop_timer(TimerID id) const;
     };
 
     class Entity final
@@ -120,22 +107,16 @@ namespace forge
         template<class T>
         T* get_component();
 
-        std::vector<EntityEntry>& get_children();
-
-        [[nodiscard]]
-        inline u32 get_children_index() const
-        {
-            return m_children_index;
-        }
+        VirtualArray<Entity> get_children() const;
 
         [[nodiscard]]
         inline bool has_children() const
         {
-            return m_children_index > 0;
+            return m_children.get_length() > 0;
         }
 
         [[nodiscard]]
-        size_t get_children_count();
+        size_t get_children_count() const;
 
         [[nodiscard]]
         inline EntityID get_id() const
@@ -160,12 +141,6 @@ namespace forge
             return m_name;
         }
 
-        [[nodiscard]]
-        inline Nexus* get_nexus() const
-        {
-            return m_nexus;
-        }
-
         void set_name(std::string_view new_name);
 
         [[nodiscard]]
@@ -175,19 +150,16 @@ namespace forge
         }
 
         template<class ...Args>
-        Entity& emplace_child(std::optional<std::string_view> name = std::nullopt);
+        Entity* emplace_child(std::string_view name = "");
 
         template<class T>
-        EcsResult remove_component();
+        void remove_component();
 
-        EcsResult remove_component(std::type_index index);
+        void remove_component(std::type_index index);
 
         void on_editor_enter();
 
         void update_hierarchy();
-
-        [[nodiscard]]
-        EntityViewHandle get_view() const;
 
         void destroy();
 
@@ -198,32 +170,26 @@ namespace forge
         }
 
         [[nodiscard]]
-        inline EntityViewHandle get_parent() const
+        inline Entity* get_parent()
         {
             return m_parent;
         }
 
         [[nodiscard]]
-        inline EntityViewHandle get_top_most_parent() const
+        inline Entity* get_top_most_parent()
         {
             if (m_parent == nullptr)
             {
-                return get_view();
+                return this;
             }
 
             return m_top_most_parent;
         }
 
         [[nodiscard]]
-        inline const Transform& get_top_most_parent_transform() const
-        {
-            return get_top_most_parent()->get_entity().m_transform;
-        }
-
-        [[nodiscard]]
         inline Transform get_top_most_parent_transform()
         {
-            return get_top_most_parent()->get_entity().m_transform;
+            return get_top_most_parent()->m_transform;
         }
 
         inline void set_local_position(Transform::PositionT position)
@@ -279,7 +245,7 @@ namespace forge
             m_transform.set_position(get_top_most_parent_transform().m_position, position);
         }
 
-        inline Transform::PositionT get_position() const
+        inline Transform::PositionT get_position()
         {
             return m_transform.get_position(get_top_most_parent_transform().m_position);
         }
@@ -296,12 +262,12 @@ namespace forge
             m_transform.set_rotation(get_top_most_parent_transform().m_rotation, rotation);
         }
 
-        inline glm::quat get_rotation() const
+        inline glm::quat get_rotation()
         {
             return m_transform.get_rotation(get_top_most_parent_transform().m_rotation);
         }
 
-        inline glm::vec3 get_euler_rotation() const
+        inline glm::vec3 get_euler_rotation()
         {
             return m_transform.get_euler_rotation(get_top_most_parent_transform().m_rotation);
         }
@@ -312,7 +278,7 @@ namespace forge
             m_transform.set_rotation(get_top_most_parent_transform().m_scale, scale);
         }
 
-        inline glm::vec3 get_scale() const
+        inline glm::vec3 get_scale()
         {
             return m_transform.get_euler_rotation(get_top_most_parent_transform().m_scale);
         }
@@ -322,9 +288,30 @@ namespace forge
             return m_transform.m_model;
         }
 
+        [[nodiscard]]
+        inline Nexus* get_nexus()
+        {
+            return m_nexus;
+        }
+
+        [[nodiscard]]
+        inline bool is_valid() const
+        {
+            return m_is_valid;
+        }
+
+        bool operator==(const Entity &other) const
+        {
+            return m_id == other.m_id;
+        }
+
+        bool operator==(const Entity *other) const
+        {
+            return m_id == other->m_id;
+        }
+
     private:
         friend Nexus;
-        friend EntityView;
 
         Transform m_transform;
 
@@ -332,47 +319,26 @@ namespace forge
 
         HashMap<std::type_index, IComponent*> m_components;
 
-        Nexus *m_nexus = nullptr;
+        Nexus *m_nexus;
 
-        // a view to its parent if it has any
-        EntityViewHandle m_parent = nullptr;
-        // the highest parent in this hierarchy at the top level in table 0
+        Entity *m_parent = nullptr;
+
+        // the highest parent in this hierarchy
         // this is mostly for global transform calculations and for the entity dirty table
-        EntityViewHandle m_top_most_parent = nullptr;
-        // the index of where its child is stored in the nexus' entity table
-        u32 m_children_index = 0;
-        // the index of where this entity is stored within its table
-        u32 m_index;
-        // the actual table this entity belongs to if 0 than it is a top level entity
-        u32 m_table_index;
-        // an id used for comparison and verification to make sure the entity has not been changed (swapped and popped?)
+        Entity *m_top_most_parent = nullptr;
+
+        VirtualArray<Entity> m_children;
+
         EntityID m_id;
 
         // will be set to true if any transform component is marked dirty and signifies that this entity has been marked for cleaning
         // is mainly used to avoid trying to add it to the dirty table more than once since the table is a vector
         bool m_is_queued_for_cleaning = false;
 
-        [[nodiscard]]
-        EntityViewHandle make_handle() const
-        {
-            return std::make_shared<EntityView>(EntityView
-            {
-                m_nexus,
-                m_index,
-                m_table_index,
-                m_id
-            });
-        }
+        // set to false if this entity is deallocated
+        bool m_is_valid = false;
 
-        void update_dirty_array() const;
-    };
-
-    struct EntityEntry
-    {
-        // the underlying entity
-        Entity entity;
-        // a view to the entity that will be given out as a reference and always kept updated
-        EntityViewHandle handle;
+        void update_dirty_array();
     };
 
     // if used within an IComponent class it will be used as a tag to signify that this component should be placed within the update table
@@ -407,13 +373,13 @@ namespace forge
 
         template<class T>
         requires(std::derived_from<T, IComponent>)
-        EcsResult register_component(bool override_should_update = false)
+        bool register_component(bool override_should_update = false)
         {
             constexpr auto &type = typeid(T);
 
             if (m_component_table.contains(type))
             {
-                return EcsResult::ComponentAlreadyRegistered;
+                return false;
             }
 
             auto emplaced = m_component_table.emplace(type, ComponentType{});
@@ -431,7 +397,7 @@ namespace forge
 
             if (!result)
             {
-                return EcsResult::CouldNotAllocateComponentMemory;
+                return false;
             }
 
             if (ComponentShouldEverUpdate<T> || override_should_update)
@@ -439,7 +405,7 @@ namespace forge
                 m_update_table.emplace_back(type);
             }
 
-            return emplaced.second ? EcsResult::Ok : EcsResult::CouldNotAddComponentToTypeMap;
+            return emplaced.second;
         }
 
         template<class T>
@@ -461,21 +427,21 @@ namespace forge
             return m_component_table.contains(index);
         }
 
-        Entity& create_entity(std::string_view name = "");
+        Entity* create_entity(std::string_view name = "", Entity *parent = nullptr);
 
         template<class ...Args>
-        Entity& create_entity(std::string_view name = "")
+        Entity* create_entity(std::string_view name = "", Entity *parent = nullptr)
         {
-            auto &entity = create_entity(name);
+            auto *entity = create_entity(name, parent);
 
-            (add_components<Args>(&entity), ...);
+            (add_components<Args>(entity), ...);
 
             return entity;
         }
 
-        void add_to_group(std::string_view group_name, Entity& entity);
+        void add_to_group(std::string_view group_name, Entity* entity);
 
-        void remove_from_group(std::string_view group_name, Entity& entity);
+        void remove_from_group(std::string_view group_name, Entity* entity);
 
         void remove_group(std::string_view group_name);
 
@@ -483,10 +449,10 @@ namespace forge
 
         // if trim_invalid_entities is true it will search the group for any entities that have been destroyed and remove them from the group
         [[nodiscard]]
-        std::vector<EntityViewHandle>* get_group(std::string_view group_name, bool trim_invalid_entities = true);
+        std::vector<Entity*>* get_group(std::string_view group_name, bool trim_invalid_entities = true);
 
         [[nodiscard]]
-        EntityViewHandle get_entity(std::string_view name);
+        Entity* get_entity(std::string_view name);
 
         auto& get_all_groups()
         {
@@ -517,34 +483,26 @@ namespace forge
         }
 
         template<class T>
-        EcsResult remove_component(Entity *entity)
+        void remove_component(Entity *entity)
         {
-            return remove_component(entity, typeid(T));
+            remove_component(entity, typeid(T));
         }
 
-        EcsResult remove_component(Entity *entity, std::type_index index);
+        void remove_component(Entity *entity, std::type_index index);
 
         void update() override;
-
-        std::vector<EntityEntry>& get_entities()
-        {
-            return m_entities_table[0].entities;
-        }
-
-        std::vector<EntitiesTableEntry>& get_all_entities()
-        {
-            return m_entities_table;
-        }
 
         inline HashMap<std::type_index, ComponentType>& get_component_table()
         {
             return m_component_table;
         }
 
+        VirtualArray<Entity> get_entities();
+
         [[nodiscard]]
-        inline bool is_index_valid(u32 table, u32 slot) const
+        inline size_t get_entity_count() const
         {
-            return table < m_entities_table.size() && slot < m_entities_table[table].entities.size();
+            return m_entities.get_length();
         }
 
         void clear();
@@ -553,21 +511,18 @@ namespace forge
 
     private:
         friend Entity;
-        friend EntityView;
 
         HashMap<std::type_index, ComponentType> m_component_table;
-        HashMap<std::string, EntityViewHandle, ENABLE_TRANSPARENT_HASH> m_name_table;
-        HashMap<std::string, std::vector<EntityViewHandle>, ENABLE_TRANSPARENT_HASH> m_groups;
+        HashMap<std::string_view, Entity*> m_name_table;
+        HashMap<std::string, std::vector<Entity*>, ENABLE_TRANSPARENT_HASH> m_groups;
         // holds on to all the entities that have a dirty flag set in their hierarchy. will be cleared once updated
         // the entity view is always the top most parent in that hierarchy. could potentially be optimized to only store
         // the part of the hierarchy that actually needs to be updated
         mutable std::mutex m_dirty_table_mutex;
-        std::vector<EntityViewHandle> m_entity_dirty_table;
+        std::vector<Entity*> m_entity_dirty_table;
         std::vector<std::type_index> m_update_table;
-        // stores an array of all entity arrays in the nexus including nested array of entities (child entities)
-        std::vector<EntitiesTableEntry> m_entities_table;
-        std::vector<std::pair<std::type_index, size_t>> m_remove_queue;
-        EntityID m_id_counter {};
+        VirtualArray<Entity> m_entities;
+        u64 m_id_counter {};
     };
 
     template<class T>
@@ -596,45 +551,13 @@ namespace forge
     }
 
     template<class ... Args>
-    Entity& Entity::emplace_child(std::optional<std::string_view> name)
+    Entity* Entity::emplace_child(std::string_view name)
     {
-        auto should_create_children = m_children_index == 0;
-
-        auto &children =
-            should_create_children
-            ? m_nexus->m_entities_table.emplace_back(EntitiesTableEntry{get_view(), {}}).entities
-            : m_nexus->m_entities_table[m_children_index].entities;
-
-        auto index = children.size();
-        auto &[entity, handle] = children.emplace_back();
-
-        if (should_create_children)
-        {
-            m_children_index = m_nexus->m_entities_table.size() - 1;
-        }
-
-        entity.m_parent = get_view();
-        entity.m_top_most_parent = get_top_most_parent();
-        entity.m_nexus = m_nexus;
-        entity.m_table_index = m_children_index;
-        entity.m_index = index;
-        entity.m_id = m_nexus->m_id_counter++;
-
-        handle = entity.make_handle();
-
-        if (name)
-        {
-            entity.m_name = name.value();
-            m_nexus->m_name_table[entity.m_name] = entity.get_view();
-        }
-
-        (m_nexus->add_components<Args>(&entity), ...);
-
-        return entity;
+        return m_nexus->create_entity<Args...>(name, this);
     }
 
     template<class T>
-    EcsResult Entity::remove_component()
+    void Entity::remove_component()
     {
         return m_nexus->remove_component<T>(this);
     }

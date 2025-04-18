@@ -328,7 +328,7 @@ protected:
 		ImGui::Text("FPS: %d", (int)last_frame);
 		ImGui::Text("Tick: %f", last_engine_delta);
 		ImGui::Text("Draw calls: %d", render_stats.draw_calls);
-		ImGui::Text("Entity tables: %d", m_nexus->get_all_entities().size());
+		ImGui::Text("Entity count: %d", m_nexus->get_entity_count());
 	}
 };
 
@@ -494,24 +494,20 @@ protected:
 		return vec_drag_control(label, ptr, sizeof(T) / sizeof(ptr[0]), uniform, speed, min_steps, max_steps);
 	}
 
-
-
 	void draw_right_side()
 	{
-		if (show_window && (m_selected_entity && m_selected_entity->has_value()))
+		if (show_window && m_selected_entity && m_selected_entity->is_valid())
 		{
 			ScopedWindow components_window {"Components"};
 
-			if (!m_selected_entity->is_entity_valid())
+			if (!m_selected_entity->is_valid())
 			{
 				return;
 			}
 
-			auto &entity = m_selected_entity->get_entity();
-
 			char name_buffer[256] {};
 
-			auto name = entity.get_name();
+			auto name = m_selected_entity->get_name();
 
 			if (!name.empty())
 			{
@@ -520,35 +516,35 @@ protected:
 
 			if (ImGui::InputText("##", name_buffer, sizeof(name_buffer)))
 			{
-				entity.set_name(name_buffer);
+				m_selected_entity->set_name(name_buffer);
 			}
 
 			ImGui::SameLine();
 
-			ImGui::Text("(%d)", entity.get_id());
+			ImGui::Text("(%d)", m_selected_entity->get_id());
 
 			if (ImGui::CollapsingHeader("Transform"))
 			{
 				static bool uniform_scale = true;
 
-				auto scale = entity.get_local_scale();
+				auto scale = m_selected_entity->get_local_scale();
 
 				// TODO: fix this garbage uniform scaling code
 				auto changed_scale = vec_drag_control("Scale", scale, &uniform_scale);
 
-				entity.set_local_scale(uniform_scale && changed_scale ? glm::vec3{scale[0]} : scale);
+				m_selected_entity->set_local_scale(uniform_scale && changed_scale ? glm::vec3{scale[0]} : scale);
 
-				auto position = entity.get_local_position();
+				auto position = m_selected_entity->get_local_position();
 
 				vec_drag_control("Position", position);
 
-				entity.set_local_position(position);
+				m_selected_entity->set_local_position(position);
 
-				auto rotation = entity.get_local_euler_rotation();
+				auto rotation = m_selected_entity->get_local_euler_rotation();
 
 				vec_drag_control("Rotation", rotation);
 
-				entity.set_local_rotation(rotation);
+				m_selected_entity->set_local_rotation(rotation);
 			}
 
 			ImGui::Separator();
@@ -564,14 +560,14 @@ protected:
 				{
 					if (ImGui::Selectable(util::type_name(index).data()))
 					{
-						entity.add_component(index);
+						m_selected_entity->add_component(index);
 					}
 				}
 
 				ImGui::EndPopup();
 			}
 
-			for (auto i = 0; auto &[index, component] : entity.get_components())
+			for (auto i = 0; auto &[index, component] : m_selected_entity->get_components())
 			{
 				auto is_enabled = component->is_enabled();
 
@@ -599,7 +595,7 @@ protected:
 
 					if (should_delete)
 					{
-						entity.remove_component(index);
+						m_selected_entity->remove_component(index);
 					}
 				}
 			}
@@ -614,7 +610,9 @@ protected:
 			{
 				m_is_in_group_tab = false;
 
-				show_entities(0);
+				auto entities = g_engine.nexus->get_entities();
+
+				show_entities(entities);
 
 				ImGui::EndTabItem();
 			}
@@ -664,14 +662,14 @@ protected:
 					},
 				});
 
-				for (auto &view : entities)
+				for (auto *entity : entities)
 				{
-					if (!view->is_entity_valid())
+					if (!entity->is_valid())
 					{
 						continue;
 					}
 
-					draw_entity(view->get_entity(), name);
+					draw_entity(*entity, name);
 				}
 
 				ImGui::TreePop();
@@ -695,7 +693,7 @@ protected:
 
 		auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
 
-		if (m_selected_entity == entity.get_view())
+		if (m_selected_entity && m_selected_entity == entity)
 		{
 			flags |= ImGuiTreeNodeFlags_Selected;
 		}
@@ -713,19 +711,19 @@ protected:
 
 		if (ImGui::IsItemClicked())
 		{
-			m_selected_entity = entity.get_view();
+			m_selected_entity = &entity;
 		}
 
 		if (check_context_menu("EntityContext"))
 		{
-			m_selected_context_entity = entity.get_view();
+			m_selected_context_entity = &entity;
 		}
 
-		if (entity.get_view() == m_selected_context_entity && ImGui::BeginPopup("EntityContext"))
+		if (m_selected_context_entity && entity == m_selected_context_entity && ImGui::BeginPopup("EntityContext"))
 		{
 			if (ImGui::Selectable("Add child"))
 			{
-				m_selected_entity = entity.emplace_child().get_view();
+				m_selected_entity = entity.emplace_child();
 			}
 			if (ImGui::BeginMenu("Add to group"))
 			{
@@ -735,7 +733,7 @@ protected:
 				{
 					if (ImGui::MenuItem(name.data()))
 					{
-						m_nexus->add_to_group(name, m_selected_context_entity->get_entity());
+						m_nexus->add_to_group(name, m_selected_context_entity);
 					}
 				}
 
@@ -743,14 +741,14 @@ protected:
 			}
 			if (m_is_in_group_tab && ImGui::Selectable("Remove from group"))
 			{
-				m_nexus->remove_from_group(from_group, m_selected_context_entity->get_entity());
+				m_nexus->remove_from_group(from_group, m_selected_context_entity);
 			}
 
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
 
 			if (ImGui::Selectable("Delete"))
 			{
-				m_selected_context_entity->get_entity().destroy();
+				m_selected_context_entity->destroy();
 				m_selected_context_entity = nullptr;
 			}
 
@@ -761,31 +759,23 @@ protected:
 
 		if (node_enabled)
 		{
-			auto children_index = entity.get_children_index();
-
-			if (children_index > 0)
+			if (entity.has_children())
 			{
-				show_entities(children_index, from_group);
+				show_entities(entity.get_children(), from_group);
 			}
 
 			ImGui::TreePop();
 		}
 	}
 
-	void show_entities(u32 entity_table_index = 0, std::string_view from_group = "")
+	void show_entities(forge::VirtualArray<forge::Entity> entities, std::string_view from_group = "")
 	{
-		auto &entities_table = m_nexus->get_all_entities();
-
-		if (entity_table_index >= entities_table.size())
+		for (auto &entity : entities)
 		{
-			return;
-		}
-
-		auto &entities = entities_table[entity_table_index].entities;
-
-		for (auto &[entity, _] : entities)
-		{
-			draw_entity(entity, from_group);
+			if (entity.is_valid())
+			{
+				draw_entity(entity, from_group);
+			}
 		}
 	}
 
@@ -811,8 +801,8 @@ protected:
 
 private:
 	u32 m_entity_counter = 0;
-	forge::EntityViewHandle m_selected_entity;
-	forge::EntityViewHandle m_selected_context_entity;
+	forge::Entity *m_selected_entity = nullptr;
+	forge::Entity *m_selected_context_entity = nullptr;
 	std::string_view m_filter;
 	bool m_is_in_group_tab = false;
 	std::string_view m_last_hovered_group_name;
@@ -938,16 +928,16 @@ std::string forge::EditorSubsystem::init(const EngineInitOptions &options)
 	}
 
 	// entity for all editor windows
-	auto &windows_entity = m_nexus.create_entity("windows");
+	auto *windows_entity = m_nexus.create_entity("windows");
 
-	windows_entity.add_components<StatisticsEditorWindow, SettingsEditorWindow, SceneOutlineEditorWindow, ResourcesWindow>();
+	windows_entity->add_components<StatisticsEditorWindow, SettingsEditorWindow, SceneOutlineEditorWindow, ResourcesWindow>();
 
-	windows_entity.on_editor_enter();
+	windows_entity->on_editor_enter();
 
 	// entity for anything related to view config such as the top bar
-	auto &config_entity = m_nexus.create_entity("config");
+	auto *config_entity = m_nexus.create_entity("config");
 
-	config_entity.add_components<TopBarEditorComponent>();
+	config_entity->add_components<TopBarEditorComponent>();
 
 	return {};
 }

@@ -4,6 +4,8 @@
 
 std::string forge::WindowSubSystem::init(const EngineInitOptions &options)
 {
+	m_windows.init(MAX_WINDOW_COUNT);
+
 	auto ok = glfwInit();
 
 	if (!ok)

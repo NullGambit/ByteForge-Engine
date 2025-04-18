@@ -2,8 +2,9 @@
 
 #include <cstdint>
 #include <functional>
-#include <vector>
 
+#include "forge/container/array.hpp"
+#include "forge/container/view.hpp"
 #include "forge/core/logging.hpp"
 #include "forge/util/types.hpp"
 
@@ -127,6 +128,10 @@ namespace forge
 
 		MemPoolObject allocate(bool construct = false);
 
+		// Will allocate a contiguous sequence of memory
+		// TODO: make sure this eventually uses a freelist otherwise will run out of memory even though there is enough free memory
+		MemPoolObject allocate(u32 count, bool construct = false);
+
 		template<class T>
 		void set_destructor()
 		{
@@ -219,7 +224,7 @@ namespace forge
 		size_t m_length;
 		size_t m_element_size;
 		size_t m_map_size;
-		std::vector<size_t> m_free_list;
+		Array<size_t> m_free_list;
 		DestroyFunc m_destroy_func = nullptr;
 		ConstructFunc m_construct_func = nullptr;
 	};

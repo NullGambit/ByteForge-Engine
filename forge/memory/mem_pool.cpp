@@ -59,6 +59,29 @@ forge::MemPoolObject forge::MemPool::allocate(bool construct)
 	return {out_mem, mem_offset};
 }
 
+forge::MemPoolObject forge::MemPool::allocate(u32 count, bool construct)
+{
+	auto offset = m_offset;
+
+	auto *out_mem = m_memory + offset;
+
+	m_length += count;
+	m_offset += m_element_size * count;
+
+	if (construct && m_construct_func)
+	{
+		auto *mem = out_mem;
+
+		for (auto i = 0; i < count; i++)
+		{
+			m_construct_func(mem);
+			mem += m_element_size;
+		}
+	}
+
+	return {out_mem, offset};
+}
+
 void forge::MemPool::free(size_t offset_to_free, bool destroy)
 {
 	if (destroy && m_destroy_func)

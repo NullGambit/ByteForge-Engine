@@ -33,8 +33,6 @@ void PlayerController::handle_look()
 
 	m_camera->pitch = glm::clamp(m_camera->pitch, -89.0f, 89.0f);
 
-	auto &owner = m_owner->get_entity();
-
 	// glm::vec3 front;
 	// front.x = cos(glm::radians(m_pitch)) * sin(glm::radians(m_yaw));
 	// front.y = sin(glm::radians(m_pitch));
@@ -82,10 +80,8 @@ void PlayerController::handle_other_input()
 }
 
 void PlayerController::handle_movement(forge::DeltaTime delta)
-
 {
-	auto &owner = m_owner->get_entity();
-	auto position = owner.get_local_position();
+	auto position = m_owner->get_local_position();
 
 	auto speed = ((is_key_held(forge::Key::LeftShift) ? m_boost_speed : 0) + m_speed) * delta;
 
@@ -114,10 +110,10 @@ void PlayerController::handle_movement(forge::DeltaTime delta)
 		position.y -= speed;
 	}
 
-	owner.set_local_position(position);
+	m_owner->set_local_position(position);
 }
 
 void PlayerController::on_create()
 {
-	m_camera = m_owner->get_entity().get_component<forge::CameraComponent>();
+	m_camera = m_owner->get_component<forge::CameraComponent>();
 }

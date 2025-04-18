@@ -7,8 +7,8 @@ void LifetimeComponent::start()
 		.duration = duration,
 		.on_timeout = [&owner = m_owner]
 		{
-			log::info("destroyed");
-			owner->get_entity().destroy();
+			log::info("destroyed {}", owner->get_name());
+			owner->destroy();
 		},
 		.one_shot = true
 	});

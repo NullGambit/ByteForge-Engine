@@ -35,6 +35,6 @@ namespace forge
 		float get_runtime() const;
 
 	private:
-		VirtualArray<Window> m_windows {MAX_WINDOW_COUNT};
+		VirtualArray<Window> m_windows;
 	};
 }

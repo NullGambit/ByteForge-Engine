@@ -4,9 +4,7 @@ void BobComponent::update(forge::DeltaTime delta)
 {
 	m_accumulated_time += delta;
 
-	auto &owner = m_owner->get_entity();
-
-	auto position = owner.get_local_position();
+	auto position = m_owner->get_local_position();
 
 	auto angular_frequency = 2.0f * M_PI * frequency;
 
@@ -25,5 +23,5 @@ void BobComponent::update(forge::DeltaTime delta)
 		position.y = amplitude * glm::cos(angular_frequency * m_accumulated_time);
 	}
 
-	owner.set_local_position(position);
+	m_owner->set_local_position(position);
 }
