@@ -33,6 +33,7 @@
 namespace forge
 {
     class Nexus;
+    class Entity;
 
     using EntityID = u32;
 
@@ -132,7 +133,11 @@ namespace forge
 
         inline void set_transform(const Transform &transform)
         {
+            update_dirty_array();
+
             m_transform = transform;
+
+            m_transform.m_parent = m_parent ? &m_parent->m_transform : nullptr;
         }
 
         [[nodiscard]]
@@ -192,15 +197,15 @@ namespace forge
             return get_top_most_parent()->m_transform;
         }
 
-        inline void set_local_position(Transform::PositionT position)
+        inline void set_local_position(glm::vec3 position)
         {
             update_dirty_array();
             m_transform.set_local_position(position);
         }
 
-        inline Transform::PositionT get_local_position() const
+        inline glm::vec3 get_local_position() const
         {
-            return m_transform.m_position;
+            return m_transform.get_local_position();
         }
 
         inline void set_local_rotation(glm::vec3 euler_rotation)
@@ -220,7 +225,7 @@ namespace forge
 
         inline glm::quat get_local_rotation() const
         {
-            return m_transform.m_rotation;
+            return m_transform.get_local_rotation();
         }
 
         inline glm::vec3 get_local_euler_rotation() const
@@ -228,64 +233,53 @@ namespace forge
             return m_transform.get_local_euler_rotation();
         }
 
-        inline void set_local_scale(glm::vec3 scale)
+        inline void set_scale(glm::vec3 scale)
         {
             update_dirty_array();
-            m_transform.set_local_scale(scale);
+            m_transform.set_scale(scale);
         }
 
-        inline glm::vec3 get_local_scale() const
+        inline glm::vec3 get_scale() const
         {
-            return m_transform.m_scale;
+            return m_transform.get_scale();
         }
 
-        inline void set_position(Transform::PositionT position)
+        inline void set_position(glm::vec3 position)
         {
             update_dirty_array();
-            m_transform.set_position(get_top_most_parent_transform().m_position, position);
+            m_transform.set_position(position);
         }
 
-        inline Transform::PositionT get_position()
+        inline glm::vec3 get_position()
         {
-            return m_transform.get_position(get_top_most_parent_transform().m_position);
+            return m_transform.get_position();
         }
 
         inline void set_rotation(glm::vec3 euler_rotation)
         {
             update_dirty_array();
-            m_transform.set_rotation(get_top_most_parent_transform().m_rotation, euler_rotation);
+            m_transform.set_rotation(euler_rotation);
         }
 
         inline void set_rotation(glm::quat rotation)
         {
             update_dirty_array();
-            m_transform.set_rotation(get_top_most_parent_transform().m_rotation, rotation);
+            m_transform.set_rotation(rotation);
         }
 
         inline glm::quat get_rotation()
         {
-            return m_transform.get_rotation(get_top_most_parent_transform().m_rotation);
+            return m_transform.get_rotation();
         }
 
         inline glm::vec3 get_euler_rotation()
         {
-            return m_transform.get_euler_rotation(get_top_most_parent_transform().m_rotation);
+            return m_transform.get_euler_rotation();
         }
 
-        inline void set_scale(glm::vec3 scale)
+        inline glm::mat4 get_model() const
         {
-            update_dirty_array();
-            m_transform.set_rotation(get_top_most_parent_transform().m_scale, scale);
-        }
-
-        inline glm::vec3 get_scale()
-        {
-            return m_transform.get_euler_rotation(get_top_most_parent_transform().m_scale);
-        }
-
-        inline Transform::MatT get_model() const
-        {
-            return m_transform.m_model;
+            return m_transform.get_global_matrix();
         }
 
         [[nodiscard]]
@@ -339,6 +333,8 @@ namespace forge
         bool m_is_valid = false;
 
         void update_dirty_array();
+
+        void set_parent(Entity *parent);
     };
 
     // if used within an IComponent class it will be used as a tag to signify that this component should be placed within the update table

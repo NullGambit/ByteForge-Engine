@@ -31,7 +31,7 @@ namespace forge
 
 		if (node->has_scale)
 		{
-			out.transform.set_local_scale(glm::make_vec3(node->scale));
+			out.transform.set_scale(glm::make_vec3(node->scale));
 		}
 		if (node->has_translation)
 		{
@@ -41,22 +41,15 @@ namespace forge
 		{
 			out.transform.set_local_rotation(glm::make_quat(node->rotation));
 		}
-
-		auto model = node->has_matrix ? glm::make_mat4(node->matrix) : glm::mat4{1.0};
-
-		if (node->parent && node->parent->has_matrix)
+		if (node->has_matrix)
 		{
-			model = glm::make_mat4(node->parent->matrix) * model;
+			out.transform.set_model(glm::make_mat4(node->matrix));
 		}
-
-		out.transform.set_model(model);
-		out.transform.compute_local_transform();
 
 		if (node->light != nullptr)
 		{
 			Light light;
 
-			light.position = out.transform.get_local_position();
 			light.color = glm::make_vec3(node->light->color);
 			light.type = LightType::Point;
 			light.enabled = true;
@@ -172,7 +165,7 @@ namespace forge
 			return std::nullopt;
 		}
 
-		result = cgltf_load_buffers(&gltf_options, data, "model.gltf");
+		result = cgltf_load_buffers(&gltf_options, data, filepath.data());
 
 		if (result != cgltf_result_success)
 		{

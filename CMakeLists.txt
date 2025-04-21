@@ -122,6 +122,7 @@ dep/glad/include/glad/glad.h
         forge/framework/components/mesh_renderer_component.cpp
         forge/framework/components/mesh_renderer_component.hpp
         forge/container/view.hpp
+        forge/memory/virtual_allocator.hpp
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")

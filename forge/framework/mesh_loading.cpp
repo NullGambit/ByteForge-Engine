@@ -29,6 +29,10 @@ namespace forge
 
 			mesh->set_mesh(node);
 		}
+		else
+		{
+			entity->set_transform(node.transform);
+		}
 
 		for (auto &child : node.children)
 		{

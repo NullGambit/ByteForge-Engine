@@ -264,6 +264,8 @@ forge::RenderObjectTree forge::OglRenderer::create_node_buffers(MeshLoaderNode &
 {
 	RenderObjectTree out;
 
+	out.transform = node.transform;
+
 	out.name = node.name;
 
 	if (node.light)
@@ -280,9 +282,8 @@ forge::RenderObjectTree forge::OglRenderer::create_node_buffers(MeshLoaderNode &
 		rd->in_use = true;
 
 		out.object = &rd->object;
-		out.transform = node.transform;
 
-		rd->object.compute_model(node.transform.get_model());
+		rd->object.compute_model(node.transform.get_global_matrix());
 		rd->object.material = primitive.material;
 		rd->textures[TextureType::Diffuse].load(primitive.texture);
 		rd->index_size = primitive.mesh.indices.size();

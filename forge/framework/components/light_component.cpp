@@ -11,11 +11,11 @@ void LightComponent::on_create()
 
 	m_light = renderer->create_light();
 
-	// m_owner-on_transform_update.connect([&light = m_light](forge::Entity &entity)
-	// {
-	// 	light->position = entity.get_local_position();
-	// 	light->direction = entity.get_local_euler_rotation();
-	// });
+	m_owner->on_transform_update.connect([&light = m_light](forge::Entity &entity)
+	{
+		light->position = entity.get_position();
+		light->direction = entity.get_euler_rotation();
+	});
 }
 
 void LightComponent::on_destroy()

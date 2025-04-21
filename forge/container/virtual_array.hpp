@@ -6,6 +6,7 @@
 
 #include "forge/core/logging.hpp"
 #include "forge/memory/defs.hpp"
+#include "forge/memory/virtual_allocator.hpp"
 #include "forge/system/virtual_memory.hpp"
 #include "forge/util/types.hpp"
 
@@ -14,7 +15,7 @@
 namespace forge
 {
 	// an array backed by virtual memory that does not grow or shrink
-	template<class T>
+	template<class T, class Allocator = VirtualAllocator<T>>
 	class VirtualArray
 	{
 		struct Header
@@ -51,7 +52,7 @@ namespace forge
 				m_map_size = max_elements * sizeof(Header);
 			}
 
-			m_memory = virtual_alloc(m_map_size);
+			m_memory = m_allocator.allocate_bytes(m_map_size);
 
 			m_offset = 0;
 			m_length = 0;
@@ -65,7 +66,7 @@ namespace forge
 
 			if (m_memory)
 			{
-				virtual_free(m_memory);
+				m_allocator.deallocate_bytes(m_memory, m_map_size);
 				m_memory = nullptr;
 			}
 		}
@@ -264,6 +265,7 @@ namespace forge
 		u32 m_offset = 0;
 		u32 m_length = 0;
 		u32 m_map_size = 0;
+		Allocator m_allocator;
 
 		// the start of the first free VirtualArray header
 		Header *m_free_head = nullptr;
@@ -275,8 +277,8 @@ namespace forge
 		}
 	};
 
-	template<class T>
-	class VirtualArray<T>::Iterator
+	template<class T, class Allocator>
+	class VirtualArray<T, Allocator>::Iterator
 	{
 	public:
 		using value_type = T;

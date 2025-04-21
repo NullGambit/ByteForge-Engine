@@ -101,13 +101,13 @@ void crates_demo()
 
 	ground_ent->set_local_position(ground_pos);
 
-	auto ground_scale = ground_ent->get_local_scale();
+	auto ground_scale = ground_ent->get_scale();
 
 	ground_scale.x = 20;
 	ground_scale.y = 0.5;
 	ground_scale.z = 20;
 
-	ground_ent->set_local_scale(ground_scale);
+	ground_ent->set_scale(ground_scale);
 
 	auto *light_ent = nexus->create_entity("light");
 
@@ -183,7 +183,7 @@ void bobbing_cluster()
 
 		cube_entity->set_local_position(util::rand_vec3(-DISTANCE, DISTANCE));
 
-		cube_entity->set_local_scale(glm::vec3{util::rand_float(0.1, 2)});
+		cube_entity->set_scale(glm::vec3{util::rand_float(0.1, 2)});
 
 		cube_entity->set_local_rotation(util::rand_vec3(-360, 360));
 	}

@@ -525,26 +525,47 @@ protected:
 
 			if (ImGui::CollapsingHeader("Transform"))
 			{
+				static bool use_global = false;
+
+				ImGui::Checkbox("Global", &use_global);
+
 				static bool uniform_scale = true;
 
-				auto scale = m_selected_entity->get_local_scale();
+				auto scale = m_selected_entity->get_scale();
 
 				// TODO: fix this garbage uniform scaling code
 				auto changed_scale = vec_drag_control("Scale", scale, &uniform_scale);
 
-				m_selected_entity->set_local_scale(uniform_scale && changed_scale ? glm::vec3{scale[0]} : scale);
+				m_selected_entity->set_scale(uniform_scale && changed_scale ? glm::vec3{scale[0]} : scale);
 
-				auto position = m_selected_entity->get_local_position();
+				if (use_global)
+				{
+					auto position = m_selected_entity->get_position();
 
-				vec_drag_control("Position", position);
+					vec_drag_control("Position", position);
 
-				m_selected_entity->set_local_position(position);
+					m_selected_entity->set_position(position);
 
-				auto rotation = m_selected_entity->get_local_euler_rotation();
+					auto rotation = m_selected_entity->get_euler_rotation();
 
-				vec_drag_control("Rotation", rotation);
+					vec_drag_control("Rotation", rotation);
 
-				m_selected_entity->set_local_rotation(rotation);
+					m_selected_entity->set_rotation(rotation);
+				}
+				else
+				{
+					auto position = m_selected_entity->get_local_position();
+
+					vec_drag_control("Position", position);
+
+					m_selected_entity->set_local_position(position);
+
+					auto rotation = m_selected_entity->get_local_euler_rotation();
+
+					vec_drag_control("Rotation", rotation);
+
+					m_selected_entity->set_local_rotation(rotation);
+				}
 			}
 
 			ImGui::Separator();

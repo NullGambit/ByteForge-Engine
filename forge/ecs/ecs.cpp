@@ -73,24 +73,19 @@ void forge::Entity::update_hierarchy()
 {
 	if (m_parent != nullptr)
 	{
-		m_transform.m_model = m_parent->m_transform.m_model * m_transform.compute_local_transform();
+		m_transform.m_global_matrix = m_parent->m_transform.m_global_matrix * m_transform.compute_local_transform();
 	}
 	else
 	{
-		m_transform.m_model = m_transform.compute_local_transform();
-	}
-
-	on_transform_update(*this);
-
-	if (m_children.get_length() == 0)
-	{
-		return;
+		m_transform.m_global_matrix = m_transform.compute_local_transform();
 	}
 
 	for (auto &child : m_children)
 	{
 		child.update_hierarchy();
 	}
+
+	on_transform_update(*this);
 }
 
 void forge::Entity::destroy()
@@ -109,6 +104,12 @@ void forge::Entity::update_dirty_array()
 		m_nexus->m_entity_dirty_table.emplace_back(top_most_parent);
 		top_most_parent->m_is_queued_for_cleaning = true;
 	}
+}
+
+void forge::Entity::set_parent(Entity *parent)
+{
+	m_parent = parent;
+	m_transform.m_parent = &parent->m_transform;
 }
 
 void forge::Nexus::ComponentType::free(IComponent *component)
@@ -187,12 +188,12 @@ forge::Entity* forge::Nexus::create_entity(std::string_view name, Entity *parent
 
 	if (!reused)
 	{
-		std::construct_at(entity);
+		new (entity) Entity();
 	}
 
 	if (is_child)
 	{
-		entity->m_parent = parent;
+		entity->set_parent(parent);
 		entity->m_top_most_parent = parent->get_top_most_parent();
 	}
 

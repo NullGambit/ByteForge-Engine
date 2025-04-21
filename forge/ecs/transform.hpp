@@ -10,20 +10,16 @@ namespace forge
 {
 	class Entity;
 
-	template<class T>
-	class TransformBase final
+	class Transform final
 	{
 	public:
-		using PositionT = glm::vec<3, T>;
-		using MatT = glm::mat<4, 4, T>;
-
-		inline void set_local_position(PositionT position)
+		inline void set_local_position(glm::vec3 position)
 		{
 			m_position = position;
 			m_is_dirty = true;
 		}
 
-		inline PositionT get_local_position() const
+		inline glm::vec3 get_local_position() const
 		{
 			return m_position;
 		}
@@ -52,75 +48,91 @@ namespace forge
 			return {glm::degrees(radians.x), glm::degrees(radians.y), glm::degrees(radians.z)};
 		}
 
-		inline void set_local_scale(glm::vec3 scale)
+		inline void set_scale(glm::vec3 scale)
 		{
 			m_scale = scale;
 			m_is_dirty = true;
 		}
 
-		inline glm::vec3 get_local_scale() const
+		inline glm::vec3 get_scale() const
 		{
 			return m_scale;
 		}
 
-		inline void set_position(PositionT parent, glm::vec3 position)
+		inline void set_position(glm::vec3 position)
 		{
-			m_position = parent * position;
+			if (m_parent)
+			{
+				const auto inverse_parent_matrix = glm::inverse(m_parent->m_global_matrix);
+				const auto local_pos			 = inverse_parent_matrix * glm::vec4(position, 1.0f);
+
+				set_local_position(glm::vec3(local_pos));
+			}
+			else
+			{
+				set_local_position(position);
+			}
+
 			m_is_dirty = true;
 		}
 
-		inline PositionT get_position(PositionT parent) const
+		inline glm::vec3 get_position() const
 		{
-			return parent * m_position;
+			return glm::vec3{m_global_matrix[3]};
 		}
 
-		inline void set_rotation(glm::vec3 parent, glm::vec3 euler_rotation)
+		inline void set_rotation(glm::vec3 euler_rotation)
 		{
-			m_rotation = parent * glm::radians(euler_rotation);
+			set_rotation(glm::quat{glm::radians(euler_rotation)});
 			m_is_dirty = true;
 		}
 
-		inline void set_rotation(glm::quat parent, glm::quat rotation)
+		inline void set_rotation(glm::quat rotation)
 		{
-			m_rotation = parent * rotation;
+			if (m_parent)
+			{
+				glm::quat parentGlobalRot = m_parent->get_global_matrix();
+				auto localRot = glm::inverse(parentGlobalRot) * rotation;
+
+				set_local_rotation(localRot);
+			}
+			else
+			{
+				set_local_rotation(rotation);
+			}
+
 			m_is_dirty = true;
 		}
 
 		inline void set_model(glm::mat4 model)
 		{
-			m_model = model;
+			m_global_matrix = model;
 			m_is_dirty = true;
 		}
 
-		inline glm::quat get_rotation(glm::quat parent) const
+		inline glm::quat get_rotation() const
 		{
-			return parent * m_rotation;
+			if (m_parent)
+			{
+				return m_parent->get_rotation() * m_rotation;
+			}
+
+			return m_rotation;
 		}
 
-		inline glm::vec3 get_euler_rotation(glm::quat parent) const
+		inline glm::vec3 get_euler_rotation() const
 		{
-			return parent * glm::eulerAngles(m_rotation);
+			return glm::eulerAngles(get_rotation());
 		}
 
-		inline void set_scale(glm::vec3 parent, glm::vec3 scale)
+		inline const glm::mat4& get_global_matrix() const
 		{
-			m_scale = parent * scale;
-			m_is_dirty = true;
+			return m_global_matrix;
 		}
 
-		inline glm::vec3 get_scale(glm::vec3 parent) const
+		inline glm::mat4 get_global_matrix()
 		{
-			return parent * m_scale;
-		}
-
-		inline const MatT& get_model() const
-		{
-			return m_model;
-		}
-
-		inline MatT get_model()
-		{
-			return m_model;
+			return m_global_matrix;
 		}
 
 		inline bool is_dirty() const
@@ -128,29 +140,28 @@ namespace forge
 			return m_is_dirty;
 		}
 
-		inline MatT& compute_local_transform()
+		inline glm::mat4 compute_local_transform()
 		{
-			auto rotation_matrix	= glm::toMat4(m_rotation);
-			auto translation_matrix = glm::translate(glm::mat4(1.0f), m_position);
-			auto scale_matrix		= glm::scale(glm::mat4(1.0f), m_scale);
+			glm::mat4 unit {1.0f};
+
+			auto T = glm::translate(unit, m_position);
+			auto R = glm::toMat4(m_rotation);
+			auto S = glm::scale(unit, m_scale);
 
 			m_is_dirty = false;
 
-			m_model = translation_matrix * rotation_matrix * scale_matrix;
-
-			return m_model;
+			return T * R * S;
 		}
 
 	private:
 		friend Entity;
-
 		bool m_is_dirty = false;
 
-		PositionT m_position {0.0};
+		Transform *m_parent = nullptr;
+
+		glm::vec3 m_position {0.0};
 		glm::vec3 m_scale {1.0};
 		glm::quat m_rotation {1.0f, 0.0f, 0.0f, 0.0f};
-		MatT m_model {1.0};
+		glm::mat4 m_global_matrix {1.0};
 	};
-
-	using Transform = TransformBase<float>;
 }
