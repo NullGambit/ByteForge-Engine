@@ -3,7 +3,10 @@
 // to ensure rp malloc overrides all new and delete operators
 #include <rpmalloc/rpnew.h>
 
+#define GLM_FORCE_INTRINSICS
+
 // defs that are intrinsic to the byte forge engine and will automatically be included in the build system
+
 
 typedef unsigned char u8;
 typedef signed char i8;

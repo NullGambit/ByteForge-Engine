@@ -4,7 +4,7 @@
 #include "forge/graphics/material.hpp"
 #include "forge/graphics/image/image.hpp"
 #include "forge/container/array.hpp"
-#include "forge/ecs/transform.hpp"
+#include "../../math/transform.hpp"
 #include "forge/graphics/lights.hpp"
 
 #include <optional>
@@ -30,7 +30,7 @@ namespace forge
 		String name;
 		Array<MeshLoadPrimitive> primitives;
 		std::optional<Light> light;
-		Transform transform;
+		TransformClassic transform;
 		Array<MeshLoaderNode> children;
 	};
 }

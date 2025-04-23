@@ -10,7 +10,7 @@
 #include "forge/container/array.hpp"
 #include "forge/container/string.hpp"
 #include "forge/core/isub_system.hpp"
-#include "forge/ecs/transform.hpp"
+#include "../../math/transform.hpp"
 #include "forge/graphics/camera.hpp"
 #include "forge/graphics/lights.hpp"
 #include "forge/graphics/material.hpp"
@@ -51,7 +51,7 @@ namespace forge
 		String name;
 		RenderObject *object = nullptr;
 		std::optional<Light> light;
-		Transform transform;
+		TransformClassic transform;
 		Array<RenderObjectTree> children;
 	};
 

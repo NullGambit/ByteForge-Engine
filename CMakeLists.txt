@@ -75,7 +75,7 @@ dep/glad/include/glad/glad.h
         forge/gui/imgui_subsystem.hpp
         forge/editor/editor_subsystem.cpp
         forge/editor/editor_subsystem.hpp
-        forge/ecs/transform.hpp
+        forge/math/transform.hpp
         forge/memory/mem_utils.hpp
         forge/system/system_info.hpp
         forge/system/linux/linux_system_info.cpp
@@ -123,6 +123,10 @@ dep/glad/include/glad/glad.h
         forge/framework/components/mesh_renderer_component.hpp
         forge/container/view.hpp
         forge/memory/virtual_allocator.hpp
+        forge/math/rotator.cpp
+        forge/math/rotator.hpp
+        forge/math/extents.hpp
+        forge/math/transform.hpp
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")

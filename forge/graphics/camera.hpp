@@ -16,7 +16,7 @@ namespace forge
 
 	struct Camera
 	{
-		glm::vec3 up {0, 1, 0};
+		glm::vec3 world_up {0, 1, 0};
 		glm::vec3 position {};
 		std::optional<glm::vec3> lookat_override = std::nullopt;
 
@@ -63,7 +63,7 @@ namespace forge
 		[[nodiscard]]
 		inline auto get_right() const
 		{
-			return glm::normalize(glm::cross(get_front(), up));
+			return glm::normalize(glm::cross(get_front(), world_up));
 		}
 
 		[[nodiscard]]
@@ -89,7 +89,7 @@ namespace forge
 		{
 			auto target = lookat_override.value_or(position + get_front());
 
-			auto view = glm::lookAt(position, target, up);
+			auto view = glm::lookAt(position, target, world_up);
 
 			view = glm::scale(view, glm::vec3{zoom});
 
@@ -110,5 +110,8 @@ namespace forge
 		{
 			return calculate_pv() * model;
 		}
+
+		[[nodiscard]]
+		glm::mat3 get_basis_mat() const;
 	};
 }

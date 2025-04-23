@@ -560,11 +560,11 @@ protected:
 
 					m_selected_entity->set_local_position(position);
 
-					auto rotation = m_selected_entity->get_local_euler_rotation();
+					auto rotation = glm::degrees(m_selected_entity->get_local_euler_rotation());
 
 					vec_drag_control("Rotation", rotation);
 
-					m_selected_entity->set_local_rotation(rotation);
+					// m_selected_entity->set_local_rotation(glm::radians(rotation));
 				}
 			}
 

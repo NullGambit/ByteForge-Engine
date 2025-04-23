@@ -10,6 +10,12 @@ class PlayerController : public forge::IComponent
 {
 public:
 
+	float speed = 1;
+	float acceleration = 1;
+	float boost_speed = 2;
+	float mouse_sensitivity = 0.1;
+	bool use_camera_direction = false;
+
 	REGISTER_UPDATE_FUNC
 
 	void update(forge::DeltaTime delta) override;
@@ -23,20 +29,16 @@ public:
 	void handle_movement(forge::DeltaTime delta);
 
 	EXPORT_FIELDS(
-		&m_speed,
-		&m_boost_speed,
-		&m_mouse_sensitivity);
+		&use_camera_direction,
+		&speed,
+		&acceleration,
+		&boost_speed,
+		&mouse_sensitivity);
 
 private:
-	float m_speed = 1;
-	float m_boost_speed = 2;
-	float m_mouse_sensitivity = 0.1;
-	bool m_pan_mode = false;
-	float m_pitch {};
-	float m_yaw {};
 	glm::vec2 m_last_mouse_coords;
 	forge::CameraComponent *m_camera;
 
 protected:
-	void on_create() override;
+	void on_begin() override;
 };

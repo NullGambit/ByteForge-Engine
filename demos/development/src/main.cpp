@@ -43,7 +43,7 @@ void make_player()
 {
 	auto *nexus = g_engine.get_subsystem<forge::Nexus>();
 
-	nexus->create_entity<forge::CameraComponent, PlayerController>("player");
+	auto *player_ent = nexus->create_entity<PlayerController, forge::CameraComponent>("player");
 }
 
 void diseappring_cube_demo()
@@ -197,10 +197,14 @@ void mesh_loading_demo()
 
 	auto *player_ent = nexus->get_entity("player");
 
-	player_ent->set_local_position(glm::vec3{3.296, 1.75, 3.571});
-	player_ent->set_local_rotation(glm::vec3{-175, 25, 175});
+	// player_ent->set_local_position(glm::vec3{3.296, 1.75, 3.571});
+	// player_ent->set_local_rotation(glm::vec3{-175, 25, 175});
 
 	forge::load_meshes_hierarchy(DEMO_ASSET_DIR"models/room_test.glb");
+
+	auto *rug_ent = nexus->get_entity("rug");
+
+	rug_ent->rotate(160, 0, 0);
 }
 
 // this component will make its entities transform become dirty in order to force it to update

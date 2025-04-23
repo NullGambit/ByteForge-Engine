@@ -26,11 +26,24 @@ void forge::CameraComponent::on_create()
 	renderer->set_active_camera(this);
 
 	m_on_transform_update_connection =
-		m_owner->on_transform_update.connect([&position = position, &yaw = yaw, &pitch = pitch](Entity &entity)
+		m_owner->on_transform_update.connect([&position = position, &yaw = yaw, &pitch = pitch, &previous_rotation = m_previous_rotation](Entity &entity)
 	{
-		position = entity.get_local_position();
-		// auto rotation = entity.get_local_euler_rotation();
-		// yaw = rotation.y;
-		// pitch = rotation.x;
+		position = entity.get_position();
+		//
+		// auto current_rotation = entity.get_rotation();
+		// auto delta = current_rotation * glm::inverse(previous_rotation);
+		//
+		// auto angle = glm::angle(delta);
+		//
+		// if (angle > 0.0001f) // avoid divide by zero
+		// {
+		// 	auto axis = glm::axis(delta);
+		// 	angle = glm::degrees(angle);
+		//
+		// 	yaw   += angle * axis.y;
+		// 	pitch += angle * axis.x;
+		// }
+		//
+		// previous_rotation = current_rotation;
 	});
 }

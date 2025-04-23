@@ -14,3 +14,8 @@ glm::mat4 forge::Camera::get_projection() const
 	return glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, near, far);
 }
 
+glm::mat3 forge::Camera::get_basis_mat() const
+{
+	return {get_front(), -get_up(), get_right()};
+}
+

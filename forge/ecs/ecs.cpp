@@ -71,14 +71,7 @@ void forge::Entity::on_editor_enter()
 
 void forge::Entity::update_hierarchy()
 {
-	if (m_parent != nullptr)
-	{
-		m_transform.m_global_matrix = m_parent->m_transform.m_global_matrix * m_transform.compute_local_transform();
-	}
-	else
-	{
-		m_transform.m_global_matrix = m_transform.compute_local_transform();
-	}
+	m_transform.compute_global();
 
 	for (auto &child : m_children)
 	{
@@ -97,7 +90,7 @@ void forge::Entity::update_dirty_array()
 {
 	std::scoped_lock lock {m_nexus->m_dirty_table_mutex};
 
-	auto top_most_parent = get_top_most_parent();
+	auto *top_most_parent = get_top_most_parent();
 
 	if (!top_most_parent->m_is_queued_for_cleaning)
 	{
@@ -109,7 +102,7 @@ void forge::Entity::update_dirty_array()
 void forge::Entity::set_parent(Entity *parent)
 {
 	m_parent = parent;
-	m_transform.m_parent = &parent->m_transform;
+	m_transform.parent = &parent->m_transform;
 }
 
 void forge::Nexus::ComponentType::free(IComponent *component)
@@ -137,6 +130,20 @@ std::string forge::Nexus::init(const EngineInitOptions &options)
 	m_entities.init(ECS_ENTITY_POOL_SIZE);
 
 	return {};
+}
+
+void forge::Nexus::on_run()
+{
+	for (auto &[_, ct] : m_component_table)
+	{
+		for (auto &component : ct.mem_pool.get_iterator<IComponent>())
+		{
+			if (component.m_is_enabled && component.m_is_valid)
+			{
+				component.on_begin();
+			}
+		}
+	}
 }
 
 void forge::Nexus::shutdown()

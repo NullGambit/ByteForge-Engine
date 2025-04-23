@@ -15,7 +15,7 @@
 #include "defs.hpp"
 
 #include "component_field.hpp"
-#include "transform.hpp"
+#include "../math/transform.hpp"
 #include "forge/util/types.hpp"
 
 // should get included as a part of ecs.hpp. don't remove this.
@@ -24,6 +24,7 @@
 #include "forge/container/view.hpp"
 #include "forge/container/virtual_array.hpp"
 #include "forge/events/timer.hpp"
+#include "forge/util/macros.hpp"
 
 // the maximum amount of virtual memory that will be used for each component by default unless specified otherwise by the component
 #define DEFAULT_ECS_MAX_MAPPED_MEMORY MB(48)
@@ -36,6 +37,7 @@ namespace forge
     class Entity;
 
     using EntityID = u32;
+
 
     class IComponent
     {
@@ -82,8 +84,12 @@ namespace forge
 
         virtual void on_enabled() {}
         virtual void on_disabled() {}
+        // called when the component is created
+        // guarantees that this component will have an owner at this point.
         virtual void on_create() {}
         virtual void on_destroy() {}
+        // called when the scene the components entity belongs to has been started.
+        virtual void on_begin() {}
 
         // Convenience method to add a timer inside the nexus this component belongs to
         TimerID add_timer(TimerOptions &&options) const;
@@ -94,6 +100,9 @@ namespace forge
     class Entity final
     {
     public:
+
+        Entity(Entity &&) = delete;
+        Entity(const Entity &) = delete;
 
         Signal<void(Entity&)> on_transform_update;
 
@@ -126,18 +135,23 @@ namespace forge
         }
 
         [[nodiscard]]
-        inline Transform& get_transform()
+        inline TransformClassic& get_transform()
         {
             return m_transform;
         }
 
-        inline void set_transform(const Transform &transform)
+        inline void rotate(float yaw_deg, float pitch_deg, float roll_deg)
+        {
+            update_dirty_array();
+            m_transform.rotate(yaw_deg, pitch_deg, roll_deg);
+        }
+
+        inline void set_transform(const TransformClassic &transform)
         {
             update_dirty_array();
 
             m_transform = transform;
-
-            m_transform.m_parent = m_parent ? &m_parent->m_transform : nullptr;
+            m_transform.parent = m_parent ? &m_parent->m_transform : nullptr;
         }
 
         [[nodiscard]]
@@ -192,7 +206,7 @@ namespace forge
         }
 
         [[nodiscard]]
-        inline Transform get_top_most_parent_transform()
+        inline TransformClassic get_top_most_parent_transform()
         {
             return get_top_most_parent()->m_transform;
         }
@@ -211,10 +225,7 @@ namespace forge
         inline void set_local_rotation(glm::vec3 euler_rotation)
         {
             update_dirty_array();
-            m_transform.set_local_rotation(
-                {   glm::radians(euler_rotation.x),
-                    glm::radians(euler_rotation.y),
-                    glm::radians(euler_rotation.z)});
+            m_transform.set_local_rotation(euler_rotation);
         }
 
         inline void set_local_rotation(glm::quat rotation)
@@ -283,6 +294,42 @@ namespace forge
         }
 
         [[nodiscard]]
+        inline auto get_forward() const
+        {
+            return m_transform.get_forward();
+        }
+
+        [[nodiscard]]
+        inline auto get_back() const
+        {
+            return -m_transform.get_forward();
+        }
+
+        [[nodiscard]]
+        inline auto get_right(glm::vec3 up = {0, 1, 0}) const
+        {
+            return m_transform.get_right();
+        }
+
+        [[nodiscard]]
+        inline auto get_left() const
+        {
+            return -m_transform.get_right();
+        }
+
+        [[nodiscard]]
+        inline auto get_up() const
+        {
+            return m_transform.get_up();
+        }
+
+        [[nodiscard]]
+        inline auto get_basis_mat() const
+        {
+            return m_transform.get_basis_mat();
+        }
+
+        [[nodiscard]]
         inline Nexus* get_nexus()
         {
             return m_nexus;
@@ -307,7 +354,7 @@ namespace forge
     private:
         friend Nexus;
 
-        Transform m_transform;
+        TransformClassic m_transform;
 
         std::string m_name;
 
@@ -331,6 +378,8 @@ namespace forge
 
         // set to false if this entity is deallocated
         bool m_is_valid = false;
+
+        Entity() = default;
 
         void update_dirty_array();
 
@@ -362,6 +411,8 @@ namespace forge
     public:
 
         std::string init(const EngineInitOptions &options) override;
+
+        void on_run() override;
 
         void shutdown() override;
 

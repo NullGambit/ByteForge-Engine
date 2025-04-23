@@ -1,7 +1,7 @@
 #pragma once
 
 #include "material.hpp"
-#include "forge/ecs/transform.hpp"
+#include "../math/transform.hpp"
 
 namespace forge
 {

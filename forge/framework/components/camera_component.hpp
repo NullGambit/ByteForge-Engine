@@ -11,12 +11,16 @@ namespace forge
 	{
 	public:
 
+		REGISTER_UPDATE_FUNC
+
 		EXPORT_FIELDS(CAMERA_COMPONENT_EXPORTED_FIELDS)
 
-		SET_MAX_COMPONENT_MEMORY(sizeof(CameraComponent) * 32)
+		// cant imagine ill ever use more than 8 cameras. even 8 is a bit of a stretch
+		SET_MAX_COMPONENT_MEMORY(sizeof(CameraComponent) * 8)
 
 	private:
 		u32 m_on_transform_update_connection {};
+		glm::quat m_previous_rotation = glm::identity<glm::quat>();
 
 	protected:
 

@@ -6,7 +6,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "mesh_loader.hpp"
-#include "forge/ecs/transform.hpp"
+#include "../../math/transform.hpp"
 #include "forge/graphics/lights.hpp"
 #include "forge/graphics/mesh.hpp"
 
