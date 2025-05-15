@@ -16,10 +16,10 @@ namespace forge
 		glm::vec3 forward;
 	};
 
-	class TransformClassic final
+	class Transform final
 	{
 	public:
-		TransformClassic *parent = nullptr;
+		Transform *parent = nullptr;
 		bool is_dirty = false;
 
 		inline void set_local_position(glm::vec3 position)
@@ -42,9 +42,9 @@ namespace forge
 
 		void rotate(float yaw_deg, float pitch_deg, float roll_deg)
 		{
-			auto yaw = glm::angleAxis(glm::radians(yaw_deg), glm::vec3(0, 1, 0));
-			auto pitch = glm::angleAxis(glm::radians(pitch_deg), glm::vec3(1, 0, 0));
-			auto roll = glm::angleAxis(glm::radians(roll_deg), glm::vec3(0, 0, 1));
+			auto yaw	= glm::angleAxis(glm::radians(yaw_deg), glm::vec3(0, 1, 0));
+			auto pitch	= glm::angleAxis(glm::radians(pitch_deg), glm::vec3(1, 0, 0));
+			auto roll	= glm::angleAxis(glm::radians(roll_deg), glm::vec3(0, 0, 1));
 
 			m_rotation = yaw * pitch * roll;
 

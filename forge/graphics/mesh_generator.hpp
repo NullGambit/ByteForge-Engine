@@ -3,5 +3,5 @@
 
 namespace forge
 {
-	Mesh generate_cube();
+	MeshView generate_cube();
 }

@@ -10,8 +10,10 @@
 #include "forge/core/engine.hpp"
 #include "forge/core/logging.hpp"
 #include "forge/framework/input.hpp"
+#include "forge/framework/mesh_loading.hpp"
 #include "forge/gui/imgui_subsystem.hpp"
 #include "forge/util/types.hpp"
+#include "forge/system/native_dialog.hpp"
 
 class IEditorWindow;
 
@@ -194,11 +196,12 @@ bool render_field(std::string_view name, forge::FieldVar value, u32 id)
 
 				return field_changed;
 			},
-			[&](std::chrono::duration<float> *value)
+			[&](forge::Duration *value)
 			{
-				auto hour = std::floor(value->count() / 3600.0f);
-				auto minute = std::floor((value->count() - (hour * 3600.0f)) / 60.0f);
-				auto second = value->count() - (hour * 3600.0f) - (minute * 60.0f);
+				auto v = std::chrono::duration_cast<std::chrono::duration<float>>(*value);
+				auto hour = std::floor(v.count() / 3600.0f);
+				auto minute = std::floor((v.count() - (hour * 3600.0f)) / 60.0f);
+				auto second = v.count() - (hour * 3600.0f) - (minute * 60.0f);
 
 				ImGui::PushItemWidth(50);
 
@@ -212,11 +215,9 @@ bool render_field(std::string_view name, forge::FieldVar value, u32 id)
 
 				ImGui::PopItemWidth();
 
-				std::chrono::duration<float> duration {};
-
 				auto total_seconds = (hour * 3600.0f) + (minute * 60.0f) + second;
 
-				*value = std::chrono::duration<float>{total_seconds};
+				*value = std::chrono::duration_cast<forge::Nanoseconds>(std::chrono::duration<float>(total_seconds));
 
 				return true;
 			},
@@ -291,6 +292,10 @@ public:
 	float last_engine_delta {};
 	forge::DeltaTime elapsed_time {};
 
+#ifdef FORGE_RECORD_SUBSYSTEM_TIMINGS
+	forge::HashMap<std::type_index, forge::SubsystemTimings> subsystem_timings;
+#endif
+
 	StatisticsEditorWindow() : IEditorWindow("Statistics") {}
 
 	void update(forge::DeltaTime delta) override
@@ -303,6 +308,10 @@ public:
 		{
 			last_frame = g_engine.get_fps();
 			last_engine_delta = g_engine.get_delta();
+
+#ifdef FORGE_RECORD_SUBSYSTEM_TIMINGS
+			subsystem_timings = g_engine.subsystem_timings;
+#endif
 
 			elapsed_time = 0;
 		}
@@ -323,12 +332,63 @@ protected:
 
 	void on_window() override
 	{
-		auto render_stats = m_renderer->get_statistics();
+		if (ImGui::BeginTabBar("StatisticsBar"))
+		{
+			if (ImGui::BeginTabItem("Engine"))
+			{
+				auto render_stats = m_renderer->get_statistics();
 
-		ImGui::Text("FPS: %d", (int)last_frame);
-		ImGui::Text("Tick: %f", last_engine_delta);
-		ImGui::Text("Draw calls: %d", render_stats.draw_calls);
-		ImGui::Text("Entity count: %d", m_nexus->get_entity_count());
+				ImGui::Text("FPS: %d", (int)last_frame);
+				ImGui::Text("Tick: %f", last_engine_delta);
+				ImGui::Text("Draw calls: %d", render_stats.draw_calls);
+				ImGui::Text("Entity count: %d", m_nexus->get_entity_count());
+
+				ImGui::EndTabItem();
+			}
+#ifdef FORGE_RECORD_SUBSYSTEM_TIMINGS
+			if (ImGui::BeginTabItem("Subsystems"))
+			{
+				if (ImGui::BeginTable("Update timings", 5))
+				{
+					ImGui::TableSetupColumn("Name");
+					ImGui::TableSetupColumn("Pre update");
+					ImGui::TableSetupColumn("Update");
+					ImGui::TableSetupColumn("Post update");
+					ImGui::TableSetupColumn("Total");
+
+					ImGui::TableHeadersRow();
+
+					for (auto row = 0; auto &[index, timings] : subsystem_timings)
+					{
+						ImGui::TableNextRow();
+
+						ImGui::TableSetColumnIndex(0);
+						ImGui::Text("%s", util::type_name(index).data());
+
+						ImGui::TableSetColumnIndex(1);
+						ImGui::Text("%s", forge::to_string(timings.pre_update).data());
+
+						ImGui::TableSetColumnIndex(2);
+						ImGui::Text("%s", forge::to_string(timings.update).data());
+
+						ImGui::TableSetColumnIndex(3);
+						ImGui::Text("%s", forge::to_string(timings.post_update).data());
+
+						ImGui::TableSetColumnIndex(4);
+						ImGui::Text("%s", forge::to_string(timings.pre_update + timings.update + timings.post_update).data());
+
+						row++;
+					}
+
+					ImGui::EndTable();
+				}
+
+				ImGui::EndTabItem();
+			}
+#endif
+
+			ImGui::EndTabBar();
+		}
 	}
 };
 
@@ -847,6 +907,20 @@ public:
 		{
 			if (ImGui::BeginMenu("File"))
 			{
+				if (ImGui::MenuItem("Load mesh"))
+				{
+					auto file_paths = forge::native_file_dialog({
+					.root = "./assets/",
+					.allow_multiple = false,
+					.allowed_mimes = "model/gltf-binary model/gltf+binary model/obj"});
+
+					if (file_paths.empty())
+					{
+						return;
+					}
+
+					forge::load_meshes_hierarchy(file_paths.front());
+				}
 				if (ImGui::MenuItem("Close"))
 				{
 					g_engine.quit();
@@ -875,9 +949,9 @@ public:
 				{
 					if (ImGui::Selectable(name.data()))
 					{
-						auto *nexus = g_engine.get_subsystem<forge::Nexus>();
-						nexus->clear();
+						g_engine.nexus->clear();
 						callback();
+						g_engine.nexus->trigger_on_begin();
 					}
 				}
 
@@ -992,6 +1066,7 @@ void forge::EditorSubsystem::on_run()
 {
 	if (pending_demo)
 	{
+		g_engine.nexus->clear();
 		pending_demo();
 		pending_demo = nullptr;
 	}

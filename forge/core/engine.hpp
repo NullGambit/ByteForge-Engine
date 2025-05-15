@@ -5,6 +5,7 @@
 #include <vector>
 #include <span>
 
+#include "time.hpp"
 #include "forge/ecs/defs.hpp"
 #include "forge/core/isub_system.hpp"
 #include "forge/system/window.hpp"
@@ -23,6 +24,13 @@ namespace forge
 		HaltWithNoError,
 		ArgParserError,
 		SubsystemInitError,
+	};
+
+	struct SubsystemTimings
+	{
+		Duration pre_update {};
+		Duration update {};
+		Duration post_update {};
 	};
 
 	class Engine
@@ -94,6 +102,10 @@ namespace forge
 		OglRenderer *renderer = nullptr;
 		Window *window = nullptr;
 		Nexus *nexus = nullptr;
+
+	#ifdef FORGE_RECORD_SUBSYSTEM_TIMINGS
+			HashMap<std::type_index, SubsystemTimings> subsystem_timings;
+	#endif
 
 	private:
 		DeltaTime m_delta_time;

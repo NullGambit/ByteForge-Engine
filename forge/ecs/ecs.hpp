@@ -28,7 +28,7 @@
 
 // the maximum amount of virtual memory that will be used for each component by default unless specified otherwise by the component
 #define DEFAULT_ECS_MAX_MAPPED_MEMORY MB(48)
-#define ECS_ENTITY_POOL_SIZE  500'000
+#define ECS_ENTITY_POOL_SIZE  900'000
 #define ECS_CHILD_LIMIT 32
 
 namespace forge
@@ -37,7 +37,6 @@ namespace forge
     class Entity;
 
     using EntityID = u32;
-
 
     class IComponent
     {
@@ -135,7 +134,7 @@ namespace forge
         }
 
         [[nodiscard]]
-        inline TransformClassic& get_transform()
+        inline Transform& get_transform()
         {
             return m_transform;
         }
@@ -146,7 +145,7 @@ namespace forge
             m_transform.rotate(yaw_deg, pitch_deg, roll_deg);
         }
 
-        inline void set_transform(const TransformClassic &transform)
+        inline void set_transform(const Transform &transform)
         {
             update_dirty_array();
 
@@ -206,7 +205,7 @@ namespace forge
         }
 
         [[nodiscard]]
-        inline TransformClassic get_top_most_parent_transform()
+        inline Transform get_top_most_parent_transform()
         {
             return get_top_most_parent()->m_transform;
         }
@@ -354,7 +353,7 @@ namespace forge
     private:
         friend Nexus;
 
-        TransformClassic m_transform;
+        Transform m_transform;
 
         std::string m_name;
 
@@ -553,6 +552,8 @@ namespace forge
         }
 
         void clear();
+
+        void trigger_on_begin();
 
         Timer timer;
 

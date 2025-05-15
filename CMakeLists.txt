@@ -101,8 +101,6 @@ dep/glad/include/glad/glad.h
         forge/ecs/defs.hpp
         forge/container/set.hpp
         forge/container/hash.hpp
-        forge/framework/components/mesh_primitive_component.cpp
-        forge/framework/components/mesh_primitive_component.hpp
         forge/graphics/mesh.hpp
         forge/graphics/mesh_generator.cpp
         forge/graphics/mesh_generator.hpp
@@ -127,6 +125,9 @@ dep/glad/include/glad/glad.h
         forge/math/rotator.hpp
         forge/math/extents.hpp
         forge/math/transform.hpp
+        forge/graphics/mesh.cpp
+        forge/core/time.cpp
+        forge/core/time.hpp
 )
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -147,6 +148,7 @@ target_precompile_headers(ByteForgeEngine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/for
 target_compile_definitions(ByteForgeEngine PUBLIC
         GLM_ENABLE_EXPERIMENTAL
         FORGE_USE_UNIFORM_CACHE
+        FORGE_RECORD_SUBSYSTEM_TIMINGS
         FORGE_ENGINE_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets/"
         FORGE_ENGINE_CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/config/"
 )

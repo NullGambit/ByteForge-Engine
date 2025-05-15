@@ -4,29 +4,26 @@
 
 #include "signal.hpp"
 #include "forge/container/map.hpp"
+#include "forge/core/time.hpp"
 #include "forge/memory/mem_pool.hpp"
 
 namespace forge
 {
-	using TimerClock = std::chrono::high_resolution_clock;
-	using TimerTimePoint = std::chrono::time_point<TimerClock>;
-	using TimerDuration = std::chrono::duration<float>;
-
 	struct TimerOptions
 	{
-		TimerDuration duration;
-		TimerDuration remaining;
+		Duration duration;
+		Duration remaining;
 		Delegate<void()> on_timeout {};
 		bool one_shot = false;
 
 		inline void invalidate()
 		{
-			remaining = std::numeric_limits<TimerDuration>::max();
+			remaining = std::numeric_limits<Duration>::max();
 		}
 
 		inline bool is_valid() const
 		{
-			return remaining != std::numeric_limits<TimerDuration>::max();
+			return remaining != std::numeric_limits<Duration>::max();
 		}
 	};
 
@@ -53,6 +50,6 @@ namespace forge
 	private:
 		MemPool m_timers;
 
-		TimerTimePoint m_previous_time {};
+		TimePoint m_previous_time {};
 	};
 }

@@ -134,16 +134,7 @@ std::string forge::Nexus::init(const EngineInitOptions &options)
 
 void forge::Nexus::on_run()
 {
-	for (auto &[_, ct] : m_component_table)
-	{
-		for (auto &component : ct.mem_pool.get_iterator<IComponent>())
-		{
-			if (component.m_is_enabled && component.m_is_valid)
-			{
-				component.on_begin();
-			}
-		}
-	}
+	trigger_on_begin();
 }
 
 void forge::Nexus::shutdown()
@@ -452,4 +443,18 @@ void forge::Nexus::clear()
 	// m_component_table.clear();
 
 	m_entities.clear(false);
+}
+
+void forge::Nexus::trigger_on_begin()
+{
+	for (auto &[_, ct] : m_component_table)
+	{
+		for (auto &component : ct.mem_pool.get_iterator<IComponent>())
+		{
+			if (component.m_is_enabled && component.m_is_valid)
+			{
+				component.on_begin();
+			}
+		}
+	}
 }

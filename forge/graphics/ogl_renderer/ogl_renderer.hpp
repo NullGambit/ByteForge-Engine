@@ -51,7 +51,7 @@ namespace forge
 		String name;
 		RenderObject *object = nullptr;
 		std::optional<Light> light;
-		TransformClassic transform;
+		Transform transform;
 		Array<RenderObjectTree> children;
 	};
 
@@ -86,6 +86,7 @@ namespace forge
 		Camera* get_active_camera();
 
 		RenderObjectTree create_render_object(std::string_view filepath, MeshLoadOptions options = {});
+		RenderObject* create_render_object(const MeshView &mesh);
 		void destroy_render_object(RenderObject *object);
 
 		void destroy_texture(std::string_view path);
@@ -106,7 +107,6 @@ namespace forge
 
 	private:
 		bool m_draw_wireframe = false;
-		OglBuffers m_cube_buffers;
 		OglShader m_forward_shader;
 		CommandBuffer<> m_command_buffer;
 		RenderStatistics m_statistics;

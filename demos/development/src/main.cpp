@@ -3,7 +3,6 @@
 #include <unordered_set>
 #include <forge/core/engine.hpp>
 #include <forge/core/logging.hpp>
-#include <forge/framework/components/mesh_primitive_component.hpp>
 
 #include "components/bob_component.hpp"
 #include "components/export_test_component.hpp"
@@ -29,7 +28,6 @@ void register_demo_components()
 	nexus->register_component<ExportFieldTestComponent>();
 	nexus->register_component<LifetimeComponent>();
 	nexus->register_component<LightComponent>();
-	nexus->register_component<MeshRendererComponent>();
 }
 
 void export_test_demo()
@@ -54,7 +52,9 @@ void diseappring_cube_demo()
 
 	auto *cube_entity = nexus->create_entity("cube");
 
-	auto *cube = cube_entity->add_component<MeshPrimitiveComponent>();
+	auto *cube = cube_entity->add_component<forge::MeshRendererComponent>();
+
+	cube->set_mesh(forge::PrimitiveMeshType::Cube);
 
 	cube->set_texture(FORGE_ENGINE_ASSET_DIR"textures/container2.png", forge::TextureType::Diffuse);
 
@@ -68,7 +68,7 @@ void diseappring_cube_demo()
 
 	auto lifetime = cube_entity->add_component<LifetimeComponent>();
 
-	lifetime->duration = std::chrono::seconds{2};
+	lifetime->duration = forge::Seconds{10} + forge::Hours{1};
 
 	lifetime->start();
 }
@@ -86,12 +86,14 @@ void crates_demo()
 
 	auto *ground_ent = nexus->create_entity("ground");
 
-	auto *ground_mesh = ground_ent->add_component<MeshPrimitiveComponent>();
+	auto *ground_mesh = ground_ent->add_component<forge::MeshRendererComponent>();
+
+	ground_mesh->set_mesh(forge::PrimitiveMeshType::Cube);
 
 	ground_mesh->set_texture(DEMO_ASSET_DIR"textures/concrete.jpg", forge::TextureType::Diffuse);
 
-	ground_mesh->get_texture(forge::TextureType::Specular).strength = 2;
-	ground_mesh->get_texture(forge::TextureType::Diffuse).scale = 5;
+	ground_mesh->object->material.textures[forge::TextureType::Specular].strength = 2;
+	ground_mesh->object->material.textures[forge::TextureType::Diffuse].scale = 5;
 
 	auto ground_pos = ground_ent->get_local_position();
 
@@ -124,7 +126,9 @@ void crates_demo()
 	for (int i = 0; i < 15; i++)
 	{
 		auto *entity = nexus->create_entity(fmt::format("crate_{}", i));
-		auto *crate = entity->add_component<MeshPrimitiveComponent>();
+		auto *crate = entity->add_component<forge::MeshRendererComponent>();
+
+		crate->set_mesh(forge::PrimitiveMeshType::Cube);
 
 		crate->set_texture(FORGE_ENGINE_ASSET_DIR"textures/container2.png", forge::TextureType::Diffuse);
 		crate->set_texture(FORGE_ENGINE_ASSET_DIR"textures/container2_specular.png", forge::TextureType::Specular);
@@ -173,7 +177,8 @@ void bobbing_cluster()
 	{
 		auto *cube_entity = nexus->create_entity(fmt::format("cube_{}", i));
 
-		auto *cube = cube_entity->add_component<MeshPrimitiveComponent>();
+		auto *cube = cube_entity->add_component<forge::MeshRendererComponent>();
+		cube->set_mesh(forge::PrimitiveMeshType::Cube);
 		auto *bob = cube_entity->add_component<BobComponent>();
 
 		bob->amplitude = util::rand_float(0.1, 2);
@@ -197,8 +202,13 @@ void mesh_loading_demo()
 
 	auto *player_ent = nexus->get_entity("player");
 
-	// player_ent->set_local_position(glm::vec3{3.296, 1.75, 3.571});
-	// player_ent->set_local_rotation(glm::vec3{-175, 25, 175});
+	player_ent->set_local_position(glm::vec3{3.296, 1.75, 3.571});
+
+	auto *camera = player_ent->get_component<forge::CameraComponent>();
+
+	camera->pitch = -175;
+	camera->yaw = 25;
+	player_ent->set_local_rotation(glm::vec3{-175, 25, 175});
 
 	forge::load_meshes_hierarchy(DEMO_ASSET_DIR"models/room_test.glb");
 
@@ -218,19 +228,67 @@ struct TransformDirtierComponent : forge::IComponent
 	}
 };
 
+struct CounterComponent : forge::IComponent
+{
+	REGISTER_UPDATE_FUNC
+
+	forge::DeltaTime counter {};
+
+	void update(forge::DeltaTime delta) override
+	{
+		counter += delta;
+	}
+};
+
+struct CounterComponent2 : forge::IComponent
+{
+	REGISTER_UPDATE_FUNC
+
+	forge::DeltaTime counter {};
+
+	void update(forge::DeltaTime delta) override
+	{
+		counter += delta;
+	}
+};
+
+struct CounterComponent3 : forge::IComponent
+{
+	REGISTER_UPDATE_FUNC
+
+	forge::DeltaTime counter {};
+
+	void update(forge::DeltaTime delta) override
+	{
+		counter += delta;
+	}
+};
+
 void ecs_stress_test()
 {
-	for (int i = 0; i < 100'000; i++)
+	constexpr auto TOP_LEVEL_ENTITIES = 5'000;
+	auto dirtier_counter = 0;
+	auto dirtier_limit = TOP_LEVEL_ENTITIES * 0.002;
+
+	for (int i = 0; i < TOP_LEVEL_ENTITIES; i++)
 	{
-		auto *entity = g_engine.nexus->create_entity();
+		auto *entity = g_engine.nexus->create_entity<CounterComponent, CounterComponent2, CounterComponent3>();
 
-		for (int j = 0; j < 8; j++)
+		dirtier_counter++;
+
+		if (dirtier_counter >= dirtier_limit)
 		{
-			auto *child = entity->emplace_child();
+			entity->add_component<TransformDirtierComponent>();
+			dirtier_counter = 0;
+		}
 
-			for (int k = 0; k < 4; k++)
+		for (int j = 0; j < 4; j++)
+		{
+			auto *child = entity->emplace_child<CounterComponent2>();
+
+			for (int k = 0; k < 2; k++)
 			{
-				child->emplace_child();
+				child->emplace_child<CounterComponent3>();
 			}
 		}
 	}
@@ -269,7 +327,8 @@ int main(int argc, const char **argv)
 	editor->demos.emplace("ecs stress test", ecs_stress_test);
 
 	// editor->load_demo("crates");
-	editor->load_demo("mesh loading");
+	// editor->load_demo("mesh loading");
+	editor->load_demo("disappearing cube");
 
 	g_engine.run();
 

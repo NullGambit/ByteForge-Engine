@@ -8,14 +8,15 @@
 #include "material.hpp"
 #include "forge/container/array.hpp"
 #include "forge/container/string.hpp"
+#include "forge/container/view.hpp"
 
 namespace forge
 {
 	struct Vertex
 	{
 		glm::vec3 position;
-		glm::vec3 normals;
 		glm::vec2 texture;
+		glm::vec3 normals;
 	};
 
 	struct Mesh
@@ -24,5 +25,18 @@ namespace forge
 		Array<Vertex> vertices;
 		Array<u32> indices;
 		Array<Material> materials;
+	};
+
+	// a trivially copyable view to a mesh
+	struct MeshView
+	{
+		StringView name;
+		View<Vertex> vertices;
+		View<u32> indices;
+		View<Material> materials;
+
+		MeshView() = default;
+
+		MeshView(Mesh &mesh);
 	};
 }

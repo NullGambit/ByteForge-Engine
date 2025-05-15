@@ -8,6 +8,8 @@
 #include <glm/vec4.hpp>
 #include <magic_enum/magic_enum.hpp>
 
+#include "forge/core/time.hpp"
+
 namespace forge
 {
 	struct ButtonField
@@ -83,7 +85,7 @@ namespace forge
 	std::string*,			\
 	ButtonField, ColorField, FieldSeperator,\
 	glm::vec4*, glm::vec3*, glm::vec2*, glm::quat*, \
-	EnumStorage, std::chrono::duration<float>* \
+	EnumStorage, Duration* \
 
 	using BaseFieldVar = std::variant<BASE_FIELD_VAR_SET>;
 

@@ -33,7 +33,7 @@ void forge::Timer::stop(TimerID id)
 
 void forge::Timer::process()
 {
-	auto current_time = TimerClock::now();
+	auto current_time = Clock::now();
 	auto delta_time = current_time - m_previous_time;
 	m_previous_time = current_time;
 

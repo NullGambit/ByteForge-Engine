@@ -3,10 +3,11 @@
 #include "../../core/engine.hpp"
 #include "../../system/native_dialog.hpp"
 #include "../../graphics/ogl_renderer/ogl_renderer.hpp"
+#include "forge/graphics/mesh_generator.hpp"
 
-forge::Array<forge::ComponentField> MeshRendererComponent::export_fields()
+forge::Array<forge::ComponentField> forge::MeshRendererComponent::export_fields()
 {
-	std::vector<forge::ComponentField> out;
+	Array<ComponentField> out;
 
 	out.emplace_back<forge::ComponentField>({"Set mesh", forge::ButtonField{
 			[&comp = *this]
@@ -30,12 +31,12 @@ forge::Array<forge::ComponentField> MeshRendererComponent::export_fields()
 		return out;
 	}
 
-	auto &material = m_object->material;
+	auto &material = object->material;
 
 	for (auto type = 0; auto &texture : material.textures)
 	{
-		out.emplace_back(FIELD_ENTRY(forge::FieldSeperator{forge::TextureType::to_string(type)}));
-		out.emplace_back<forge::ComponentField>({"Set texture", forge::ButtonField{
+		out.emplace_back(FIELD_ENTRY(FieldSeperator{TextureType::to_string(type)}));
+		out.emplace_back<ComponentField>({"Set texture", ButtonField{
 			[&comp = *this, type]
 			{
 				auto file_paths = forge::native_file_dialog({
@@ -61,7 +62,7 @@ forge::Array<forge::ComponentField> MeshRendererComponent::export_fields()
 	return out;
 }
 
-void MeshRendererComponent::set_mesh(std::string_view path, forge::MeshLoadOptions options)
+void forge::MeshRendererComponent::set_mesh(std::string_view path, MeshLoadOptions options)
 {
 	if (has_mesh())
 	{
@@ -73,46 +74,86 @@ void MeshRendererComponent::set_mesh(std::string_view path, forge::MeshLoadOptio
 	set_mesh(tree);
 }
 
-void MeshRendererComponent::set_mesh(forge::RenderObjectTree &tree)
+// will find the first valid mesh in this tree. for hierarchies set_mesh probably shouldn't be used anyway
+forge::RenderObject* find_valid_object(forge::RenderObjectTree &tree)
 {
-	m_object = tree.object;
+	if (tree.object)
+	{
+		return tree.object;
+	}
+
+	for (auto &child : tree.children)
+	{
+		auto *object = find_valid_object(child);
+
+		if (object)
+		{
+			return object;
+		}
+	}
+
+	return nullptr;
+}
+
+void forge::MeshRendererComponent::set_mesh(RenderObjectTree &tree)
+{
+	object = find_valid_object(tree);
 
 	m_owner->set_transform(tree.transform);
 
-	m_transform_update_con = m_owner->on_transform_update.connect([&object = m_object](const forge::Entity &entity)
+	set_transform_update_con();
+}
+
+void forge::MeshRendererComponent::set_mesh(PrimitiveMeshType type)
+{
+	MeshView mesh;
+
+	switch (type)
 	{
-		object->compute_model(entity.get_model());
-	});
+		case PrimitiveMeshType::Cube: mesh = generate_cube(); break;
+	}
+
+	object = g_engine.renderer->create_render_object(mesh);
+
+	set_transform_update_con();
 }
 
-bool MeshRendererComponent::set_texture(std::string_view path, u32 type, forge::TextureOptions options) const
+bool forge::MeshRendererComponent::set_texture(std::string_view path, u32 type, TextureOptions options) const
 {
-	return g_engine.renderer->create_texture(m_object, path, type, options);
+	return g_engine.renderer->create_texture(object, path, type, options);
 }
 
-void MeshRendererComponent::reset_mesh()
+void forge::MeshRendererComponent::reset_mesh()
 {
-	g_engine.renderer->destroy_render_object(m_object);
+	g_engine.renderer->destroy_render_object(object);
 
-	m_object = nullptr;
+	object = nullptr;
 
 	m_owner->on_transform_update.disconnect(m_transform_update_con);
 }
 
-void MeshRendererComponent::on_destroy()
+void forge::MeshRendererComponent::on_destroy()
 {
-	if (m_object)
+	if (object)
 	{
 		reset_mesh();
 	}
 }
 
-void MeshRendererComponent::on_enabled()
+void forge::MeshRendererComponent::on_enabled()
 {
-	m_object->flags |= forge::R_VISIBLE;
+	object->flags |= R_VISIBLE;
 }
 
-void MeshRendererComponent::on_disabled()
+void forge::MeshRendererComponent::on_disabled()
 {
-	m_object->flags = m_object->flags & ~forge::R_VISIBLE;
+	object->flags = object->flags & ~R_VISIBLE;
+}
+
+void forge::MeshRendererComponent::set_transform_update_con()
+{
+	m_transform_update_con = m_owner->on_transform_update.connect([&object = object](const Entity &entity)
+	{
+		object->compute_model(entity.get_model());
+	});
 }

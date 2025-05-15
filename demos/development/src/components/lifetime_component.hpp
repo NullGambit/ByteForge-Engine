@@ -3,7 +3,7 @@
 
 struct LifetimeComponent : forge::IComponent
 {
-	forge::TimerDuration duration {};
+	forge::Duration duration {};
 
 	void start();
 

@@ -4,6 +4,9 @@
 #include <glad/glad.h>
 #include <span>
 
+#include "forge/container/view.hpp"
+#include "forge/graphics/mesh.hpp"
+
 namespace forge
 {
     struct OglBuffers
@@ -23,16 +26,9 @@ namespace forge
     public:
         OglBufferBuilder& start();
 
-        OglBufferBuilder& vbo(const std::span<const f32> &verts);
+        OglBufferBuilder& vbo(View<Vertex> verts);
 
-        template<class T>
-        OglBufferBuilder& vbo(const std::vector<T> &verts)
-        {
-            set_vbo(verts.data(), sizeof(T) * verts.size());
-            return *this;
-        }
-
-        OglBufferBuilder& ebo(const std::vector<u32> &indices);
+        OglBufferBuilder& ebo(View<u32> indices);
 
         OglBufferBuilder& stride(u32 value);
 

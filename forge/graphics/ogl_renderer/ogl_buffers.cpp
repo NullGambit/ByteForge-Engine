@@ -26,18 +26,18 @@ forge::OglBufferBuilder& forge::OglBufferBuilder::start()
     return *this;
 }
 
-forge::OglBufferBuilder& forge::OglBufferBuilder::vbo(const std::span<const f32> &verts)
+forge::OglBufferBuilder& forge::OglBufferBuilder::vbo(View<Vertex> verts)
 {
-    set_vbo(verts.data(), sizeof(float) * verts.size());
+    set_vbo(verts.data, sizeof(Vertex) * verts.size);
     return *this;
 }
 
-forge::OglBufferBuilder& forge::OglBufferBuilder::ebo(const std::vector<u32> &indices)
+forge::OglBufferBuilder & forge::OglBufferBuilder::ebo(View<u32> indices)
 {
     glGenBuffers(1, &m_buffer.ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_buffer.ebo);
 
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(u32) * indices.size(), indices.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(u32) * indices.size, indices.data, GL_STATIC_DRAW);
 
     return *this;
 }

@@ -5,6 +5,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "../loaders/gltf_loader.hpp"
 #include <utility>
+#include <bits/this_thread_sleep.h>
 #include <GL/glext.h>
 
 #include "ogl_buffers.hpp"
@@ -78,15 +79,6 @@ std::string forge::OglRenderer::init(const EngineInitOptions &options)
 	C(m_forward_shader.compile({shader_path + "forward_lighting.frag", shader_path + "forward_lighting.vert"}));
 
 #undef C
-
-	m_cube_buffers = OglBufferBuilder()
-		.start()
-		.stride<glm::vec3, glm::vec3, glm::vec2>()
-		.vbo(std::span{CUBE_VERTS, sizeof(CUBE_VERTS)})
-		.attr(3)
-		.attr(3)
-		.attr(2)
-		.finish();
 
 	m_texture_resource.on_resource_init = [](std::string_view path, OglTexture *texture)
 	{
@@ -294,8 +286,8 @@ forge::RenderObjectTree forge::OglRenderer::create_node_buffers(MeshLoaderNode &
 			.vbo(primitive.mesh.vertices)
 			.ebo(primitive.mesh.indices)
 			.attr(3)
-			.attr(3)
 			.attr(2)
+			.attr(3)
 			.finish();
 	}
 
@@ -319,6 +311,29 @@ forge::RenderObjectTree forge::OglRenderer::create_render_object(std::string_vie
 	}
 
 	return create_node_buffers(mesh_opt.value());
+}
+
+forge::RenderObject* forge::OglRenderer::create_render_object(const MeshView &mesh)
+{
+	auto [rd, id] = m_render_data.emplace<RenderData>();
+
+	rd->object.id = id;
+	rd->object.flags = R_DEFAULT;
+	rd->in_use = true;
+
+	rd->index_size = mesh.indices.size;
+
+	rd->buffers = OglBufferBuilder()
+		.start()
+		.stride<Vertex>()
+		.vbo(mesh.vertices)
+		.ebo(mesh.indices)
+		.attr(3)
+		.attr(2)
+		.attr(3)
+		.finish();
+
+	return &rd->object;
 }
 
 void forge::OglRenderer::destroy_render_object(RenderObject *object)
@@ -360,6 +375,7 @@ forge::Light * forge::OglRenderer::create_light()
 		if (l.is_available)
 		{
 			light = &l;
+			break;
 		}
 	}
 
@@ -367,6 +383,8 @@ forge::Light * forge::OglRenderer::create_light()
 	{
 		return nullptr;
 	}
+
+	*light = {};
 
 	light->is_available = false;
 	light->enabled      = true;

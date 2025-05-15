@@ -30,7 +30,7 @@ namespace forge
 		String name;
 		Array<MeshLoadPrimitive> primitives;
 		std::optional<Light> light;
-		TransformClassic transform;
+		Transform transform;
 		Array<MeshLoaderNode> children;
 	};
 }

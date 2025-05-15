@@ -156,6 +156,31 @@ void forge::Engine::run()
 		subsystem->on_run();
 	}
 
+#ifdef FORGE_RECORD_SUBSYSTEM_TIMINGS
+	#define UPDATE_SUBSYSTEM(fn) \
+		Duration delta; \
+		\
+		if (subsystem->should_update()) [[likely]] \
+		{ \
+			auto start = Clock::now(); \
+			subsystem->fn(); \
+			auto end = Clock::now(); \
+		\
+		delta = (end-start);\
+		} \
+		\
+		subsystem_timings[typeid(*subsystem.get())].fn = delta; \
+
+	#elif
+	#define UPDATE_SUBSYSTEM(fn) \
+		if (subsystem->should_update()) [[likely]] \
+		{ \
+			subsystem->fn(); \
+		\
+		} \
+
+#endif
+
 	while (m_should_run)
 	{
 		auto current_time = get_engine_runtime();
@@ -167,28 +192,22 @@ void forge::Engine::run()
 
 		for (auto &subsystem : m_subsystems)
 		{
-			if (subsystem->should_update()) [[likely]]
-			{
-				subsystem->pre_update();
-			}
+			UPDATE_SUBSYSTEM(pre_update);
 		}
 
 		for (auto &subsystem : m_subsystems)
 		{
-			if (subsystem->should_update()) [[likely]]
-			{
-				subsystem->update();
-			}
+			UPDATE_SUBSYSTEM(update);
 		}
 
 		for (auto &subsystem : m_subsystems)
 		{
-			if (subsystem->should_update()) [[likely]]
-			{
-				subsystem->post_update();
-			}
+			UPDATE_SUBSYSTEM(post_update);
 		}
 	}
+
+#undef UPDATE_SUBSYSTEM
+
 }
 
 void forge::Engine::shutdown()
