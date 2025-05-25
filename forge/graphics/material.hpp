@@ -39,6 +39,7 @@ namespace forge
 
 	struct Material
 	{
+		glm::vec3 color {1.0};
 		TextureList<Texture> textures;
 	};
 }

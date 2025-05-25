@@ -10,8 +10,10 @@ a list of tasks that need to be done. This might be outdated
   * Screen space effect shaders
   * Per material shaders
   * SSAO
+  * Specular occlusion
   * Indirect lighting
   * FXAA
+  * SSAA
   * PBR
   * Shadow mapping
   * Cascaded shadow mapping

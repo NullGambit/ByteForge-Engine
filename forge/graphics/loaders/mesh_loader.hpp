@@ -18,17 +18,12 @@ namespace forge
 		float uniform_scale = 1;
 	};
 
-	struct MeshLoadPrimitive
-	{
-		Mesh mesh;
-		Material material;
-		Image texture;
-	};
-
 	struct MeshLoaderNode
 	{
 		String name;
-		Array<MeshLoadPrimitive> primitives;
+		Mesh mesh;
+		Material material;
+		Image texture;
 		std::optional<Light> light;
 		Transform transform;
 		Array<MeshLoaderNode> children;

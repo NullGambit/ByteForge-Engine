@@ -13,12 +13,21 @@ struct Texture
     float scale;
 };
 
-struct Material
+layout(std140, binding = 0) uniform Material
 {
+    vec3 color;
     Texture diffuse;
     Texture specular;
     Texture emissive;
 };
+//
+//struct Material
+//{
+//    vec3 color;
+//    Texture diffuse;
+//    Texture specular;
+//    Texture emissive;
+//};
 
 const int LIGHT_DIRECTION = 0;
 const int LIGHT_SPOT = 1;
@@ -139,7 +148,7 @@ vec3 calculate_point_spot_light(Light light)
 
 void main()
 {
-    g_object_color = get_texture(material.diffuse, vec4(1.0));
+    g_object_color = get_texture(material.diffuse, vec4(1.0)) * vec4(material.color, 1.0);
 
     if (g_object_color.a < 0.1)
     {

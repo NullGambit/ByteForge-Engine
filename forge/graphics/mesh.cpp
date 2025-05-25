@@ -4,5 +4,6 @@ forge::MeshView::MeshView(Mesh &mesh) :
 	name(mesh.name),
 	vertices(mesh.vertices),
 	indices(mesh.indices),
-	materials(mesh.materials)
+	materials(mesh.materials),
+	submeshes(mesh.submeshes)
 {}

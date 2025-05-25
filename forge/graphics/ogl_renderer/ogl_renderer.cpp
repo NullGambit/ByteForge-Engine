@@ -27,6 +27,15 @@
 #define CAMERA_POOL_SIZE sizeof(forge::Camera) * 16
 #define RENDER_DATA_POOL_SIZE MB(2048)
 
+struct OglDrawElementsIndirectCommand
+{
+	u32 count			{};
+	u32 instance_count	{};
+	u32 first_index		{};
+	u32 base_vertex		{};
+	u32 base_instance	{};
+};
+
 static constexpr forge::TextureList<std::array<std::string_view, 4>> g_material_prop_str
 {
 	std::array<std::string_view, 4>
@@ -102,6 +111,20 @@ std::string forge::OglRenderer::init(const EngineInitOptions &options)
 
 	m_render_data.init<RenderData>(RENDER_DATA_POOL_SIZE);
 
+	GLuint ubo;
+	glGenBuffers(1, &ubo);
+	glBindBuffer(GL_UNIFORM_BUFFER, ubo);
+
+	glBufferStorage(GL_UNIFORM_BUFFER, sizeof(Material), nullptr,
+		GL_MAP_WRITE_BIT |
+		GL_MAP_PERSISTENT_BIT |
+		GL_MAP_COHERENT_BIT);
+
+	m_material_ubo = (Material*)glMapBufferRange(GL_UNIFORM_BUFFER, 0, sizeof(Material),
+		GL_MAP_WRITE_BIT |
+		GL_MAP_PERSISTENT_BIT |
+		GL_MAP_COHERENT_BIT);
+
 	return {};
 }
 
@@ -112,6 +135,27 @@ void forge::OglRenderer::update()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	m_forward_shader.use();
+
+	for (auto i = 0; const auto &light : m_lights)
+	{
+		auto index = fmt::format("[{}]", i++);
+
+		if (light.enabled)
+		{
+			m_forward_shader.set(fmt::format_view("lights{}.position", index), light.position);
+			m_forward_shader.set(fmt::format_view("lights{}.direction", index), light.direction);
+			m_forward_shader.set(fmt::format_view("lights{}.color", index), light.color);
+			m_forward_shader.set(fmt::format_view("lights{}.intensity", index), light.intensity);
+			m_forward_shader.set(fmt::format_view("lights{}.cutoff", index), light.cutoff);
+			m_forward_shader.set(fmt::format_view("lights{}.outer_cutoff", index), light.outer_cutoff);
+			m_forward_shader.set(fmt::format_view("lights{}.max_distance", index), light.max_distance);
+			m_forward_shader.set(fmt::format_view("lights{}.type", index), (int)light.type);
+		}
+
+		m_forward_shader.set(fmt::format("lights{}.enabled", index), light.enabled);
+	}
+
+	m_forward_shader.set("view_position", m_active_camera->position);
 
 	const auto pv = m_active_camera->calculate_pv();
 
@@ -124,29 +168,10 @@ void forge::OglRenderer::update()
 			m_forward_shader.set("pvm", pvm);
 			m_forward_shader.set("model", data.object.model);
 			m_forward_shader.set("normal_matrix", data.object.normal_matrix);
-			m_forward_shader.set("view_position", m_active_camera->position);
-
-			for (auto i = 0; const auto &light : m_lights)
-			{
-				auto index = fmt::format("[{}]", i++);
-
-				if (light.enabled)
-				{
-
-					m_forward_shader.set(fmt::format_view("lights{}.position", index), light.position);
-					m_forward_shader.set(fmt::format_view("lights{}.direction", index), light.direction);
-					m_forward_shader.set(fmt::format_view("lights{}.color", index), light.color);
-					m_forward_shader.set(fmt::format_view("lights{}.intensity", index), light.intensity);
-					m_forward_shader.set(fmt::format_view("lights{}.cutoff", index), light.cutoff);
-					m_forward_shader.set(fmt::format_view("lights{}.outer_cutoff", index), light.outer_cutoff);
-					m_forward_shader.set(fmt::format_view("lights{}.max_distance", index), light.max_distance);
-					m_forward_shader.set(fmt::format_view("lights{}.type", index), (int)light.type);
-				}
-
-				m_forward_shader.set(fmt::format("lights{}.enabled", index), light.enabled);
-			}
 
 			auto &material = data.object.material;
+
+			m_forward_shader.set("material.color", material.color);
 
 			for (auto i = 0; auto &texture : material.textures)
 			{
@@ -173,7 +198,15 @@ void forge::OglRenderer::update()
 
 			data.buffers.bind();
 
-			glDrawElements(GL_TRIANGLES, data.index_size, GL_UNSIGNED_INT, 0);
+			glBindBuffer(GL_DRAW_INDIRECT_BUFFER, data.draw_command);
+
+			glMultiDrawElementsIndirect(
+				GL_TRIANGLES,
+				GL_UNSIGNED_INT,
+				nullptr,
+				data.command_count,
+				0
+			);
 
 			data.buffers.unbind();
 
@@ -265,31 +298,51 @@ forge::RenderObjectTree forge::OglRenderer::create_node_buffers(MeshLoaderNode &
 		out.light = node.light;
 	}
 
-	for (auto &primitive : node.primitives)
+	Array<OglDrawElementsIndirectCommand> draw_commands;
+
+	draw_commands.reserve(node.mesh.submeshes.size());
+
+	for (auto &submesh : node.mesh.submeshes)
 	{
-		auto [rd, id] = m_render_data.emplace<RenderData>();
+		OglDrawElementsIndirectCommand cmd;
 
-		rd->object.id = id;
-		rd->object.flags = R_DEFAULT;
-		rd->in_use = true;
+		cmd.count = submesh.index_count;
+		cmd.instance_count = 1;
+		cmd.first_index = submesh.index_offset;
+		cmd.base_instance = submesh.material_index;
 
-		out.object = &rd->object;
-
-		rd->object.compute_model(node.transform.get_global_matrix());
-		rd->object.material = primitive.material;
-		rd->textures[TextureType::Diffuse].load(primitive.texture);
-		rd->index_size = primitive.mesh.indices.size();
-
-		rd->buffers = OglBufferBuilder()
-			.start()
-			.stride<Vertex>()
-			.vbo(primitive.mesh.vertices)
-			.ebo(primitive.mesh.indices)
-			.attr(3)
-			.attr(2)
-			.attr(3)
-			.finish();
+		draw_commands.push_back(cmd);
 	}
+
+	auto [rd, id] = m_render_data.emplace<RenderData>();
+
+	rd->command_count = draw_commands.size();
+
+	glGenBuffers(1, &rd->draw_command);
+	glBindBuffer(GL_DRAW_INDIRECT_BUFFER, rd->draw_command);
+	glBufferData(GL_DRAW_INDIRECT_BUFFER, rd->command_count * sizeof(OglDrawElementsIndirectCommand), draw_commands.data(), GL_STATIC_DRAW);
+
+	rd->object.id = id;
+	rd->object.flags = R_DEFAULT;
+	rd->in_use = true;
+
+	out.object = &rd->object;
+
+	rd->object.compute_model(node.transform.get_global_matrix());
+	rd->object.material = node.material;
+	rd->textures[TextureType::Diffuse].load(node.texture);
+	node.texture.unload();
+	rd->index_size = node.mesh.indices.size();
+
+	rd->buffers = OglBufferBuilder()
+		.start()
+		.stride<Vertex>()
+		.vbo(node.mesh.vertices)
+		.ebo(node.mesh.indices)
+		.attr(3)
+		.attr(2)
+		.attr(3)
+		.finish();
 
 	for (auto &child : node.children)
 	{

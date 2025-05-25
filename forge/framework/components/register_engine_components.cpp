@@ -13,5 +13,5 @@ void forge::register_engine_components()
 	nexus->register_component<CameraComponent>();
 	nexus->register_component<LightComponent>();
 	nexus->register_component<MeshRendererComponent>();
-
+	nexus->register_component<LightComponent>();
 }

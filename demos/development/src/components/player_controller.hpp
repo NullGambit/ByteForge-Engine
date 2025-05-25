@@ -36,8 +36,8 @@ public:
 		&mouse_sensitivity);
 
 private:
-	glm::vec2 m_last_mouse_coords;
-	forge::CameraComponent *m_camera;
+	glm::vec2 m_last_mouse_coords {};
+	forge::CameraComponent *m_camera = nullptr;
 
 protected:
 	void on_begin() override;

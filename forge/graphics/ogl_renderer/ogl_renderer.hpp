@@ -117,7 +117,9 @@ namespace forge
 		std::array<Light, OGL_MAX_LIGHTS> m_lights {};
 
 		Camera m_default_camera;
-		Camera *m_active_camera;
+		Camera *m_active_camera = nullptr;
+
+		Material *m_material_ubo = nullptr;
 
 		MemPool m_render_data;
 
@@ -133,6 +135,8 @@ namespace forge
 			RenderObject object;
 			TextureList<OglTexture> textures;
 			OglBuffers buffers;
+			u32 draw_command {};
+			u32 command_count {};
 			u32 index_size {};
 			bool in_use = true;
 		};

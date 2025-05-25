@@ -33,6 +33,8 @@ forge::Array<forge::ComponentField> forge::MeshRendererComponent::export_fields(
 
 	auto &material = object->material;
 
+	out.emplace_back<ComponentField>({"color", COLOR_FIELD(&material.color)});
+
 	for (auto type = 0; auto &texture : material.textures)
 	{
 		out.emplace_back(FIELD_ENTRY(FieldSeperator{TextureType::to_string(type)}));

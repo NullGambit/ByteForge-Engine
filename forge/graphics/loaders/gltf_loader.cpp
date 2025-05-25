@@ -63,7 +63,8 @@ namespace forge
 			return out;
 		}
 
-		out.primitives.resize(mesh->primitives_count);
+		u32 vertex_offset {};
+		u32 index_offset {};
 
 		for (cgltf_size p = 0; p < mesh->primitives_count; ++p)
 		{
@@ -92,9 +93,6 @@ namespace forge
 				}
 			}
 
-			out.primitives[p].mesh.vertices.reserve(pos_accessor->count);
-			out.primitives[p].mesh.indices.reserve(prim->indices->count);
-
 			for (cgltf_size i = 0; i < pos_accessor->count; i++)
 			{
 				Vertex vertex {};
@@ -105,48 +103,66 @@ namespace forge
 
 				vertex.position *= options.uniform_scale;
 
-				out.primitives[p].mesh.vertices.emplace_back(vertex);
+				out.mesh.vertices.emplace_back(vertex);
 			}
 
 			for (cgltf_size i = 0; i < prim->indices->count; i++)
 			{
 				auto index = cgltf_accessor_read_index(prim->indices, i);
 
-				out.primitives[p].mesh.indices.emplace_back(index);
+				out.mesh.indices.emplace_back(index + vertex_offset);
 			}
 
-			auto *texture = prim->material ? prim->material->pbr_metallic_roughness.base_color_texture.texture : nullptr;
+			Submesh submesh;
 
-			if (prim->material && prim->material->has_pbr_metallic_roughness && texture)
+			submesh.index_offset = index_offset;
+			submesh.index_count = prim->indices->count;
+
+			out.mesh.submeshes.push_back(submesh);
+
+			vertex_offset += pos_accessor->count;
+			index_offset += prim->indices->count;
+
+			if (prim->material && prim->material->has_pbr_metallic_roughness)
 			{
-				auto &tex_view = prim->material->pbr_metallic_roughness.base_color_texture;
-				auto *image = texture->image;
+				auto *texture = prim->material->pbr_metallic_roughness.base_color_texture.texture;
 
-				std::string_view buffer;
-
-				if (image->uri)
+				if (texture)
 				{
-					buffer = image->uri;
+					auto *image = texture->image;
+
+					std::string_view buffer;
+
+					if (image->uri)
+					{
+						buffer = image->uri;
+					}
+					else
+					{
+						auto *view = image->buffer_view;
+
+						buffer = std::string_view{(char*)view->buffer->data + view->offset, view->size};
+					}
+
+					out.texture.load(buffer,
+					{
+						.from_memory = image->uri == nullptr
+					});
+
+					auto &tex_view = prim->material->pbr_metallic_roughness.base_color_texture;
+
+					auto tex_scale = tex_view.transform.scale;
+
+					out.material.textures[TextureType::Diffuse] =
+					{
+						.scale = tex_view.has_transform ? std::max(tex_scale[0], tex_scale[1]) : 1,
+						.enabled = true,
+					};
 				}
-				else
-				{
-					auto *view = image->buffer_view;
 
-					buffer = std::string_view{(char*)view->buffer->data + view->offset, view->size};
-				}
+				auto pbr = prim->material->pbr_metallic_roughness;
 
-				out.primitives[p].texture.load(buffer,
-				{
-					.from_memory = image->uri == nullptr
-				});
-
-				auto tex_scale = tex_view.transform.scale;
-
-				out.primitives[p].material.textures[TextureType::Diffuse] =
-				{
-					.scale = tex_view.has_transform ? std::max(tex_scale[0], tex_scale[1]) : 1,
-					.enabled = true,
-				};
+				out.material.color = glm::make_vec3(pbr.base_color_factor);
 			}
 		}
 

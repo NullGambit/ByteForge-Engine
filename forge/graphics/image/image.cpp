@@ -4,7 +4,7 @@
 
 forge::Image::~Image()
 {
-	unload();
+	// unload();
 }
 
 bool forge::Image::load(std::string_view path, ImageLoadOptions options)

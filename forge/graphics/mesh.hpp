@@ -19,12 +19,20 @@ namespace forge
 		glm::vec3 normals;
 	};
 
+	struct Submesh
+	{
+		u32 index_offset {};
+		u32 index_count {};
+		u32 material_index {};
+	};
+
 	struct Mesh
 	{
 		String name;
 		Array<Vertex> vertices;
 		Array<u32> indices;
 		Array<Material> materials;
+		Array<Submesh> submeshes;
 	};
 
 	// a trivially copyable view to a mesh
@@ -34,6 +42,7 @@ namespace forge
 		View<Vertex> vertices;
 		View<u32> indices;
 		View<Material> materials;
+		View<Submesh> submeshes;
 
 		MeshView() = default;
 

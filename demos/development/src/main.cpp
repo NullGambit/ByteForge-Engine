@@ -27,7 +27,6 @@ void register_demo_components()
 	nexus->register_component<BobComponent>();
 	nexus->register_component<ExportFieldTestComponent>();
 	nexus->register_component<LifetimeComponent>();
-	nexus->register_component<LightComponent>();
 }
 
 void export_test_demo()
@@ -113,7 +112,7 @@ void crates_demo()
 
 	auto *light_ent = nexus->create_entity("light");
 
-	auto *light = light_ent->add_component<LightComponent>()->get_light();
+	auto *light = light_ent->add_component<forge::LightComponent>()->get_light();
 
 	light->type = forge::LightType::Direction;
 
@@ -211,10 +210,18 @@ void mesh_loading_demo()
 	player_ent->set_local_rotation(glm::vec3{-175, 25, 175});
 
 	forge::load_meshes_hierarchy(DEMO_ASSET_DIR"models/room_test.glb");
+	// forge::load_meshes_hierarchy(DEMO_ASSET_DIR"models/mutli_material.glb");
 
-	auto *rug_ent = nexus->get_entity("rug");
-
-	rug_ent->rotate(160, 0, 0);
+	// auto *light = nexus->get_entity("Point");
+	//
+	// if (light)
+	// {
+	// 	light->set_local_position({2.99, 4.2, 4.7});
+	// 	light->get_component<forge::LightComponent>()->get_light()->max_distance = 50;
+	// }
+	// auto *rug_ent = nexus->get_entity("rug");
+	//
+	// rug_ent->rotate(160, 0, 0);
 }
 
 // this component will make its entities transform become dirty in order to force it to update
@@ -327,8 +334,8 @@ int main(int argc, const char **argv)
 	editor->demos.emplace("ecs stress test", ecs_stress_test);
 
 	// editor->load_demo("crates");
-	// editor->load_demo("mesh loading");
-	editor->load_demo("disappearing cube");
+	editor->load_demo("mesh loading");
+	// editor->load_demo("disappearing cube");
 
 	g_engine.run();
 
