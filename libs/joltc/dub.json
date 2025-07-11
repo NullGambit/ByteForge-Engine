@@ -1,0 +1,13 @@
+{
+  "authors": ["Raven"],
+  "copyright": "Copyright © 2025, Raven",
+  "description": "Joltc bindings",
+  "license": "MIT",
+  "targetType": "library",
+  "name": "joltc",
+  "lflags": [
+    "../libs/joltc/joltc/build/lib/libJolt.a",
+    "../libs/joltc/joltc/build/lib/libjoltc.so"
+  ],
+  "copyFiles": ["joltc/build/lib/libjoltc.so"]
+}

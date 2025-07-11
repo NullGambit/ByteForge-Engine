@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="forge-~master" type="DLangLib">
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/../forge/source" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

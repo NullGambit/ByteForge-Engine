@@ -1,0 +1,19 @@
+{
+  "authors": ["Raven"],
+  "dflags": ["-vgc", "-w"],
+  "copyright": "Copyright © 2025, Raven",
+  "dependencies": {
+    "dlib": "~>1.3.2",
+    "forge": {
+      "path": "../forge"
+    },
+    "intel-intrinsics": "~>1.12.0"
+  },
+  "lflags": ["-lphobos2"],
+  "debugVersions": ["LogAllocatorBlockInits", "RecordAllocations"],
+  "description": "A minimal D application.",
+  "importPaths": ["../forge/source", "./source/"],
+  "license": "MIT",
+  "name": "demo",
+  "targetType": "executable"
+}

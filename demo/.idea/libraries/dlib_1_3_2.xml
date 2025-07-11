@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="dlib-1.3.2" type="DLangLib">
+    <CLASSES>
+      <root url="file://$USER_HOME$/.dub/packages/dlib/1.3.2/dlib" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

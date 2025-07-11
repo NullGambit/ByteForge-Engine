@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="intel-intrinsics-1.12.0" type="DLangLib">
+    <CLASSES>
+      <root url="file://$USER_HOME$/.dub/packages/intel-intrinsics/1.12.0/intel-intrinsics/source" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

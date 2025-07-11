@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="joltc-~master" type="DLangLib">
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/../libs/joltc/source" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
