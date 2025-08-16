@@ -1,6 +1,6 @@
 module forge.core.time;
 
-static struct Time 
+static struct Time
 {
     package static float _delta;
     package static float _unscaledDelta;

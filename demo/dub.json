@@ -9,7 +9,8 @@
     },
     "intel-intrinsics": "~>1.12.0"
   },
-  "lflags": ["-lphobos2"],
+  "versions": ["use_mimalloc"],
+  "lflags": ["-lphobos2", "libmimalloc.so.2.2"],
   "debugVersions": ["LogAllocatorBlockInits", "RecordAllocations"],
   "description": "A minimal D application.",
   "importPaths": ["../forge/source", "./source/"],

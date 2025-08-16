@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="mimalloc-~master" type="DLangLib">
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/../libs/mimalloc/source" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

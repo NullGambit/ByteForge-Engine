@@ -179,11 +179,14 @@ void initThreadBlock()
 
 byte* fmalloc(size_t size, size_t alignment)
 {
-    if (g_threadBlock.memory == null)
+    import core.builtins : unlikely;
+
+    if (unlikely(g_threadBlock.memory == null))
     {
         initThreadBlock();
     }
-    auto freeOffset = findFree(size);
+
+    const freeOffset = findFree(size);
 
     if (freeOffset != size_t.max)
     {
@@ -290,6 +293,7 @@ private
     size_t toSizeClass(size_t size)
     {
         import std.math;
+        import std.algorithm;
 
         if (size < 32)
         {
@@ -298,7 +302,9 @@ private
 
         size = toNextPower2(size);
 
-        return cast(size_t) log2(size) - 5;
+        const index = cast(size_t) log2(size) - 5;
+
+        return clamp(index, 0, MaxSizeClasses - 1);
     }
 
     size_t findFree(size_t size)

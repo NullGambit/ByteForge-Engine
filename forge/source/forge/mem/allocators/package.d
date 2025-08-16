@@ -2,17 +2,32 @@ module forge.mem.allocators;
 
 import forge.mem.utils;
 import forge.mem.allocators.fmalloc;
+import mimalloc;
 
 public:
 
 byte* malloc(size_t size, size_t alignment = size_t.alignof) @nogc
 {
-    return fmalloc(size, alignment);
+    version (use_mimalloc)
+    {
+        return cast(byte*) mi_aligned_alloc(alignment, size);
+    }
+    else
+    {
+        return fmalloc(size, alignment);
+    }
 }
 
-void free(byte* ptr) @nogc
+void free(byte* ptr, size_t alignment = size_t.alignof) @nogc
 {
-    ffree(ptr);
+    version (use_mimalloc)
+    {
+        mi_free_aligned(ptr, alignment);
+    }
+    else
+    {
+        ffree(ptr);
+    }
 }
 
 private byte[] allocMemSpan(T)()
@@ -47,14 +62,14 @@ void delObj(T)(T obj) if (is(T == class))
 {
     destroy!false(obj);
 
-    free(cast(byte*) obj);
+    free(cast(byte*) obj, getTypeAlignment!T());
 }
 
 void delObj(T)(T* ptr) if (!is(T == class))
 {
     destroy!false(ptr);
 
-    free(cast(byte*) ptr);
+    free(cast(byte*) ptr, getTypeAlignment!T());
 }
 
 // the default allocator used by all containers that just uses the alloc or free functions

@@ -1,0 +1,9 @@
+{
+  "authors": ["Raven"],
+  "copyright": "Copyright © 2025, Raven",
+  "description": "A minimal D application.",
+  "license": "MIT",
+  "copyFiles": ["mimalloc/build/libmimalloc.so.2.2"],
+  "name": "mimalloc",
+  "targetType": "library"
+}

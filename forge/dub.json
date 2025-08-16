@@ -7,8 +7,12 @@
     "intel-intrinsics": "~>1.12.0",
     "joltc": {
       "path": "../libs/joltc"
+    },
+    "mimalloc": {
+      "path": "../libs/mimalloc"
     }
   },
+  "versions": ["_use_mimalloc"],
   "description": "A minimal D application.",
   "license": "MIT",
   "name": "forge",

@@ -1,137 +1,54 @@
-import forge.mem.mempool;
+import forge.container.string;
 import std.stdio;
-import std.concurrency;
-import core.atomic;
-import forge.mem.allocators.fmalloc;
-import forge.mem.allocators;
-import forge.mem.defs;
-import forge.concurrency.util;
-import std.typecons;
-import core.sync.mutex;
-import core.sync.condition;
-
-__gshared uint tasks = 0;
+import core.stdc.string;
+import std.conv;
 
 class Data
 {
-    int x;
-    int z;
-    char[1024] padding;
-
-    alias x this;
-
-    this(int x = 0)
-    {
-        this.x = x;
-    }
-}
-
-void threadedAllocTest()
-{
-    import std.conv : to;
-
-    __gshared int count;
-
-    count++;
-
-    setThreadName("Worker_" ~ to!string(count));
-
-    enum ObjCount = 60;
-
-    // newObj!int();
-    // newObj!int();
-    // newObj!int();
-
-    foreach (i; 0 .. ObjCount)
-    {
-        auto n = newObj!Data();
-
-        scope (exit)
-        {
-            if (i % 2 != 0)
-            {
-                delObj(n);
-            }
-
-            // delObj(n);
-        }
-
-        n += i;
-
-        // writeln(n);
-    }
-
-    synchronized tasks--;
-}
-
-void benchSimd()
-{
-    import forge.math.simd.vector : dot;
-    import inteli;
-
-    float4 a = [5, 1, 2];
-    float4 b = [5, 1, 2];
-
-    dot(a, b);
-}
-
-void benchScalar()
-{
-
+    int score;
+    String name;
 }
 
 void main()
 {
-    import forge.math.vector;
+    //import forge.mem.allocators;
+    //
+    //auto ptr1 = newObj!Data();
+    //auto ptr2 = newObj!Data();
+    //auto ptr3 = newObj!Data();
+    //
+    //delObj(ptr2);
+    //delObj(ptr1);
+    //delObj(ptr3);
+    //
+    //auto data = newObj!Data();
+    //
+    //data.score += 10;
+    //data.name.append("john");
+    //
+    //writeln(data.score, data.name);
+    //
+    //delObj(data);
+    //String str;
 
-    auto a = Vec3(1);
-    auto b = Vec3(5, 1, 2);
+    //const LEN = 40;
+    //
+    //foreach (i; 0..LEN)
+    //{
+    //    if (i == LEN / 2)
+    //    {
+    //        str.append("hello\n");
+    //    }
+    //    else
+    //    {
+    //        str.append(to!string(i));
+    //        str.append('\n');
+    //    }
+    //}
 
+    String str = "HELLO world";
 
-    writeln(b.length());
-    // setThreadName("Main");
+    str.toLower();
 
-    // setBlockSize(2.gbs);
-
-    // import core.thread;
-
-    // enum TaskCount = 16;
-
-    // tasks = TaskCount;
-
-    // foreach (_; 0 .. TaskCount)
-    // {
-    //     spawn(&threadedAllocTest);
-    // }
-
-    // while (tasks > 0)
-    // {
-    // }
-
-    // stdout.flush();
-
-    // import forge.mem.allocators.statistics;
-
-    // auto stats = getStatistics();
-
-    // foreach (i, const ref field; stats.tupleof[0 .. $ - 1])
-    // {
-    //     enum fieldName = AllocatorStatistics.tupleof[i].stringof;
-
-    //     writefln("%s: %s", fieldName, field);
-    // }
-
-    // foreach (f; stats.footprint)
-    // {
-    //     auto i = 0;
-
-    //     foreach (line; f.trace)
-    //     {
-    //         if (i++ > 7)
-    //         {
-    //             writeln(line);
-    //             break;
-    //         }
-    //     }
-    // }
+    writeln(str);
 }
