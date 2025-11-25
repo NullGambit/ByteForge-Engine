@@ -75,7 +75,11 @@ if (Writer!W)
 
         start = offset+1;
 
-        static if (is(typeof(arg) == struct) || is(typeof(arg) == class))
+        static if (__traits(compiles, arg.init.toString(w)))
+        {
+            arg.toString(w);
+        }
+        else static if (!__traits(compiles, arg.init.toString()) && (is(typeof(arg) == struct) || is(typeof(arg) == class)))
         {
             formatRecord(w, arg);
         }

@@ -10,11 +10,7 @@ import forge.container.mixins;
 // a dynamically sized string struct that can take an allocator
 struct BaseString(T, Allocator = DefaultAllocator!T)
 {
-	union
-	{
-		T* data;
-		T* ptr;
-	}
+	T* ptr;
 
 	Allocator allocator;
 
@@ -39,18 +35,18 @@ struct BaseString(T, Allocator = DefaultAllocator!T)
         str.m_capacity = m_capacity;
         str.allocator = allocator;
 
-        str.data = allocator.alloc(m_capacity);
+        str.ptr = allocator.alloc(m_capacity);
 
-        memcpy(str.data, data, m_capacity);
+        memcpy(str.ptr, ptr, m_capacity);
 
         return str;
 	}
 
 	~this()
 	{
-	    if (data)
+	    if (ptr)
 		{
-            allocator.dealloc(data);
+            allocator.dealloc(ptr);
 		}
 	}
 
@@ -63,7 +59,7 @@ struct BaseString(T, Allocator = DefaultAllocator!T)
 			reserve(cast(uint) newCapacity);
 		}
 
-		memcpy(data + m_length, str.ptr, str.length);
+		memcpy(ptr + m_length, str.ptr, str.length);
 
 		m_length += cast(uint) str.length;
 	}
@@ -76,7 +72,7 @@ struct BaseString(T, Allocator = DefaultAllocator!T)
 			reserve(cast(uint) newCapacity);
 		}
 
-		data[m_length++] = c;
+		ptr[m_length++] = c;
 	}
 
 	T pop()
@@ -86,7 +82,7 @@ struct BaseString(T, Allocator = DefaultAllocator!T)
 			return T.init;
 		}
 
-		return data[--m_length];
+		return ptr[--m_length];
 	}
 
 	void clear()
@@ -114,7 +110,7 @@ struct BaseString(T, Allocator = DefaultAllocator!T)
 	{
 		for (auto i = 0; i < m_length - s.length; i++)
 		{
-			if (data[i..i+s.length] == s)
+			if (ptr[i..i+s.length] == s)
 			{
 				return i;
 			}
@@ -135,7 +131,7 @@ struct BaseString(T, Allocator = DefaultAllocator!T)
 			return false;
 		}
 
-		return data[0..s.length] == s;
+		return ptr[0..s.length] == s;
 	}
 
 	bool endsWith(S)(const S s) const pure
@@ -145,12 +141,12 @@ struct BaseString(T, Allocator = DefaultAllocator!T)
 			return false;
 		}
 
-		return data[m_length-s.length..m_length] == s;
+		return ptr[m_length-s.length..m_length] == s;
 	}
 
 	auto substr(uint start, uint count)
 	{
-		return BaseString!(T, Allocator)(data[start..start+count]);
+		return BaseString!(T, Allocator)(ptr[start..start+count]);
 	}
 
 	@property
@@ -175,23 +171,23 @@ struct BaseString(T, Allocator = DefaultAllocator!T)
 	{
 		auto temp = allocator.alloc(newCapacity);
 
-		memcpy(temp, data, m_length);
+		memcpy(temp, ptr, m_length);
 
 		m_capacity = newCapacity;
 
-		if (data != null)
+		if (ptr != null)
 		{
-			allocator.dealloc(data);
+			allocator.dealloc(ptr);
 		}
 
-		data = temp;
+		ptr = temp;
 	}
 
 	void resize(uint newSize)
 	{
 		if (newSize > m_length)
 		{
-			memset(data + m_length, 0, newSize - m_length);
+			memset(ptr + m_length, 0, newSize - m_length);
 		}
 
 		m_length = newSize;
@@ -199,7 +195,7 @@ struct BaseString(T, Allocator = DefaultAllocator!T)
 
 	inout(T)[] slice() inout pure
 	{
-		return data[0 .. m_length];
+		return ptr[0 .. m_length];
 	}
 
 	string toString() const pure
@@ -224,17 +220,31 @@ struct BaseString(T, Allocator = DefaultAllocator!T)
 
 	ref inout(T) opIndex(uint i) inout pure
 	{
-		return data[i];
+		return ptr[i];
 	}
 
 	inout(T)[] opSlice(uint i, uint j) inout pure
 	{
-		return data[i .. j];
+		return ptr[i .. j];
 	}
+
+	struct Range
+	{
+	    alias ElementType = T;
+
+        ElementType[] slice;
+
+        @property bool empty() const { return slice.length == 0; }
+        @property ElementType front() const { return slice[0]; }
+        void popFront() { slice = slice[1 .. $]; }
+	}
+
+	@property
+	Range range() { return Range(this[0..m_length]); }
 
 	int opApply(scope int delegate(ref T) dg)
 	{
-		foreach (ref val; data[0 .. m_length])
+		foreach (ref val; ptr[0 .. m_length])
 		{
 			auto result = dg(val);
 
@@ -251,7 +261,7 @@ struct BaseString(T, Allocator = DefaultAllocator!T)
 	// TODO: come back to this when i know d better or when ive taken my meds
 	int opApply(scope int delegate(const ref T) dg) const
 	{
-		foreach (ref val; data[0 .. m_length])
+		foreach (ref val; ptr[0 .. m_length])
 		{
 			auto result = dg(val);
 
@@ -266,7 +276,7 @@ struct BaseString(T, Allocator = DefaultAllocator!T)
 
 	int opApply(scope int delegate(size_t, ref T) dg)
 	{
-		foreach (i, ref val; data[0 .. m_length])
+		foreach (i, ref val; ptr[0 .. m_length])
 		{
 			auto result = dg(i, val);
 
@@ -281,7 +291,7 @@ struct BaseString(T, Allocator = DefaultAllocator!T)
 
 	int opApply(scope int delegate(size_t, const ref T) dg) const
 	{
-		foreach (i, ref val; data[0 .. m_length])
+		foreach (i, ref val; ptr[0 .. m_length])
 		{
 			auto result = dg(i, val);
 

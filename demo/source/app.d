@@ -86,13 +86,27 @@ void main()
     //
     //
     //
+    String str = "haoo";
 
 
+    println("{}", str);
+    //
+    // struct Yes
+    // {
+    //     void toString(W)(ref W w) const
+    //     {
+    //         w.write("hello");
+    //     }
+    // }
+
+    // Yes yes;
+
+    // println("{}", yes);
 
     // auto file = File("test.txt", "w+");
 
     // formatToWriter(stdout, "x = {}", 10);
-    scope auto data = new Data(100, "john");
+    // scope auto data = new Data(100, "john");
 
-    formatToWriter(stdout, "{}", data);
+    // formatToWriter(stdout, "{}", data);
 }
