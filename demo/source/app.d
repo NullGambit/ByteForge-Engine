@@ -3,6 +3,7 @@ import std.stdio;
 import core.stdc.string;
 import std.conv;
 import std.conv : to;
+import forge.fmt;
 
 class Data
 {
@@ -25,13 +26,6 @@ struct Data2
 struct Fields
 {
     Data data;
-}
-
-import std.typecons;
-
-String makeStr(string s)
-{
-    return String(s);
 }
 
 void main()
@@ -74,12 +68,13 @@ void main()
     // import core.lifetime;
 
     // String str = "hello world";
-
     // {
     //     auto str2 = str.move();
 
-    //     my_write_line(str2);
+    //     println(str2);
     // }
+
+    // println("{}", str.length);
 
     // str.append("hello");
 
@@ -92,11 +87,12 @@ void main()
     //
     //
 
-    import forge.fmt;
+
 
     // auto file = File("test.txt", "w+");
 
     // formatToWriter(stdout, "x = {}", 10);
+    scope auto data = new Data(100, "john");
 
-    println("x = {}", 10);
+    formatToWriter(stdout, "{}", data);
 }

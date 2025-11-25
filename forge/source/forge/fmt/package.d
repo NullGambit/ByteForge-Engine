@@ -2,6 +2,7 @@ module forge.fmt;
 
 import core.sys.linux.unistd;
 import forge.container.string;
+import std.conv : to;
 
 template Writer(T)
 {
@@ -23,45 +24,66 @@ void writer_reserve(W)(auto ref W w, uint amount)
     }
 }
 
+void formatRecord(W, T)(auto ref W w, const auto ref T t)
+{
+    w.write(T.stringof);
+    w.write(" { ");
+
+    foreach (i, ref field; t.tupleof)
+    {
+        enum fieldName = T.tupleof[i].stringof;
+
+        w.write(fieldName);
+        w.write(": ");
+
+        auto converted = to!string(field);
+
+        w.write(converted);
+
+        if (i < t.tupleof.length-1)
+        {
+            w.write(", ");
+        }
+    }
+
+    w.write(" }");
+}
+
 void formatToWriter(W, S, Args...)(auto ref W w, const auto ref S fmt, const auto ref Args args)
 if (Writer!W)
 {
     import core.stdc.stdio;
-    import std.conv : to;
 
-    static string[args.length] str;
+    auto start = 0;
+    auto offset = 0;
 
-    auto possibleCap = cast(uint)fmt.length;
-
-    static foreach (i, arg; args)
+    foreach (ref arg; args)
     {
-        str[i] = to!string(args[i]);
-        // +2 for '{}'
-        possibleCap += str[i].length + 2;
-    }
+        char c = fmt[offset++];
 
-    writer_reserve(w, possibleCap);
-
-    auto strIndex = 0;
-
-    for (auto i = 0; i < fmt.length; i++)
-    {
-        char c = fmt[i];
-
-        if (c == '{')
+        while (c != '{')
         {
-            auto converted = str[strIndex++];
+            c = fmt[offset++];
+        }
 
-            w.write(converted);
+        w.write(fmt[start..offset-1]);
 
-            while (c != '}')
-            {
-                c = fmt[++i];
-            }
+        while (c != '}')
+        {
+            c = fmt[offset++];
+        }
+
+        start = offset+1;
+
+        static if (is(typeof(arg) == struct) || is(typeof(arg) == class))
+        {
+            formatRecord(w, arg);
         }
         else
         {
-            w.write(c);
+            auto converted = to!string(arg);
+
+            w.write(converted);
         }
     }
 

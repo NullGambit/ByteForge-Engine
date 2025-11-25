@@ -31,11 +31,6 @@ struct BaseString(T, Allocator = DefaultAllocator!T)
 		append(str);
 	}
 
-	// this(S)(const S str)
-	// {
-	// 	append(str);
-	// }
-
 	auto clone()
 	{
 	    typeof(this) str;
