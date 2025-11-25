@@ -2,7 +2,9 @@ module forge.container.string_view;
 
 import forge.container.string;
 
-struct StringView
+struct BaseStringView(C)
 {
 	
 }
+
+alias StringView = BaseStringView!char;

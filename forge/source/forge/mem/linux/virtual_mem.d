@@ -1,6 +1,8 @@
 module forge.mem.linux.virtual_mem;
 
-version (linux)  : import core.sys.linux.sys.mman;
+version (linux):
+
+import core.sys.linux.sys.mman;
 
 import forge.mem.utils;
 

@@ -2,11 +2,36 @@ import forge.container.string;
 import std.stdio;
 import core.stdc.string;
 import std.conv;
+import std.conv : to;
 
 class Data
 {
     int score;
     String name;
+
+    this(S)(int score, auto ref S name)
+    {
+        this.score = score;
+        this.name = String(name);
+    }
+}
+
+struct Data2
+{
+    int score;
+    String name;
+}
+
+struct Fields
+{
+    Data data;
+}
+
+import std.typecons;
+
+String makeStr(string s)
+{
+    return String(s);
 }
 
 void main()
@@ -45,10 +70,33 @@ void main()
     //        str.append('\n');
     //    }
     //}
+    //
+    // import core.lifetime;
 
-    String str = "HELLO world";
+    // String str = "hello world";
 
-    str.toLower();
+    // {
+    //     auto str2 = str.move();
 
-    writeln(str);
+    //     my_write_line(str2);
+    // }
+
+    // str.append("hello");
+
+    // auto f = 32.0f;
+
+    // my_write_line(str, 5, f);
+
+    // import std.digest.murmurhash;
+    //
+    //
+    //
+
+    import forge.fmt;
+
+    // auto file = File("test.txt", "w+");
+
+    // formatToWriter(stdout, "x = {}", 10);
+
+    println("x = {}", 10);
 }

@@ -5,14 +5,15 @@ import std.typecons;
 import ascii = std.ascii;
 
 import forge.mem.allocators;
+import forge.container.mixins;
 
 // a dynamically sized string struct that can take an allocator
-struct BaseString(C, Allocator = DefaultAllocator!C)
+struct BaseString(T, Allocator = DefaultAllocator!T)
 {
 	union
 	{
-		C* data;
-		C* ptr;
+		T* data;
+		T* ptr;
 	}
 
 	Allocator allocator;
@@ -23,12 +24,42 @@ struct BaseString(C, Allocator = DefaultAllocator!C)
 		uint m_capacity;
 	}
 
-	this(S)(const S str)
+	mixin Container;
+
+	this(S)(const auto ref S str)
 	{
 		append(str);
 	}
 
-	void append(S)(S str)
+	// this(S)(const S str)
+	// {
+	// 	append(str);
+	// }
+
+	auto clone()
+	{
+	    typeof(this) str;
+
+		str.m_length = m_length;
+        str.m_capacity = m_capacity;
+        str.allocator = allocator;
+
+        str.data = allocator.alloc(m_capacity);
+
+        memcpy(str.data, data, m_capacity);
+
+        return str;
+	}
+
+	~this()
+	{
+	    if (data)
+		{
+            allocator.dealloc(data);
+		}
+	}
+
+	void append(S)(const S str)
 	{
 		if (m_length + str.length >= m_capacity)
 		{
@@ -42,7 +73,7 @@ struct BaseString(C, Allocator = DefaultAllocator!C)
 		m_length += cast(uint) str.length;
 	}
 
-	void append(char c)
+	void append(const char c)
 	{
 		if (m_length + 1 >= m_capacity)
 		{
@@ -53,14 +84,19 @@ struct BaseString(C, Allocator = DefaultAllocator!C)
 		data[m_length++] = c;
 	}
 
-	C pop()
+	T pop()
 	{
 		if (m_length <= 0)
 		{
-			return C.init;
+			return T.init;
 		}
 
 		return data[--m_length];
+	}
+
+	void clear()
+	{
+        m_length = 0;
 	}
 
 	void toUpper()
@@ -119,7 +155,7 @@ struct BaseString(C, Allocator = DefaultAllocator!C)
 
 	auto substr(uint start, uint count)
 	{
-		return BaseString!(C, Allocator)(data[start..start+count]);
+		return BaseString!(T, Allocator)(data[start..start+count]);
 	}
 
 	@property
@@ -166,14 +202,14 @@ struct BaseString(C, Allocator = DefaultAllocator!C)
 		m_length = newSize;
 	}
 
-	inout(C)[] slice() inout pure
+	inout(T)[] slice() inout pure
 	{
 		return data[0 .. m_length];
 	}
 
 	string toString() const pure
 	{
-		return cast(string) data[0 .. m_length];
+		return cast(string) slice();
 	}
 
 	bool opEquals(S)(const S s) const pure
@@ -181,22 +217,27 @@ struct BaseString(C, Allocator = DefaultAllocator!C)
 		return slice() == s;
 	}
 
+	size_t toHash() const pure nothrow
+	{
+	    return toString().hashOf;
+	}
+
 	void opOpAssign(string op : "+", S)(const S s)
 	{
 		append(s);
 	}
 
-	ref inout(C) opIndex(uint i) inout pure
+	ref inout(T) opIndex(uint i) inout pure
 	{
 		return data[i];
 	}
 
-	inout(C)[] opSlice(uint i, uint j) inout pure
+	inout(T)[] opSlice(uint i, uint j) inout pure
 	{
 		return data[i .. j];
 	}
 
-	int opApply(scope int delegate(ref C) dg)
+	int opApply(scope int delegate(ref T) dg)
 	{
 		foreach (ref val; data[0 .. m_length])
 		{
@@ -213,7 +254,7 @@ struct BaseString(C, Allocator = DefaultAllocator!C)
 
 	// i cannot get inout to work. The compiler is literally lying to me and the feds are out to get me.
 	// TODO: come back to this when i know d better or when ive taken my meds
-	int opApply(scope int delegate(const ref C) dg) const
+	int opApply(scope int delegate(const ref T) dg) const
 	{
 		foreach (ref val; data[0 .. m_length])
 		{
@@ -228,7 +269,7 @@ struct BaseString(C, Allocator = DefaultAllocator!C)
 		return 0;
 	}
 
-	int opApply(scope int delegate(size_t, ref C) dg)
+	int opApply(scope int delegate(size_t, ref T) dg)
 	{
 		foreach (i, ref val; data[0 .. m_length])
 		{
@@ -243,7 +284,7 @@ struct BaseString(C, Allocator = DefaultAllocator!C)
 		return 0;
 	}
 
-	int opApply(scope int delegate(size_t, const ref C) dg) const
+	int opApply(scope int delegate(size_t, const ref T) dg) const
 	{
 		foreach (i, ref val; data[0 .. m_length])
 		{
@@ -256,6 +297,20 @@ struct BaseString(C, Allocator = DefaultAllocator!C)
 		}
 
 		return 0;
+	}
+
+	void write(T)(T input)
+	{
+	    append(input);
+	}
+
+	void read(byte[] bytes)
+	{
+	    import std.algorithm;
+
+	    auto len = min(m_length, bytes.length);
+
+		memcpy(bytes.ptr, ptr, len);
 	}
 }
 

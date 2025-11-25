@@ -75,15 +75,15 @@ void delObj(T)(T* ptr) if (!is(T == class))
 // the default allocator used by all containers that just uses the alloc or free functions
 struct DefaultAllocator(T)
 {
-    T* alloc(size_t count)
+    T* alloc(size_t count = 1)
     {
         auto size = getTypeSize!T();
-        return cast(T*) malloc(size * count);
+        return cast(T*) malloc(size * count, getTypeAlignment!T());
     }
 
     void dealloc(T* ptr)
     {
-        return free(cast(byte*) ptr);
+        return free(cast(byte*) ptr, getTypeAlignment!T());
     }
 
     byte* allocBytes(size_t size)
