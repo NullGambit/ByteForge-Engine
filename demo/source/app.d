@@ -1,4 +1,5 @@
 import forge.container.string;
+import forge.container.string_view;
 import std.stdio;
 import core.stdc.string;
 import std.conv;
@@ -87,22 +88,17 @@ void main()
     //
     //
     String str = "haoo";
+    StringView sv = str;
 
+    println("{}", sv);
+    // println("{}", typeof(*String.init.ptr).stringof);
 
-    println("{}", str);
-    //
     // struct Yes
     // {
-    //     void toString(W)(ref W w) const
-    //     {
-    //         w.write("hello");
-    //     }
+    // 	alias Ok = int;
     // }
 
-    // Yes yes;
-
-    // println("{}", yes);
-
+    // println("{}", ElementType!(string));
     // auto file = File("test.txt", "w+");
 
     // formatToWriter(stdout, "x = {}", 10);
