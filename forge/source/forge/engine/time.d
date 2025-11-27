@@ -1,4 +1,4 @@
-module forge.core.time;
+module forge.engine.time;
 
 static struct Time
 {

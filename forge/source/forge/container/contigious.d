@@ -10,9 +10,9 @@ enum StringLike(T) = __traits(compiles, { auto s = T.init; auto p = s.ptr; }) &&
 
 // mixin definitions for a contigious container
 
-mixin template ContigiousCore(T)
+mixin template ContigiousCore(T, bool View = false)
 {
-	mixin Container;
+	mixin Container!View;
 
 	T* ptr;
 
@@ -133,6 +133,16 @@ mixin template ContigiousWrite(T, Allocator = DefaultAllocator!T)
 		}
 	}
 
+	void checkCapacity(uint increase)
+	{
+		if (increase >= m_capacity)
+		{
+			auto newCapacity = m_capacity == 0 ? increase * 2 : m_capacity * 2;
+
+			reserve(cast(uint) newCapacity);
+		}
+	}
+
 	T pop()
 	{
 		if (m_length <= 0)
@@ -147,6 +157,8 @@ mixin template ContigiousWrite(T, Allocator = DefaultAllocator!T)
 
 	auto clone()
 	{
+		import core.stdc.string;
+
 	    typeof(this) newSelf;
 
 		newSelf.m_length = m_length;
@@ -162,14 +174,38 @@ mixin template ContigiousWrite(T, Allocator = DefaultAllocator!T)
 
 	void clear()
 	{
+		static if (!__traits(isPOD, T) || __traits(hasMember, T, "__dtor") || is(T == class))
+		{
+			import core.lifetime;
+
+			foreach (ref item; this)
+			{
+				destroy!false(item);
+			}
+		}
+
         m_length = 0;
 	}
 
 	void reserve(uint newCapacity)
 	{
+		import core.stdc.string;
+
 		auto temp = allocator.alloc(newCapacity);
 
-		memcpy(temp, ptr, m_length);
+		static if (is(T == class) || !__traits(isPOD, T))
+		{
+			import core.lifetime;
+
+			foreach (i, ref item; this)
+			{
+				emplace(&temp[i], move(item));
+			}
+		}
+		else
+		{
+			memcpy(temp, ptr, m_length);
+		}
 
 		m_capacity = newCapacity;
 
@@ -183,6 +219,7 @@ mixin template ContigiousWrite(T, Allocator = DefaultAllocator!T)
 
 	void resize(uint newSize)
 	{
+		import core.stdc.string;
 		if (newSize > m_length)
 		{
 			memset(ptr + m_length, 0, newSize - m_length);
@@ -217,8 +254,6 @@ mixin template ContigiousRead(T)
 	{
 		return indexOf(s) != -1;
 	}
-
-
 }
 
 // only string read is defined because it is only one needed to share between a String and a StringView

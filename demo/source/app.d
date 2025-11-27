@@ -1,5 +1,6 @@
 import forge.container.string;
 import forge.container.string_view;
+import forge.container.list;
 import std.stdio;
 import core.stdc.string;
 import std.conv;
@@ -16,12 +17,19 @@ class Data
         this.score = score;
         this.name = String(name);
     }
+
 }
 
 struct Data2
 {
     int score;
     String name;
+
+    this(S)(int score, auto ref S name)
+    {
+        this.score = score;
+        this.name = String(name);
+    }
 }
 
 struct Fields
@@ -87,10 +95,51 @@ void main()
     //
     //
     //
-    String str = "haoo";
+    // String str = "haoo";
+    // StringView sv = str;
+
+    // println("{}", sv);
+    //
+    // auto data = Data2(100, "john");
+
+    // auto list = List!Data2();
+
+    // list.append(data);
+    // list.append(Data2(200, "henry"));
+    // list.append(Data2(200, "henry"));
+    // list.append(Data2(200, "henry"));
+    // list.append(Data2(200, "henry"));
+
+    // // list.append(data);
+    // foreach (ref item; list)
+    // {
+    // 	println("{}", item);
+    // }
+
+    String str = "hello";
     StringView sv = str;
 
-    println("{}", sv);
+    auto sv2 = sv;
+
+    println("{}", sv2);
+
+    // auto data = new Data(100, "john");
+
+    // auto list = List!Data();
+
+    // list.append(data);
+    // list.append(new Data(200, "henry"));
+    // list.append(new Data(200, "henry"));
+    // list.append(new Data(200, "henry"));
+    // list.append(new Data(200, "henry"));
+
+    // foreach (ref item; list)
+    // {
+    //     println("{}", item);
+    // }
+
+    // list.clear();
+    // println("{}", list.slice);
     // println("{}", typeof(*String.init.ptr).stringof);
 
     // struct Yes

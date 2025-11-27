@@ -19,12 +19,7 @@ struct BaseString(T, Allocator = DefaultAllocator!T)
 	void append(S)(const auto ref S value)
 	if (StringLike!S)
 	{
-		if (m_length + value.length >= m_capacity)
-		{
-			auto newCapacity = m_capacity == 0 ? value.length * 2 : m_capacity * 2;
-
-			reserve(cast(uint) newCapacity);
-		}
+		checkCapacity(m_length + cast(uint)value.length);
 
 		memcpy(ptr + m_length, value.ptr, value.length);
 

@@ -6,7 +6,7 @@ import forge.container;
 
 struct BaseStringView(T)
 {
-	mixin ContigiousCore!T;
+	mixin ContigiousCore!(T, true);
 	mixin ContigiousRead!T;
 	mixin StringRead!T;
 
