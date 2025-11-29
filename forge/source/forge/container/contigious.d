@@ -127,9 +127,14 @@ mixin template ContigiousWrite(T, Allocator = DefaultAllocator!T)
 
 	~this()
 	{
+		clear();
+
+		m_capacity = 0;
+
 	    if (ptr)
 		{
             allocator.dealloc(ptr);
+            ptr = null;
 		}
 	}
 
@@ -153,6 +158,24 @@ mixin template ContigiousWrite(T, Allocator = DefaultAllocator!T)
 		import core.lifetime;
 
 		return ptr[--m_length].move();
+	}
+
+	T swapPop(uint index)
+	{
+		import core.lifetime;
+		import core.builtins;
+
+		if (likely(m_length > 1))
+		{
+			auto temp = ptr[index].move();
+
+			auto last = m_length - 1;
+
+			emplace(&ptr[index], move(ptr[last]));
+			emplace(&ptr[last], move(temp));
+		}
+
+		return pop();
 	}
 
 	auto clone()
@@ -191,7 +214,16 @@ mixin template ContigiousWrite(T, Allocator = DefaultAllocator!T)
 	{
 		import core.stdc.string;
 
-		auto temp = allocator.alloc(newCapacity);
+		static if (__traits(hasMember, Allocator, "getTotal"))
+		{
+			m_capacity = cast(uint)allocator.getTotal();
+		}
+		else
+		{
+			m_capacity = newCapacity;
+		}
+
+		auto temp = allocator.alloc(m_capacity);
 
 		static if (is(T == class) || !__traits(isPOD, T))
 		{
@@ -206,8 +238,6 @@ mixin template ContigiousWrite(T, Allocator = DefaultAllocator!T)
 		{
 			memcpy(temp, ptr, m_length);
 		}
-
-		m_capacity = newCapacity;
 
 		if (ptr != null)
 		{

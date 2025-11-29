@@ -6,6 +6,8 @@ import core.stdc.string;
 import std.conv;
 import std.conv : to;
 import forge.fmt;
+import std.typecons;
+import forge.mem.allocators;
 
 class Data
 {
@@ -110,34 +112,44 @@ void main()
     // list.append(Data2(200, "henry"));
     // list.append(Data2(200, "henry"));
 
+    // auto d = list.swapPop(0);
+
+    // println("{}", d);
+
     // // list.append(data);
     // foreach (ref item; list)
     // {
     // 	println("{}", item);
     // }
 
-    String str = "hello";
-    StringView sv = str;
-
-    auto sv2 = sv;
-
-    println("{}", sv2);
-
-    // auto data = new Data(100, "john");
-
-    // auto list = List!Data();
-
-    // list.append(data);
-    // list.append(new Data(200, "henry"));
-    // list.append(new Data(200, "henry"));
-    // list.append(new Data(200, "henry"));
-    // list.append(new Data(200, "henry"));
-
-    // foreach (ref item; list)
     // {
-    //     println("{}", item);
+
+    BaseString!(char, StaticAllocator!(char, 32)) str;
+
+    str += "hello world";
+
+    println("{}", str);
+	   //  auto data = new Data(100, "john");
+
+	   //  auto list = List!Data();
+
+	   //  list.append(data);
+	   //  list.append(new Data(200, "henry"));
+	   //  list.append(new Data(200, "henry"));
+	   //  list.append(new Data(200, "henry"));
+	   //  list.append(new Data(200, "henry"));
+
+	   //  foreach (ref item; list)
+	   //  {
+	   //      println("{}", item);
+	   //  }
+
     // }
 
+    // import forge.mem.allocators.fmalloc;
+    // auto stats = getStatistics();
+
+    // println("{}", stats);
     // list.clear();
     // println("{}", list.slice);
     // println("{}", typeof(*String.init.ptr).stringof);

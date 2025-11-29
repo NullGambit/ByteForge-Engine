@@ -85,14 +85,30 @@ struct DefaultAllocator(T)
     {
         return free(cast(byte*) ptr, getTypeAlignment!T());
     }
+}
 
-    byte* allocBytes(size_t size)
+struct StaticAllocator(T, size_t N)
+{
+	T[N] memory;
+	uint offset;
+
+    T* alloc(size_t count = 1)
     {
-        return malloc(size);
+        auto size = getTypeSize!T() * count;
+
+        auto ptr =  cast(T*) memory[offset..offset + size];
+
+        offset += size;
+
+        return ptr;
     }
 
-    void deallocBytes(byte* ptr)
+    void dealloc(T* ptr)
     {
-        return free(ptr);
+    }
+
+    size_t getTotal()
+    {
+    	return N;
     }
 }
