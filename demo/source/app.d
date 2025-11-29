@@ -8,6 +8,7 @@ import std.conv : to;
 import forge.fmt;
 import std.typecons;
 import forge.mem.allocators;
+import forge.mem.box;
 
 class Data
 {
@@ -124,11 +125,10 @@ void main()
 
     // {
 
-    BaseString!(char, StaticAllocator!(char, 32)) str;
+    auto data = Box!Data(100, "john");
 
-    str += "hello world";
+    println("{}", data);
 
-    println("{}", str);
 	   //  auto data = new Data(100, "john");
 
 	   //  auto list = List!Data();

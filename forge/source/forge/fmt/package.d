@@ -26,6 +26,8 @@ void writer_reserve(W)(auto ref W w, uint amount)
 
 void formatRecord(W, T)(auto ref W w, const auto ref T t)
 {
+	// TODO make it so it uses alias this instead of the actual type if it does have alias this
+
     w.write(T.stringof);
     w.write(" { ");
 
