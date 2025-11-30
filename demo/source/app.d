@@ -9,6 +9,7 @@ import forge.fmt;
 import std.typecons;
 import forge.mem.allocators;
 import forge.mem.box;
+import forge.mem.arc;
 
 class Data
 {
@@ -125,9 +126,29 @@ void main()
 
     // {
 
-    auto data = Box!Data(100, "john");
+    struct Yes
+    {
+    	int n = 0;
 
-    println("{}", data);
+    	@property ref int ok()
+	     {
+	     	return n;
+	     }
+
+		alias ok this;
+    }
+
+    Yes yes;
+
+    yes++;
+
+    auto data = Arc!Data2(100, "john");
+
+    auto d2 = data;
+
+    d2 = data;
+
+    println("{}", d2.name);
 
 	   //  auto data = new Data(100, "john");
 

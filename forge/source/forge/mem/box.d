@@ -1,19 +1,13 @@
 module forge.mem.box;
 
 import forge.mem.allocators;
+import forge.mem.utils;
 
 struct Box(T, Allocator = DefaultAllocator!T)
 {
-	static if (is(T == class))
-	{
-		T ptr;
-	}
-	else
-	{
-		T *ptr;
-	}
+	RefOrPtr!T ptr;
 
-	alias ptr this;
+	alias get this;
 
 	@disable this(this);
 	@disable void opAssign(ref typeof(this) rhs);
@@ -28,6 +22,19 @@ struct Box(T, Allocator = DefaultAllocator!T)
 		if (ptr !is null)
 		{
 			delObj(ptr);
+		}
+	}
+
+	@property
+	ref T get()
+	{
+		static if (is (T == class))
+		{
+			return ptr;
+		}
+		else
+		{
+			return *ptr;
 		}
 	}
 }

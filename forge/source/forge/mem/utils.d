@@ -40,3 +40,16 @@ static size_t getTypeSize(T)() pure
 
     return size;
 }
+
+// if T is a class than it will be itself otherwise it will be a pointer
+template RefOrPtr(T)
+{
+	static if (is(T == class))
+	{
+		alias RefOrPtr = T;
+	}
+	else
+	{
+		alias RefOrPtr = T*;
+	}
+}
