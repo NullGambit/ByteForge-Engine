@@ -142,13 +142,13 @@ void main()
 
     yes++;
 
-    auto data = Arc!Data2(100, "john");
+    auto data = Data2(100, "john");
 
-    auto d2 = data;
+    import forge.mem.utils;
 
-    d2 = data;
+    auto d2 = clone(data);
 
-    println("{}", d2.name);
+    println("{}", d2);
 
 	   //  auto data = new Data(100, "john");
 

@@ -36,40 +36,42 @@ private byte[] allocMemSpan(T)()
     return malloc(size, getTypeAlignment!T())[0 .. size];
 }
 
-T newObj(T, Args...)(auto ref Args args) if (is(T == class))
+template newObj(T)
 {
-    import std.conv : emplace;
-    import core.lifetime : forward;
+	RefOrPtr!T newObj(Args...)(auto ref Args args)
+	{
+	    import std.conv : emplace;
+	    import core.lifetime : forward;
 
-    auto memory = allocMemSpan!T();
+	    auto memory = allocMemSpan!T();
 
-    return emplace!T(memory, forward!args);
+		static if (is (T == class))
+		{
+			return emplace!T(memory, forward!args);
+		}
+		else
+		{
+		    emplace!T(memory, forward!args);
+
+		    return cast(T*) memory;
+		}
+	}
 }
 
-T* newObj(T, Args...)(auto ref Args args) if (!is(T == class))
-{
-    import std.conv : emplace;
-    import core.lifetime : forward;
-
-    auto memory = allocMemSpan!T();
-
-    emplace!T(memory, forward!args);
-
-    return cast(T*) memory;
-}
-
-void delObj(T)(T obj) if (is(T == class))
+void delObj(T)(T obj)
+if (is (T == class))
 {
     destroy!false(obj);
 
     free(cast(byte*) obj, getTypeAlignment!T());
 }
 
-void delObj(T)(T* ptr) if (!is(T == class))
+void delObj(T)(T *obj)
+if (!is (T == class))
 {
-    destroy!false(ptr);
+    destroy!false(obj);
 
-    free(cast(byte*) ptr, getTypeAlignment!T());
+    free(cast(byte*) obj, getTypeAlignment!T());
 }
 
 // the default allocator used by all containers that just uses the alloc or free functions

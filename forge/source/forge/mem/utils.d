@@ -53,3 +53,32 @@ template RefOrPtr(T)
 		alias RefOrPtr = T*;
 	}
 }
+
+template clone(T)
+{
+	import std.traits;
+	import core.lifetime;
+
+	T clone(auto ref T src)
+	{
+		static if (__traits(hasMember, T, "clone"))
+		{
+			return src.clone();
+		}
+		else static if (is(T == class) || is(T == struct))
+		{
+			T cpy;
+
+			foreach (i, ref field; src.tupleof)
+			{
+				emplace(&cpy.tupleof[i], clone(field));
+			}
+
+			return cpy;
+		}
+		else
+		{
+			return src;
+		}
+	}
+}
