@@ -98,11 +98,11 @@ struct Map(K, V, Allocator = DefaultAllocator!(HashEntry!(K, V)))
 			index = getIndex(index + 1);
 		}
 
-		auto bucket = &m_buckets[index];
+		auto entry = &m_buckets[index];
 
-        emplace(&bucket.key, move(k));
-        emplace(&bucket.value, move(v));
-        bucket.hash = hash;
+        emplace(&entry.key, move(k));
+        emplace(&entry.value, move(v));
+        entry.hash = hash;
 
         m_length++;
 	}
@@ -114,11 +114,11 @@ struct Map(K, V, Allocator = DefaultAllocator!(HashEntry!(K, V)))
 
     	while (index < m_capacity && m_buckets[index].isOccupied)
     	{
-    		auto bucket = &m_buckets[index];
+    		auto entry = &m_buckets[index];
 
-    		if (bucket.hash == hash)
+    		if (entry.hash == hash)
     		{
-    			return bucket;
+    			return entry;
     		}
 
     		index = getIndex(index + 1);

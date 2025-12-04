@@ -164,9 +164,8 @@ mixin template ContigiousWrite(T, Allocator = DefaultAllocator!T)
 	T swapPop(uint index)
 	{
 		import core.lifetime;
-		import core.builtins;
 
-		if (likely(m_length > 1))
+		if (m_length > 1)
 		{
 			auto temp = ptr[index].move();
 

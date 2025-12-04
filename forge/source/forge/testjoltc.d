@@ -41,8 +41,8 @@ extern (C)
 
 int runTest()
 {
-    gJphAllocator = IAllocator(Alloc : &jphAlloc, Free:
-        &jphFree);
+    // gJphAllocator = IAllocator(Alloc : &jphAlloc, Free:
+    //     &jphFree);
 
     if (!JPH_Init())
     {

@@ -179,9 +179,12 @@ void initThreadBlock()
 
 byte* fmalloc(size_t size, size_t alignment)
 {
-    import core.builtins : unlikely;
-
-    if (unlikely(g_threadBlock.memory == null))
+    // import core.builtins : unlikely;
+    // if (unlikely(g_threadBlock.memory == null))
+    // {
+    //     initThreadBlock();
+    // }
+    if (g_threadBlock.memory == null)
     {
         initThreadBlock();
     }
@@ -251,7 +254,7 @@ void ffree(byte* ptr)
         index = toSizeClass(size) + 1;
     }
 
-    auto ref sc = g_threadBlock.sizeClasses[index];
+    auto sc = &g_threadBlock.sizeClasses[index];
 
     import std.format;
 
@@ -262,7 +265,7 @@ void ffree(byte* ptr)
 
     sc.offset++;
 
-    auto ref stats = g_statisticsTable[g_threadBlock.index];
+    auto stats = &g_statisticsTable[g_threadBlock.index];
 
     stats.inUse -= size;
     stats.free += size;
@@ -309,7 +312,7 @@ private
 
     size_t findFree(size_t size)
     {
-        auto ref sc = g_threadBlock.sizeClasses[toSizeClass(size)];
+        auto sc = &g_threadBlock.sizeClasses[toSizeClass(size)];
 
         if (sc.offset > 0)
         {
@@ -332,7 +335,7 @@ private
             footprint.trace = defaultTraceHandler(null);
             footprint.size = size;
 
-            auto ref stats = g_statisticsTable[g_threadBlock.index];
+            auto stats = &g_statisticsTable[g_threadBlock.index];
 
             synchronized stats.footprint[id] = footprint;
         }
@@ -344,7 +347,7 @@ private
         {
             synchronized
             {
-                auto ref stats = g_statisticsTable[g_threadBlock.index];
+                auto stats = &g_statisticsTable[g_threadBlock.index];
 
                 stats.footprint.remove(id);
             }
