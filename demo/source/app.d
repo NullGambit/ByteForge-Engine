@@ -124,34 +124,44 @@ void main()
     // }
 
     // {
+    // import forge.container.map;
+
+    // Map!(String, int) map;
+
+    // map.put(String("zero"), 0);
+    // map.put(String("one"), 1);
+    // map.put(String("two"), 2);
+    // map.put(String("three"), 3);
+    // map.put(String("four"), 4);
+    // map.put("five", 5);
+    // map.put(String("six"), 6);
+    // map.put(String("seven"), 7);
+    // map.put(String("eight"), 8);
+
+    // // println("{}", map);
+    // //
+    // // map.remove(String("five"));
+
+    // println("{}", map.Entry.sizeof);
+
+    // auto value = map.get("five");
+
+    // if (value == null)
+    // {
+    //     println("key does not exist");
+    // }
+    // else
+    // {
+    //     println("{}", *value);
+    // }
+
     import forge.container.map;
 
-    Map!(String, int) map;
+    Set!(String) set;
 
-    map.put(String("zero"), 0);
-    map.put(String("one"), 1);
-    map.put(String("two"), 2);
-    map.put(String("three"), 3);
-    map.put(String("four"), 4);
-    map.put(String("five"), 5);
-    map.put(String("six"), 6);
-    map.put(String("seven"), 7);
-    map.put(String("eight"), 8);
+    set.put("hello");
 
-    // println("{}", map);
-    //
-    map.remove(String("five"));
-
-    auto value = map.get(String("five"));
-
-    if (value == null)
-    {
-        println("key does not exist");
-    }
-    else
-    {
-        println("{}", *value);
-    }
+    println("{}", set.has("hello"));
 
 	   //  auto data = new Data(100, "john");
 

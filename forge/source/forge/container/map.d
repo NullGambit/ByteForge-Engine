@@ -12,7 +12,11 @@ struct HashEntry(K, V)
 {
     ulong hash;
     K key;
-	V value;
+
+    static if (!is(V == void))
+    {
+        V value;
+    }
 
 	@property
 	bool isOccupied() const pure
@@ -28,6 +32,9 @@ struct Map(K, V, Allocator = DefaultAllocator!(HashEntry!(K, V)))
 	alias Entry = HashEntry!(K, V);
 
 	Allocator allocator;
+
+	@disable this(this);
+    @disable void opAssign(ref typeof(this) rhs);
 
 	private
 	{
@@ -86,7 +93,7 @@ struct Map(K, V, Allocator = DefaultAllocator!(HashEntry!(K, V)))
     	}
 	}
 
-	void put(A, B)(auto ref A k, auto ref B v)
+    private void putImpl(A, B)(auto ref A k, auto ref B v)
 	{
         validateBucket();
 
@@ -101,10 +108,27 @@ struct Map(K, V, Allocator = DefaultAllocator!(HashEntry!(K, V)))
 		auto entry = &m_buckets[index];
 
         emplace(&entry.key, move(k));
-        emplace(&entry.value, move(v));
+
+        static if (!is(V == void))
+        {
+            emplace(&entry.value, move(v));
+        }
+
         entry.hash = hash;
 
         m_length++;
+	}
+
+	static if (!is(V == void))
+	{
+	    alias put = putImpl;
+	}
+	else
+	{
+	    void put(A)(auto ref A k)
+		{
+            putImpl(k, 0);
+		}
 	}
 
 	inout(Entry)* findEntry(A)(const auto ref A key) inout
@@ -127,16 +151,26 @@ struct Map(K, V, Allocator = DefaultAllocator!(HashEntry!(K, V)))
     	return null;
 	}
 
-	inout(V)* get(A)(const auto ref A key) inout
+	static if (!is(V == void))
 	{
-		auto entry = findEntry(key);
+    	inout(V)* get(A)(const auto ref A key) inout
+    	{
+    		auto entry = findEntry(key);
 
-		if (entry == null)
-		{
-		    return null;
-		}
+    		if (entry == null)
+    		{
+    		    return null;
+    		}
 
-		return &entry.value;
+    		return &entry.value;
+    	}
+	}
+	else
+	{
+        bool has(A)(const auto ref A key) const
+    	{
+    		return findEntry(key) != null;
+    	}
 	}
 
 	void remove(A)(const auto ref A key)
@@ -149,7 +183,11 @@ struct Map(K, V, Allocator = DefaultAllocator!(HashEntry!(K, V)))
        	}
 
         destroy!false(entry.key);
-        destroy!false(entry.value);
+
+        static if (!is(V == void))
+        {
+            destroy!false(entry.value);
+        }
 
         entry.hash = 0;
 	}
@@ -171,10 +209,22 @@ struct Map(K, V, Allocator = DefaultAllocator!(HashEntry!(K, V)))
 		{
 		    if (bucket.isOccupied)
 			{
-			    put(bucket.key, bucket.value);
+                static if (!is(V == void))
+				{
+			        put(bucket.key, bucket.value);
+				}
+				else
+				{
+				    put(bucket.key);
+				}
 			}
 		}
 
 		allocator.dealloc(oldBuckets);
 	}
+}
+
+template Set(K, Allocator = DefaultAllocator!(HashEntry!(K, void)))
+{
+    alias Set = Map!(K, void);
 }

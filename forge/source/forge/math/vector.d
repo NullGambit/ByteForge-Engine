@@ -89,7 +89,7 @@ struct Vec(T, size_t S) if (is(T : real))
         w.write(S);
         w.write("(");
 
-    	static foreach (i, field; this.tupleof[0..$-1])
+    	static foreach (i, ref field; this.tupleof[0..$-1])
 	    {
 			w.write(typeof(this).tupleof[i].stringof);
 			w.write(": ");
