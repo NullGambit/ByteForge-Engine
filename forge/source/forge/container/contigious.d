@@ -2,7 +2,6 @@ module forge.container.contigious;
 
 import forge.mem.allocators;
 
-import forge.container;
 
 import std.traits;
 
@@ -12,6 +11,8 @@ enum StringLike(T) = __traits(compiles, { auto s = T.init; auto p = s.ptr; }) &&
 
 mixin template ContigiousCore(T, bool View = false)
 {
+    import forge.container.core;
+
 	mixin Container!View;
 
 	T* ptr;
@@ -250,6 +251,9 @@ mixin template ContigiousWrite(T, Allocator = DefaultAllocator!T)
 	void resize(uint newSize)
 	{
 		import core.stdc.string;
+
+		checkCapacity(newSize);
+
 		if (newSize > m_length)
 		{
 			memset(ptr + m_length, 0, newSize - m_length);
@@ -332,9 +336,10 @@ mixin template StringRead(T)
 		return cast(string) slice();
 	}
 
-	size_t toHash() const pure nothrow
+	size_t toHash() const nothrow
 	{
-	    return toString().hashOf;
+	    auto s = toString();
+	    return typeid(string).getHash(&s);
 	}
 
 	void read(byte[] bytes)

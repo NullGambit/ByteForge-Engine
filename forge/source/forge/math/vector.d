@@ -1,5 +1,7 @@
 module forge.math.vector;
 
+import forge.fmt;
+
 struct Vec(T, size_t S) if (is(T : real))
 {
     alias V = Vec!(T, S);
@@ -26,6 +28,7 @@ struct Vec(T, size_t S) if (is(T : real))
             }
         }
 
+        @HideInFormatting
         T[S] raw;
     }
 
@@ -80,11 +83,25 @@ struct Vec(T, size_t S) if (is(T : real))
         return v;
     }
 
-    string toString() @safe const pure
+    void toString(W)(auto ref W w) const
     {
-        import std.format;
+        w.write("Vec");
+        w.write(S);
+        w.write("(");
 
-        return format("%s", raw);
+    	static foreach (i, field; this.tupleof[0..$-1])
+	    {
+			w.write(typeof(this).tupleof[i].stringof);
+			w.write(": ");
+			w.write(field);
+
+			if (i < this.tupleof.length-2)
+			{
+			    w.write(", ");
+			}
+	    }
+
+		w.write(")");
     }
 
     T squareLength() const pure

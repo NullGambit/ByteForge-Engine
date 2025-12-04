@@ -1,12 +1,6 @@
 module forge.container;
 
-mixin template Container(bool View = false)
-{
-	alias ElementType = T;
-
-	static if (!View)
-	{
-	    @disable this(this);
-	    @disable void opAssign(ref typeof(this) rhs);
-	}
-}
+// public import forge.container.string;
+// public import forge.container.string_view;
+// public import forge.container.list;
+// public import forge.container.map;

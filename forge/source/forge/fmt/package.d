@@ -4,6 +4,8 @@ import core.sys.linux.unistd;
 import forge.container.string;
 import std.conv : to;
 
+struct HideInFormatting;
+
 template Writer(T)
 {
     // enum Writer = __traits(compiles,
@@ -27,13 +29,26 @@ void writer_reserve(W)(auto ref W w, uint amount)
 void formatRecord(W, T)(auto ref W w, const auto ref T t)
 {
 	// TODO make it so it uses alias this instead of the actual type if it does have alias this
+	import std.traits : hasUDA;
 
     w.write(T.stringof);
-    w.write(" { ");
+    w.write(" {  ");
 
     foreach (i, ref field; t.tupleof)
     {
         enum fieldName = T.tupleof[i].stringof;
+
+        alias Member = __traits(getMember, T, fieldName);
+
+        static if (hasUDA!(Member, HideInFormatting))
+        {
+            continue;
+        }
+
+        if (i > 0 && i < t.tupleof.length-1)
+        {
+            w.write(", ");
+        }
 
         w.write(fieldName);
         w.write(": ");
@@ -41,11 +56,7 @@ void formatRecord(W, T)(auto ref W w, const auto ref T t)
         auto converted = to!string(field);
 
         w.write(converted);
-
-        if (i < t.tupleof.length-1)
-        {
-            w.write(", ");
-        }
+        w.write(" ");
     }
 
     w.write(" }");
@@ -55,6 +66,11 @@ void formatToWriter(W, S, Args...)(auto ref W w, const auto ref S fmt, const aut
 if (Writer!W)
 {
     import core.stdc.stdio;
+
+    if (args.length == 0)
+    {
+        w.write(fmt);
+    }
 
     auto start = 0;
     auto offset = 0;
@@ -75,7 +91,7 @@ if (Writer!W)
             c = fmt[offset++];
         }
 
-        start = offset+1;
+        start = offset;
 
         static if (__traits(compiles, arg.init.toString(w)))
         {

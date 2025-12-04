@@ -6,7 +6,7 @@ import core.lifetime;
 
 import core.atomic;
 
-struct Arc(T)
+struct Arc(T, alias allocFn = newObj, alias freeFn = delObj)
 {
 	private struct Header
 	{
@@ -36,7 +36,7 @@ struct Arc(T)
 
 	this(Args...)(const auto ref Args args)
 	{
-		m_header = newObj!Header();
+		m_header = allocFn!Header();
 
 		auto obj = emplace!T(m_header.memory, forward!args);
 
@@ -76,7 +76,7 @@ struct Arc(T)
 			if (result <= 0)
 			{
 				destroy!false(get());
-				delObj(m_header);
+				freeFn(m_header);
 				m_header = null;
 			}
 		}

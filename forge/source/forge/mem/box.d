@@ -3,7 +3,7 @@ module forge.mem.box;
 import forge.mem.allocators;
 import forge.mem.utils;
 
-struct Box(T, Allocator = DefaultAllocator!T)
+struct Box(T, alias allocFn = newObj, alias freeFn = delObj)
 {
 	RefOrPtr!T ptr;
 
@@ -14,14 +14,14 @@ struct Box(T, Allocator = DefaultAllocator!T)
 
 	this(Args...)(auto ref Args args)
 	{
-		ptr = newObj!T(args);
+		ptr = allocFn!T(args);
 	}
 
 	~this()
 	{
 		if (ptr !is null)
 		{
-			delObj(ptr);
+			freeFn(ptr);
 		}
 	}
 

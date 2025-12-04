@@ -2,7 +2,9 @@ module forge.container.list;
 
 import forge.mem.allocators;
 import forge.container.contigious;
-import forge.container;
+import forge.container.core;
+
+@nogc:
 
 struct List(T, Allocator = DefaultAllocator!T)
 {

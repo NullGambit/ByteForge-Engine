@@ -4,7 +4,7 @@ static struct Time
 {
     package static float _delta;
     package static float _unscaledDelta;
-    static float scale;
+    __gshared float scale;
 
     @property
     static delta()

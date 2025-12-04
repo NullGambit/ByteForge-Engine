@@ -5,8 +5,10 @@ import std.typecons;
 import ascii = std.ascii;
 
 import forge.mem.allocators;
-import forge.container;
+import forge.container.core;
 import forge.container.contigious;
+
+@nogc:
 
 // a dynamically sized string struct that can take an allocator
 struct BaseString(T, Allocator = DefaultAllocator!T)

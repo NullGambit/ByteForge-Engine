@@ -10,6 +10,7 @@ import std.typecons;
 import forge.mem.allocators;
 import forge.mem.box;
 import forge.mem.arc;
+import forge.math.vector;
 
 class Data
 {
@@ -21,7 +22,6 @@ class Data
         this.score = score;
         this.name = String(name);
     }
-
 }
 
 struct Data2
@@ -94,7 +94,6 @@ void main()
     // auto f = 32.0f;
 
     // my_write_line(str, 5, f);
-
     // import std.digest.murmurhash;
     //
     //
@@ -125,30 +124,34 @@ void main()
     // }
 
     // {
+    import forge.container.map;
 
-    struct Yes
+    Map!(String, int) map;
+
+    map.put(String("zero"), 0);
+    map.put(String("one"), 1);
+    map.put(String("two"), 2);
+    map.put(String("three"), 3);
+    map.put(String("four"), 4);
+    map.put(String("five"), 5);
+    map.put(String("six"), 6);
+    map.put(String("seven"), 7);
+    map.put(String("eight"), 8);
+
+    // println("{}", map);
+    //
+    map.remove(String("five"));
+
+    auto value = map.get(String("five"));
+
+    if (value == null)
     {
-    	int n = 0;
-
-    	@property ref int ok()
-	     {
-	     	return n;
-	     }
-
-		alias ok this;
+        println("key does not exist");
     }
-
-    Yes yes;
-
-    yes++;
-
-    auto data = Data2(100, "john");
-
-    import forge.mem.utils;
-
-    auto d2 = clone(data);
-
-    println("{}", d2);
+    else
+    {
+        println("{}", *value);
+    }
 
 	   //  auto data = new Data(100, "john");
 

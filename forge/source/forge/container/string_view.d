@@ -2,7 +2,9 @@ module forge.container.string_view;
 
 import forge.container.string;
 import forge.container.contigious;
-import forge.container;
+import forge.container.core;
+
+@nogc:
 
 struct BaseStringView(T)
 {
