@@ -109,9 +109,9 @@ mixin template ContigiousCore(T, bool View = false)
 	}
 }
 
-mixin template ContigiousWrite(T, Allocator = DefaultAllocator!T)
+mixin template ContigiousWrite(T, alias Allocator = DefaultAllocator)
 {
-	Allocator allocator;
+	mixin Allocator allocator;
 
 	private uint m_capacity;
 
@@ -186,9 +186,9 @@ mixin template ContigiousWrite(T, Allocator = DefaultAllocator!T)
 
 		newSelf.m_length = m_length;
 		newSelf.m_capacity = m_capacity;
-		newSelf.allocator = allocator;
+		// newSelf.allocator = allocator;
 
-		newSelf.ptr = allocator.alloc(m_capacity);
+		newSelf.ptr = allocator.alloc!T(m_capacity);
 
 		memcpy(newSelf.ptr, ptr, m_capacity);
 
@@ -223,7 +223,7 @@ mixin template ContigiousWrite(T, Allocator = DefaultAllocator!T)
 			m_capacity = newCapacity;
 		}
 
-		auto temp = allocator.alloc(m_capacity);
+		auto temp = allocator.alloc!T(m_capacity);
 
 		static if (is(T == class) || !__traits(isPOD, T))
 		{

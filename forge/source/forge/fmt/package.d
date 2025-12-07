@@ -3,6 +3,7 @@ module forge.fmt;
 import core.sys.linux.unistd;
 import forge.container.string;
 import std.conv : to;
+import core.lifetime;
 
 struct HideInFormatting;
 
@@ -62,14 +63,33 @@ void formatRecord(W, T)(auto ref W w, const auto ref T t)
     w.write(" }");
 }
 
-void formatToWriter(W, S, Args...)(auto ref W w, const auto ref S fmt, const auto ref Args args)
+private void stringifyWrite(W, T)(ref W w, const ref T value)
+{
+    static if (__traits(compiles, value.init.toString(w)))
+    {
+        value.toString(w);
+    }
+    else static if (!__traits(compiles, value.init.toString()) && (is(typeof(value) == struct) || is(typeof(value) == class)))
+    {
+        formatRecord(w, value);
+    }
+    else
+    {
+        auto converted = to!string(forward!value);
+
+        w.write(converted);
+    }
+}
+
+void formatToWriter(W, F, Args...)(auto ref W w, const auto ref F fmt, const auto ref Args args)
 if (Writer!W)
 {
     import core.stdc.stdio;
 
     if (args.length == 0)
     {
-        w.write(fmt);
+        stringifyWrite(w, fmt);
+        return;
     }
 
     auto start = 0;
@@ -93,23 +113,8 @@ if (Writer!W)
 
         start = offset;
 
-        static if (__traits(compiles, arg.init.toString(w)))
-        {
-            arg.toString(w);
-        }
-        else static if (!__traits(compiles, arg.init.toString()) && (is(typeof(arg) == struct) || is(typeof(arg) == class)))
-        {
-            formatRecord(w, arg);
-        }
-        else
-        {
-            auto converted = to!string(arg);
-
-            w.write(converted);
-        }
+        stringifyWrite(w, arg);
     }
-
-    w.write('\n');
 }
 
 String format(S, Args...)(const auto ref S fmt, const auto ref Args args)
@@ -125,5 +130,14 @@ void println(S, Args...)(const auto ref S fmt, const auto ref Args args)
 {
     import std.stdio;
 
-    formatToWriter(stdout, fmt, args);
+    formatToWriter(stdout, fmt, forward!args);
+
+    stdout.write('\n');
+}
+
+void print(S, Args...)(const auto ref S fmt, const auto ref Args args)
+{
+    import std.stdio;
+
+    formatToWriter(stdout, fmt, forward!args);
 }

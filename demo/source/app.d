@@ -1,7 +1,6 @@
 import forge.container.string;
 import forge.container.string_view;
 import forge.container.list;
-import std.stdio;
 import core.stdc.string;
 import std.conv;
 import std.conv : to;
@@ -124,27 +123,31 @@ void main()
     // }
 
     // {
-    // import forge.container.map;
+    //
 
-    // Map!(String, int) map;
 
-    // map.put(String("zero"), 0);
-    // map.put(String("one"), 1);
-    // map.put(String("two"), 2);
-    // map.put(String("three"), 3);
-    // map.put(String("four"), 4);
-    // map.put("five", 5);
-    // map.put(String("six"), 6);
-    // map.put(String("seven"), 7);
-    // map.put(String("eight"), 8);
 
-    // // println("{}", map);
-    // //
-    // // map.remove(String("five"));
+    import forge.container.map;
 
-    // println("{}", map.Entry.sizeof);
+    Map!(String, int, RobbinHoodProbing) map;
 
-    // auto value = map.get("five");
+    map.put(String("zero"), 0);
+    map.put(String("one"), 1);
+    map.put(String("two"), 2);
+    map.put(String("three"), 3);
+    map.put(String("four"), 4);
+    map.put("five", 5);
+    map.put(String("six"), 6);
+    map.put(String("seven"), 7);
+    map.put(String("eight"), 8);
+
+    // println("{}", map);
+    //
+    // map.remove(String("five"));
+    // map["five"] = 10;
+    println("{}", map["five"]);
+
+    // auto value = map.getOrInit("fivea");
 
     // if (value == null)
     // {
@@ -155,13 +158,10 @@ void main()
     //     println("{}", *value);
     // }
 
-    import forge.container.map;
-
-    Set!(String) set;
-
-    set.put("hello");
-
-    println("{}", set.has("hello"));
+    // foreach (ref entry; map.m_bucket[0..map.capacity()])
+    // {
+    //     println(entry);
+    // }
 
 	   //  auto data = new Data(100, "john");
 

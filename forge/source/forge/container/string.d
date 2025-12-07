@@ -11,7 +11,7 @@ import forge.container.contigious;
 @nogc:
 
 // a dynamically sized string struct that can take an allocator
-struct BaseString(T, Allocator = DefaultAllocator!T)
+struct BaseString(T, alias Allocator = DefaultAllocator)
 {
 	mixin ContigiousCore!T;
 	mixin ContigiousRead!T;
@@ -68,4 +68,4 @@ struct BaseString(T, Allocator = DefaultAllocator!T)
 }
 
 // a dynamically sized string struct
-alias String = BaseString!(char, DefaultAllocator!char);
+alias String = BaseString!(char, DefaultAllocator);

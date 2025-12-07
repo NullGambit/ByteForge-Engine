@@ -36,25 +36,22 @@ private byte[] allocMemSpan(T)()
     return malloc(size, getTypeAlignment!T())[0 .. size];
 }
 
-template newObj(T)
+RefOrPtr!T newObj(T, Args...)(auto ref Args args)
 {
-	RefOrPtr!T newObj(Args...)(auto ref Args args)
+    import std.conv : emplace;
+    import core.lifetime : forward;
+
+    auto memory = allocMemSpan!T();
+
+	static if (is (T == class))
 	{
-	    import std.conv : emplace;
-	    import core.lifetime : forward;
+		return emplace!T(memory, forward!args);
+	}
+	else
+	{
+	    emplace!T(memory, forward!args);
 
-	    auto memory = allocMemSpan!T();
-
-		static if (is (T == class))
-		{
-			return emplace!T(memory, forward!args);
-		}
-		else
-		{
-		    emplace!T(memory, forward!args);
-
-		    return cast(T*) memory;
-		}
+	    return cast(T*) memory;
 	}
 }
 
@@ -74,22 +71,28 @@ if (!is (T == class))
     free(cast(byte*) obj, getTypeAlignment!T());
 }
 
-// the default allocator used by all containers that just uses the alloc or free functions
-struct DefaultAllocator(T)
+// the default allocator used by all containers that just uses the malloc or free functions
+mixin template DefaultAllocator()
 {
-    T* alloc(size_t count = 1)
+    static T* alloc(T)(size_t count = 1)
     {
+        import forge.mem.utils;
+
         auto size = getTypeSize!T();
+
         return cast(T*) malloc(size * count, getTypeAlignment!T());
     }
 
-    void dealloc(T* ptr)
+    static void dealloc(T)(T* ptr)
     {
+        import forge.mem.utils;
+
         return free(cast(byte*) ptr, getTypeAlignment!T());
     }
 }
 
-struct StaticAllocator(T, size_t N)
+// an allocator that allocates on the static and never frees. getTotal is applicable and should be used for efficiency
+mixin template StaticALlocator(T, size_t N)
 {
 	T[N] memory;
 	uint offset;
@@ -106,10 +109,9 @@ struct StaticAllocator(T, size_t N)
     }
 
     void dealloc(T* ptr)
-    {
-    }
+    {}
 
-    size_t getTotal()
+    static size_t getTotal()
     {
     	return N;
     }
