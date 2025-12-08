@@ -5,12 +5,13 @@ import forge.container.list;
 import std.typecons;
 import forge.container.pair;
 import core.lifetime;
+import forge.fmt;
 
 @nogc:
 
 struct HashEntry(K, V)
 {
-    ulong hash;
+    package ulong hash;
     K key;
 
     static if (!is(V == void))
@@ -23,24 +24,23 @@ struct HashEntry(K, V)
 	{
 	    return hash != 0;
 	}
+
+	void toString(W)(auto ref W w) const
+	{
+	    stringifyWrite(w, key);
+	    w.write(": ");
+	    stringifyWrite(w, value);
+	}
 }
 
-mixin template LinearProbeBucket()
+mixin template LinearProbeBucket(float BucketLoadFactor = 0.60)
 {
-    enum LoadFactor = 0.65;
-
-    private
-    {
-        Entry *m_bucket;
-    	uint m_capacity;
-    }
+    enum LoadFactor = BucketLoadFactor;
 
     private
     {
         auto putImpl(A, B)(auto ref A k, auto ref B v)
     	{
-            validateBucket();
-
             auto hash = getMixedHash(k);
     		auto index = getIndex(hash);
 
@@ -49,23 +49,16 @@ mixin template LinearProbeBucket()
     			index = getIndex(index + 1);
     		}
 
-    		auto entry = &m_bucket[index];
+            auto entry = makeEntry(k, v, hash);
 
-            emplace(&entry.key, move(k));
-
-            entry.hash = hash;
+            emplaceEntry(entry, index);
 
             m_length++;
-
-            static if (!is(V == void))
-            {
-                return emplace(&entry.value, move(v));
-            }
     	}
 
-        inout(Entry)* probeEntry(A)(const auto ref A key) inout
+        inout(Entry)* probeEntry(A)(const auto ref A key, out ulong hash) inout
     	{
-            const hash = getMixedHash(key);
+            hash = getMixedHash(key);
            	auto index = getIndex(hash);
 
             auto checked = index;
@@ -82,7 +75,7 @@ mixin template LinearProbeBucket()
           		index = getIndex(index + 1);
            	}
 
-           	return null;
+           	return &m_bucket[index];
     	}
 
     }
@@ -95,43 +88,24 @@ mixin template LinearProbeBucket()
        	    return;
        	}
 
-        destroy!false(entry.key);
-
-        static if (!is(V == void))
-        {
-            destroy!false(entry.value);
-        }
-
-        entry.hash = 0;
+        destroyEntru(entry);
         m_length--;
    	}
 }
 
-mixin template RobbinHoodProbing()
+mixin template RobbinHoodProbing(float BucketLoadFactor = 0.95)
 {
-    enum LoadFactor = 0.95;
-
-    private
-    {
-        Entry *m_bucket;
-    	uint m_capacity;
-    }
+    enum LoadFactor = BucketLoadFactor;
 
     private
     {
         auto putImpl(A, B)(auto ref A k, auto ref B v)
     	{
-            validateBucket();
-
             auto hash = getMixedHash(k);
     		auto index = getIndex(hash);
             auto distance = 0UL;
-            auto mask = m_capacity - 1;
-            Entry current;
 
-            emplace(&current.key, move(k));
-            emplace(&current.value, move(v));
-            current.hash = hash;
+            auto current = makeEntry(k, v, hash);
 
     		while (true)
     		{
@@ -139,7 +113,7 @@ mixin template RobbinHoodProbing()
 
                 if (!entry.isOccupied || entry.hash == hash)
                 {
-                    emplace(entry, move(current));
+                    emplaceEntry(current, index);
                     m_length++;
                     return &entry.value;
                 }
@@ -163,26 +137,20 @@ mixin template RobbinHoodProbing()
     	{
             hash = getMixedHash(key);
            	auto index = getIndex(hash);
-            auto mask = m_capacity - 1;
             auto distance = 0UL;
 
             while (true)
             {
                 auto entry = &m_bucket[index];
 
-                if (!entry.isOccupied)
-                {
-                    return entry;
-                }
-
-                if (entry.hash == hash)
+                if (!entry.isOccupied || entry.hash == hash)
                 {
                     return entry;
                 }
 
                 auto currentDistance = (index - (entry.hash & mask)) & mask;
 
-                if (currentDistance < distance)
+                if (currentDistance < distance && !entry.isOccupied)
                 {
                     return entry;
                 }
@@ -203,17 +171,10 @@ mixin template RobbinHoodProbing()
        	}
 
         auto index = entry - m_bucket;
-        auto mask = m_capacity - 1;
 
-        entry.hash = 0;
         m_length--;
 
-        destroy!false(entry.key);
-
-        static if (!is(V == void))
-        {
-            destroy!false(entry.value);
-        }
+        destroyEntry(entry);
 
         while (true)
         {
@@ -241,6 +202,143 @@ mixin template RobbinHoodProbing()
    	}
 }
 
+mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
+{
+    enum LoadFactor = BucketLoadFactor;
+
+    private
+    {
+        ubyte *m_meta;
+
+        enum ubyte META_EMPTY = 0x80;
+        enum ubyte META_TOMBSTONE = 0xFE;
+        enum GROUP_SIZE = 16;
+
+        void onDestroy()
+        {
+            allocator.dealloc(m_meta);
+            m_meta = null;
+        }
+
+        pragma(inline, true)
+        static byte fingerprint(ulong hash)
+        {
+            return hash & 0x7F;
+        }
+
+        void onRehash(uint newSize)
+        {
+            import core.stdc.string;
+
+            auto temp = allocator.alloc!ubyte(newSize, 64);
+
+            auto diff = newSize - m_capacity;
+
+            memset(temp + m_capacity, META_EMPTY, diff);
+
+            if (m_meta)
+            {
+                memcpy(temp, m_meta, m_capacity);
+                allocator.dealloc(m_meta);
+            }
+
+            m_meta = temp;
+        }
+
+        auto putImpl(A, B)(auto ref A k, auto ref B v)
+    	{
+            auto hash = getMixedHash(k);
+            auto fp = fingerprint(hash);
+    		auto index = getIndex(hash);
+
+            auto entry = makeEntry(k, v, hash);
+
+    		while (true)
+    		{
+                auto meta = m_meta[index];
+
+                if
+                (
+                    (meta == META_EMPTY || meta == META_TOMBSTONE)
+                    ||
+                    (meta == fp && m_bucket[index].hash == hash)
+                )
+                {
+                    m_meta[index] = fp;
+                    emplaceEntry(entry, index);
+                    m_length++;
+                    return;
+                }
+
+                index = getIndex(index + 1);
+    		}
+    	}
+
+        inout(Entry*) probeEntry(A)(const auto ref A key, out ulong hash) inout
+    	{
+            hash = getMixedHash(key);
+            auto fp = fingerprint(hash);
+           	auto index = getIndex(hash);
+            auto base = index & ~(GROUP_SIZE - 1);
+
+            import inteli;
+            import core.bitop;
+
+            auto fpv = _mm_set1_epi8(fp);
+            auto emptyv = _mm_set1_epi8(cast(byte)META_EMPTY);
+
+            while (true)
+            {
+                auto m = _mm_loadu_si128(cast(__m128i*)(m_meta + base));
+
+                auto eq = _mm_cmpeq_epi8(m, fpv);
+                auto eqmask = _mm_movemask_epi8(eq);
+
+                while (eqmask)
+                {
+                    auto bit = bsf(eqmask);
+                    auto pos = (base + bit) & mask;
+
+                    if (m_bucket[pos].hash == hash)
+                    {
+                        return &m_bucket[pos];
+                    }
+
+                    eqmask &= eqmask - 1;
+                }
+
+                auto emp = _mm_cmpeq_epi8(m, emptyv);
+
+                if (_mm_movemask_epi8(emp))
+                {
+                    return null;
+                }
+
+                base = (base + GROUP_SIZE) & mask;
+            }
+    	}
+    }
+
+    void remove(A)(auto ref A key)
+   	{
+        ulong hash;
+        auto entry = probeEntry(key, hash);
+
+       	if (entry == null)
+       	{
+       	    return;
+       	}
+
+        auto index = entry - m_bucket;
+
+        m_length--;
+
+        destroyEntry(entry);
+
+        m_meta[index] = META_TOMBSTONE;
+   	}
+}
+
 struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllocator)
 {
 	alias Entry = HashEntry!(K, V);
@@ -250,24 +348,47 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
 	@disable this(this);
     @disable void opAssign(ref typeof(this) rhs);
 
+    ~this()
+    {
+        allocator.dealloc(m_bucket);
+        m_bucket = null;
+        m_length = 0;
+        m_capacity = 0;
+
+        static if (__traits(hasMember, typeof(this), "onDestroy"))
+        {
+            onDestroy();
+        }
+    }
+
     mixin Bucket;
 
-	private uint m_length;
+    private
+    {
+        Entry *m_bucket;
+    	uint m_capacity;
+        uint m_length;
+    }
 
 	@property
-	auto capacity()
+	auto capacity() const pure
 	{
 	    return m_capacity;
 	}
 
 	@property
-	auto length()
+	auto length() const pure
 	{
 	    return m_length;
 	}
 
 	private
 	{
+	    @property uint mask() const pure
+		{
+		    return m_capacity - 1;
+		}
+
         pragma(inline, true)
 	    ulong getIndex(ulong h) const pure
 		{
@@ -302,6 +423,40 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
     		    rehash(newCapacity);
     		}
     	}
+
+        Entry makeEntry(A, B)(ref A k, ref B v, ulong hash)
+        {
+            Entry entry;
+
+            emplace(&entry.key, move(k));
+
+            static if (!is(V == void))
+            {
+                emplace(&entry.value, move(v));
+            }
+
+            entry.hash = hash;
+
+            return entry;
+        }
+
+        void emplaceEntry(ref Entry entry, ulong index)
+        {
+            emplace(&m_bucket[index], move(entry));
+        }
+
+        // take pointer because its always used after probeEntry
+        void destroyEntry(Entry *entry)
+        {
+            entry.hash = 0;
+
+            destroy!false(entry.key);
+
+            static if (!is(V == void))
+            {
+                destroy!false(entry.value);
+            }
+        }
 	}
 
 	static if (!is(V == void))
@@ -311,7 +466,7 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
             ulong hash;
     		auto entry = probeEntry(key, hash);
 
-    		if (hash == 0)
+    		if (hash == 0 || entry == null)
     		{
                 return null;
     		}
@@ -357,13 +512,18 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
             return getOrInit(key);
         }
 
-        alias put = putImpl;
+        auto put(A, B)(auto ref A k, auto ref B v)
+        {
+            validateBucket();
+            return putImpl(k, v);
+        }
 	}
 	else
 	{
 	    auto put(A)(auto ref A k)
 		{
-            return putImpl(k, 0);
+		    validateBucket();
+            return put(k, 0);
 		}
 	}
 
@@ -377,8 +537,21 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
   		auto oldBuckets = m_bucket;
   		const oldCapacity = m_capacity;
 
+        static if (__traits(hasMember, typeof(this), "onRehash"))
+        {
+            onRehash(newSize);
+        }
+
    	    m_bucket = allocator.alloc!Entry(newSize);
-  		m_capacity = newSize;
+
+        static if (__traits(hasMember, Allocator, "getTotal"))
+		{
+			m_capacity = cast(uint)allocator.getTotal();
+		}
+		else
+		{
+			m_capacity = newSize;
+		}
 
   		if (oldBuckets == null)
   		{
@@ -402,6 +575,127 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
 
   		allocator.dealloc(oldBuckets);
    	}
+
+    typeof(this) clone()
+    {
+	    typeof(this) newSelf;
+
+		newSelf.m_length = m_length;
+		newSelf.m_capacity = m_capacity;
+		// newSelf.allocator = allocator;
+
+		newSelf.m_bucket = allocator.alloc!Entry(m_capacity);
+
+		static if (__traits(isPOD, Entry))
+		{
+		    import core.stdc.string;
+
+		    memcpy(newSelf.m_bucket, m_bucket, m_capacity);
+		}
+		else
+		{
+		    import memutil = forge.mem.utils;
+
+			auto i = 0;
+
+		    foreach (ref entry; this)
+			{
+                emplace(&newSelf.m_bucket[i++], memutil.clone(entry));
+			}
+		}
+
+		return newSelf;
+    }
+
+    int opApply(scope int delegate(ref Entry) dg)
+	{
+		foreach (ref entry; m_bucket[0..m_capacity])
+		{
+		    if (!entry.isOccupied)
+			{
+			    continue;
+			}
+
+			auto result = dg(entry);
+
+			if (result)
+			{
+				return result;
+			}
+		}
+
+		return 0;
+	}
+
+	int opApply(scope int delegate(ref K, ref V) dg)
+	{
+    	foreach (ref entry; m_bucket[0..m_capacity])
+    	{
+    	    if (!entry.isOccupied)
+    		{
+    		    continue;
+    		}
+
+    		auto result = dg(entry.key, entry.value);
+
+    		if (result)
+    		{
+    			return result;
+    		}
+    	}
+
+		return 0;
+	}
+
+	int opApply(scope int delegate(const ref Entry) dg) const
+    {
+        foreach (ref entry; m_bucket[0..m_capacity])
+        {
+            if (!entry.isOccupied)
+            {
+                continue;
+            }
+
+            auto result = dg(entry);
+
+            if (result)
+            {
+           	    return result;
+            }
+        }
+
+        return 0;
+    }
+
+    int opApply(scope int delegate(const ref K, const ref V) dg) const
+    {
+       	foreach (ref entry; m_bucket[0..m_capacity])
+       	{
+       	    if (!entry.isOccupied)
+      		{
+      		    continue;
+      		}
+
+      		auto result = dg(entry.key, entry.value);
+
+      		if (result)
+      		{
+     			return result;
+      		}
+       	}
+
+        return 0;
+    }
+
+	void toString(W)(auto ref W w) const
+	{
+	    w.write("{ ");
+	    foreach (ref item; this)
+		{
+		    w.write(item);
+		}
+		w.write(" }");
+	}
 }
 
 template Set(K, alias Bucket = LinearProbeBucket, Allocator = DefaultAllocator!(HashEntry!(K, void)))

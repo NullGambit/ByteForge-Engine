@@ -63,7 +63,7 @@ void formatRecord(W, T)(auto ref W w, const auto ref T t)
     w.write(" }");
 }
 
-private void stringifyWrite(W, T)(ref W w, const ref T value)
+void stringifyWrite(W, T)(ref W w, const ref T value)
 {
     static if (__traits(compiles, value.init.toString(w)))
     {

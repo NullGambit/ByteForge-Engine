@@ -42,94 +42,9 @@ struct Fields
 
 void main()
 {
-    //import forge.mem.allocators;
-    //
-    //auto ptr1 = newObj!Data();
-    //auto ptr2 = newObj!Data();
-    //auto ptr3 = newObj!Data();
-    //
-    //delObj(ptr2);
-    //delObj(ptr1);
-    //delObj(ptr3);
-    //
-    //auto data = newObj!Data();
-    //
-    //data.score += 10;
-    //data.name.append("john");
-    //
-    //writeln(data.score, data.name);
-    //
-    //delObj(data);
-    //String str;
-
-    //const LEN = 40;
-    //
-    //foreach (i; 0..LEN)
-    //{
-    //    if (i == LEN / 2)
-    //    {
-    //        str.append("hello\n");
-    //    }
-    //    else
-    //    {
-    //        str.append(to!string(i));
-    //        str.append('\n');
-    //    }
-    //}
-    //
-    // import core.lifetime;
-
-    // String str = "hello world";
-    // {
-    //     auto str2 = str.move();
-
-    //     println(str2);
-    // }
-
-    // println("{}", str.length);
-
-    // str.append("hello");
-
-    // auto f = 32.0f;
-
-    // my_write_line(str, 5, f);
-    // import std.digest.murmurhash;
-    //
-    //
-    //
-    // String str = "haoo";
-    // StringView sv = str;
-
-    // println("{}", sv);
-    //
-    // auto data = Data2(100, "john");
-
-    // auto list = List!Data2();
-
-    // list.append(data);
-    // list.append(Data2(200, "henry"));
-    // list.append(Data2(200, "henry"));
-    // list.append(Data2(200, "henry"));
-    // list.append(Data2(200, "henry"));
-
-    // auto d = list.swapPop(0);
-
-    // println("{}", d);
-
-    // // list.append(data);
-    // foreach (ref item; list)
-    // {
-    // 	println("{}", item);
-    // }
-
-    // {
-    //
-
-
-
     import forge.container.map;
 
-    Map!(String, int, RobbinHoodProbing) map;
+    Map!(String, int, SwissTableProbbing) map;
 
     map.put(String("zero"), 0);
     map.put(String("one"), 1);
@@ -145,59 +60,21 @@ void main()
     //
     // map.remove(String("five"));
     // map["five"] = 10;
-    println("{}", map["five"]);
+    //
+    // map["a"] = 100;
+    auto five = map.get("five");
 
-    // auto value = map.getOrInit("fivea");
+    if (five)
+    {
+        println("{}", *five);
+    }
 
-    // if (value == null)
-    // {
-    //     println("key does not exist");
-    // }
-    // else
-    // {
-    //     println("{}", *value);
-    // }
-
-    // foreach (ref entry; map.m_bucket[0..map.capacity()])
-    // {
-    //     println(entry);
-    // }
-
-	   //  auto data = new Data(100, "john");
-
-	   //  auto list = List!Data();
-
-	   //  list.append(data);
-	   //  list.append(new Data(200, "henry"));
-	   //  list.append(new Data(200, "henry"));
-	   //  list.append(new Data(200, "henry"));
-	   //  list.append(new Data(200, "henry"));
-
-	   //  foreach (ref item; list)
-	   //  {
-	   //      println("{}", item);
-	   //  }
-
-    // }
-
-    // import forge.mem.allocators.fmalloc;
-    // auto stats = getStatistics();
-
-    // println("{}", stats);
-    // list.clear();
-    // println("{}", list.slice);
-    // println("{}", typeof(*String.init.ptr).stringof);
-
-    // struct Yes
-    // {
-    // 	alias Ok = int;
-    // }
-
-    // println("{}", ElementType!(string));
-    // auto file = File("test.txt", "w+");
-
-    // formatToWriter(stdout, "x = {}", 10);
-    // scope auto data = new Data(100, "john");
-
-    // formatToWriter(stdout, "{}", data);
+    void printMap(T)(const ref T m)
+    {
+        foreach (ref key, ref value; m)
+        {
+            println("{}: {}", key, value);
+        }
+    }
+    printMap(map);
 }

@@ -74,20 +74,20 @@ if (!is (T == class))
 // the default allocator used by all containers that just uses the malloc or free functions
 mixin template DefaultAllocator()
 {
-    static T* alloc(T)(size_t count = 1)
-    {
-        import forge.mem.utils;
+    import forge.mem.utils;
 
+    static T* alloc(T)(size_t count = 1, size_t alignment = getTypeAlignment!T())
+    {
         auto size = getTypeSize!T();
 
-        return cast(T*) malloc(size * count, getTypeAlignment!T());
+        return cast(T*) malloc(size * count, alignment);
     }
 
-    static void dealloc(T)(T* ptr)
+    static void dealloc(T)(T* ptr, size_t alignment = getTypeAlignment!T())
     {
         import forge.mem.utils;
 
-        return free(cast(byte*) ptr, getTypeAlignment!T());
+        return free(cast(byte*) ptr, alignment);
     }
 }
 
@@ -97,9 +97,10 @@ mixin template StaticALlocator(T, size_t N)
 	T[N] memory;
 	uint offset;
 
-    T* alloc(size_t count = 1)
+	// U is just a dummy so it works the same as other allocators
+    T* alloc(U)(size_t count = 1, size_t alignment = getTypeAlignment!T())
     {
-        auto size = getTypeSize!T() * count;
+        auto size = (getTypeSize!T() + alignment) * count;
 
         auto ptr =  cast(T*) memory[offset..offset + size];
 
@@ -108,7 +109,7 @@ mixin template StaticALlocator(T, size_t N)
         return ptr;
     }
 
-    void dealloc(T* ptr)
+    void dealloc(T* ptr, size_t alignment = getTypeAlignment!T())
     {}
 
     static size_t getTotal()
