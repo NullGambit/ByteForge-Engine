@@ -7,8 +7,6 @@ import forge.container.pair;
 import core.lifetime;
 import forge.fmt;
 
-@nogc:
-
 struct HashEntry(K, V)
 {
     package ulong hash;
@@ -33,7 +31,7 @@ struct HashEntry(K, V)
 	}
 }
 
-mixin template LinearProbeBucket(float BucketLoadFactor = 0.60)
+mixin template LinearProbeBucket(float BucketLoadFactor = 0.65)
 {
     enum LoadFactor = BucketLoadFactor;
 
@@ -44,28 +42,40 @@ mixin template LinearProbeBucket(float BucketLoadFactor = 0.60)
             auto hash = getMixedHash(k);
     		auto index = getIndex(hash);
 
-    		while (m_bucket[index].isOccupied && m_bucket[index].hash != hash)
-    		{
-    			index = getIndex(index + 1);
-    		}
+            foreach (_; 0..m_capacity)
+            {
+                auto entry = &m_bucket[index];
 
-            auto entry = makeEntry(k, v, hash);
+                if (!entry.isOccupied || entry.hash == hash)
+          		{
+                    auto newEntry = makeEntry(k, v, hash);
+         			emplaceEntry(newEntry, index);
 
-            emplaceEntry(entry, index);
+                    m_length++;
 
-            m_length++;
+                    static if (!is (V == void))
+                    {
+                        return &m_bucket[index];
+                    }
+          		}
+
+          		index = getIndex(index + 1);
+            }
+
+            static if (!is (V == void))
+            {
+                return null;
+            }
     	}
 
-        inout(Entry)* probeEntry(A)(const auto ref A key, out ulong hash) inout
+        inout(Entry)* probeEntry(A)(const auto ref A key) inout
     	{
-            hash = getMixedHash(key);
+            const hash = getMixedHash(key);
            	auto index = getIndex(hash);
 
-            auto checked = index;
-
-           	while (checked++ <= m_capacity && m_bucket[index].isOccupied)
-           	{
-          		auto entry = &m_bucket[index];
+            foreach (_; 0..m_capacity)
+            {
+                auto entry = &m_bucket[index];
 
                 if (entry.hash == hash)
           		{
@@ -73,9 +83,9 @@ mixin template LinearProbeBucket(float BucketLoadFactor = 0.60)
           		}
 
           		index = getIndex(index + 1);
-           	}
+            }
 
-           	return &m_bucket[index];
+           	return null;
     	}
 
     }
@@ -88,7 +98,7 @@ mixin template LinearProbeBucket(float BucketLoadFactor = 0.60)
        	    return;
        	}
 
-        destroyEntru(entry);
+        destroyEntry(entry);
         m_length--;
    	}
 }
@@ -114,8 +124,17 @@ mixin template RobbinHoodProbing(float BucketLoadFactor = 0.95)
                 if (!entry.isOccupied || entry.hash == hash)
                 {
                     emplaceEntry(current, index);
+
                     m_length++;
-                    return &entry.value;
+
+                    static if (!is (V == void))
+                    {
+                        return &entry.value;
+                    }
+                    else
+                    {
+                        return;
+                    }
                 }
 
                 auto currentDistance = (index - (entry.hash & mask)) & mask;
@@ -133,9 +152,9 @@ mixin template RobbinHoodProbing(float BucketLoadFactor = 0.95)
     		}
     	}
 
-        inout(Entry*) probeEntry(A)(const auto ref A key, out ulong hash) inout
+        inout(Entry*) probeEntry(A)(const auto ref A key) inout
     	{
-            hash = getMixedHash(key);
+            const hash = getMixedHash(key);
            	auto index = getIndex(hash);
             auto distance = 0UL;
 
@@ -213,10 +232,11 @@ mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
         enum ubyte META_EMPTY = 0x80;
         enum ubyte META_TOMBSTONE = 0xFE;
         enum GROUP_SIZE = 16;
+        enum ALIGNMENT = 64;
 
         void onDestroy()
         {
-            allocator.dealloc(m_meta);
+            allocator.dealloc(m_meta, 64);
             m_meta = null;
         }
 
@@ -229,20 +249,21 @@ mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
         void onRehash(uint newSize)
         {
             import core.stdc.string;
+            import forge.mem.utils;
 
-            auto temp = allocator.alloc!ubyte(newSize, 64);
+            auto alignedSize = alignTo(newSize, ALIGNMENT);
 
-            auto diff = newSize - m_capacity;
-
-            memset(temp + m_capacity, META_EMPTY, diff);
-
-            if (m_meta)
+            if (alignedSize <= newSize || !m_meta)
             {
-                memcpy(temp, m_meta, m_capacity);
-                allocator.dealloc(m_meta);
+                if (m_meta)
+                {
+                    allocator.dealloc(m_meta, ALIGNMENT);
+                }
+
+                m_meta = allocator.alloc!ubyte(newSize, ALIGNMENT);
             }
 
-            m_meta = temp;
+            memset(m_meta, META_EMPTY, alignedSize);
         }
 
         auto putImpl(A, B)(auto ref A k, auto ref B v)
@@ -251,10 +272,8 @@ mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
             auto fp = fingerprint(hash);
     		auto index = getIndex(hash);
 
-            auto entry = makeEntry(k, v, hash);
-
-    		while (true)
-    		{
+            while (true)
+            {
                 auto meta = m_meta[index];
 
                 if
@@ -265,20 +284,32 @@ mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
                 )
                 {
                     m_meta[index] = fp;
+
+                    auto entry = makeEntry(k, v, hash);
+
                     emplaceEntry(entry, index);
+
                     m_length++;
-                    return;
+
+                    static if (!is (V == void))
+                    {
+                        return &m_bucket[index].value;
+                    }
+                    else
+                    {
+                        return;
+                    }
                 }
 
                 index = getIndex(index + 1);
-    		}
+            }
     	}
 
-        inout(Entry*) probeEntry(A)(const auto ref A key, out ulong hash) inout
+        inout(Entry)* probeEntry(A)(const auto ref A key) inout
     	{
-            hash = getMixedHash(key);
+            auto hash = getMixedHash(key);
             auto fp = fingerprint(hash);
-           	auto index = getIndex(hash);
+           	const index = getIndex(hash);
             auto base = index & ~(GROUP_SIZE - 1);
 
             import inteli;
@@ -289,15 +320,16 @@ mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
 
             while (true)
             {
-                auto m = _mm_loadu_si128(cast(__m128i*)(m_meta + base));
+                auto meta = _mm_loadu_si128(cast(__m128i*)(m_meta + base));
 
-                auto eq = _mm_cmpeq_epi8(m, fpv);
+                auto eq = _mm_cmpeq_epi8(meta, fpv);
                 auto eqmask = _mm_movemask_epi8(eq);
+                size_t pos;
 
                 while (eqmask)
                 {
                     auto bit = bsf(eqmask);
-                    auto pos = (base + bit) & mask;
+                    pos = (base + bit) & mask;
 
                     if (m_bucket[pos].hash == hash)
                     {
@@ -307,7 +339,7 @@ mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
                     eqmask &= eqmask - 1;
                 }
 
-                auto emp = _mm_cmpeq_epi8(m, emptyv);
+                auto emp = _mm_cmpeq_epi8(meta, emptyv);
 
                 if (_mm_movemask_epi8(emp))
                 {
@@ -321,8 +353,7 @@ mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
 
     void remove(A)(auto ref A key)
    	{
-        ulong hash;
-        auto entry = probeEntry(key, hash);
+        auto entry = probeEntry(key);
 
        	if (entry == null)
        	{
@@ -392,7 +423,7 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
         pragma(inline, true)
 	    ulong getIndex(ulong h) const pure
 		{
-            return h & (m_capacity - 1);
+            return h & mask;
 		}
 
 		pragma(inline, true)
@@ -417,9 +448,9 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
 
         void validateBucket()
     	{
-    		if (m_length + 1 > m_capacity * LoadFactor)
+    		if (m_length >= m_capacity * LoadFactor)
     		{
-    		    const newCapacity = m_capacity > 0 ? m_capacity * 2 : 2;
+    		    const newCapacity = m_capacity > 0 ? m_capacity * 2 : 4;
     		    rehash(newCapacity);
     		}
     	}
@@ -463,10 +494,9 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
 	{
     	inout(V)* get(A)(const auto ref A key) inout
     	{
-            ulong hash;
-    		auto entry = probeEntry(key, hash);
+    		auto entry = probeEntry(key);
 
-    		if (hash == 0 || entry == null)
+    		if (entry == null)
     		{
                 return null;
     		}
@@ -476,25 +506,21 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
 
         ref V getOrInit(A)(auto ref A key)
     	{
-   		    ulong hash;
-            auto entry = probeEntry(key, hash);
+            auto entry = probeEntry(key);
 
-    		if (hash == 0)
-    		{
-                emplace(&entry.key, move(key));
-                emplace(&entry.value, V.init);
-                entry.hash = hash;
-    		}
+            if (entry == null)
+            {
+                return *put(key, V.init);
+            }
 
     		return entry.value;
     	}
 
         ref inout(V) get(A)(const auto ref A key, ref inout(V) fallback) inout
     	{
-   		    ulong hash;
-            auto entry = probeEntry(key, hash);
+            auto entry = probeEntry(key);
 
-            if (hash == 0)
+            if (entry == 0)
             {
                 return fallback;
             }
@@ -532,8 +558,12 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
 		return probeEntry(key) != null;
 	}
 
-	void rehash(const uint newSize)
+	void rehash(uint newSize)
    	{
+        import forge.mem.utils;
+
+        newSize = toNextPower2(newSize);
+
   		auto oldBuckets = m_bucket;
   		const oldCapacity = m_capacity;
 
@@ -543,6 +573,10 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
         }
 
    	    m_bucket = allocator.alloc!Entry(newSize);
+
+        import core.stdc.string;
+
+        memset(m_bucket, 0, newSize * Entry.sizeof);
 
         static if (__traits(hasMember, Allocator, "getTotal"))
 		{
@@ -558,20 +592,24 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
   		    return;
   		}
 
-  		foreach (ref bucket; oldBuckets[0..oldCapacity])
+        auto oldLen = m_length;
+
+  		foreach (ref entry; oldBuckets[0..oldCapacity])
   		{
-  		    if (bucket.isOccupied)
+  		    if (entry.isOccupied)
  			{
                 static if (!is(V == void))
 				{
- 			        put(bucket.key, bucket.value);
+ 			        putImpl(entry.key, entry.value);
 				}
 				else
 				{
-				    put(bucket.key);
+				    putImpl(entry.key, 0);
 				}
  			}
   		}
+
+        m_length = oldLen;
 
   		allocator.dealloc(oldBuckets);
    	}
@@ -701,4 +739,25 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
 template Set(K, alias Bucket = LinearProbeBucket, Allocator = DefaultAllocator!(HashEntry!(K, void)))
 {
     alias Set = Map!(K, void, Bucket, Allocator);
+}
+
+unittest
+{
+    import forge.container.string;
+
+    Map!(String, int, RobbinHoodProbing) map;
+
+    map.put("a", 1);
+    // map.put("b", 2);
+    // map.put("c", 3);
+    // map.put("d", 4);
+    // map["a"] = 1;
+    map["b"] = 2;
+    map["c"] = 3;
+    map["d"] = 4;
+
+    assert(map["a"] == 1);
+    assert(map["b"] == 2);
+    assert(map["c"] == 3);
+    assert(map["d"] == 4);
 }

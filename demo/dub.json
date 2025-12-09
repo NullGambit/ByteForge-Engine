@@ -2,16 +2,18 @@
   "authors": ["Raven"],
   "dflags": ["-vgc", "-w"],
   "copyright": "Copyright © 2025, Raven",
+  "compiler": "ldc2",
   "dependencies": {
     "dlib": "~>1.3.2",
     "forge": {
       "path": "../forge"
     },
-    "intel-intrinsics": "~>1.12.0"
+    "intel-intrinsics": "~>1.12.0",
+    "libdparse": "~>0.25.0"
   },
   "versions": ["use_mimalloc"],
   "lflags": ["-lphobos2", "libmimalloc.so.2.2"],
-  "debugVersions": ["LogAllocatorBlockInits", "RecordAllocations"],
+  "debugVersions": ["LogAllocatorBlockInits", "_RecordAllocations"],
   "description": "A minimal D application.",
   "importPaths": ["../forge/source", "./source/"],
   "license": "MIT",

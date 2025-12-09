@@ -46,6 +46,8 @@ void main()
 
     Map!(String, int, SwissTableProbbing) map;
 
+    map.rehash(33);
+
     map.put(String("zero"), 0);
     map.put(String("one"), 1);
     map.put(String("two"), 2);
@@ -62,12 +64,23 @@ void main()
     // map["five"] = 10;
     //
     // map["a"] = 100;
-    auto five = map.get("five");
+    // auto five = map.get("three");
 
-    if (five)
-    {
-        println("{}", *five);
-    }
+    // if (five)
+    // {
+    //     println("{}", *five);
+    // }
+    map["a"];
+    map["b"];
+    map["c"];
+    map["d"];
+    //
+    // map.put("a", 8);
+    // map.put("b", 8);
+    // map.put("c", 8);
+    // map.put("d", 8);
+
+    println("len {}", map.length);
 
     void printMap(T)(const ref T m)
     {

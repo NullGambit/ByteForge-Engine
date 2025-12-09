@@ -275,24 +275,6 @@ void ffree(byte* ptr)
 
 private
 {
-    T toNextPower2(T)(T n)
-    {
-        n--;
-
-        n |= n >> 1;
-        n |= n >> 2;
-        n |= n >> 4;
-        n |= n >> 8;
-        n |= n >> 16;
-
-        static if (T.sizeof == 8)
-        {
-            n |= n >> 32;
-        }
-
-        return n + 1;
-    }
-
     size_t toSizeClass(size_t size)
     {
         import std.math;
@@ -305,7 +287,7 @@ private
 
         size = toNextPower2(size);
 
-        const index = cast(size_t) log2(size) - 5;
+        const index = cast(size_t) log2(cast(double)size) - 5;
 
         return clamp(index, 0, MaxSizeClasses - 1);
     }
