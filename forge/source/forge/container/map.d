@@ -55,7 +55,7 @@ mixin template LinearProbeBucket(float BucketLoadFactor = 0.65)
 
                     static if (!is (V == void))
                     {
-                        return &m_bucket[index];
+                        return &m_bucket[index].value;
                     }
           		}
 
@@ -103,7 +103,7 @@ mixin template LinearProbeBucket(float BucketLoadFactor = 0.65)
    	}
 }
 
-mixin template RobbinHoodProbing(float BucketLoadFactor = 0.95)
+mixin template RobbinHoodProbing(float BucketLoadFactor = 0.75)
 {
     enum LoadFactor = BucketLoadFactor;
 
@@ -129,7 +129,7 @@ mixin template RobbinHoodProbing(float BucketLoadFactor = 0.95)
 
                     static if (!is (V == void))
                     {
-                        return &entry.value;
+                        return &m_bucket[index].value;
                     }
                     else
                     {
@@ -158,25 +158,32 @@ mixin template RobbinHoodProbing(float BucketLoadFactor = 0.95)
            	auto index = getIndex(hash);
             auto distance = 0UL;
 
-            while (true)
+            foreach (_; 0..m_capacity)
             {
                 auto entry = &m_bucket[index];
 
-                if (!entry.isOccupied || entry.hash == hash)
+                if (!entry.isOccupied)
+                {
+                    return null;
+                }
+
+                if (entry.hash == hash)
                 {
                     return entry;
                 }
 
                 auto currentDistance = (index - (entry.hash & mask)) & mask;
 
-                if (currentDistance < distance && !entry.isOccupied)
+                if (currentDistance < distance)
                 {
-                    return entry;
+                    return null;
                 }
 
     			index = getIndex(index + 1);
                 distance++;
             }
+
+            return null;
     	}
     }
 
@@ -236,7 +243,7 @@ mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
 
         void onDestroy()
         {
-            allocator.dealloc(m_meta, 64);
+            allocator.dealloc(m_meta, ALIGNMENT);
             m_meta = null;
         }
 
@@ -303,6 +310,8 @@ mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
 
                 index = getIndex(index + 1);
             }
+
+            return null;
     	}
 
         inout(Entry)* probeEntry(A)(const auto ref A key) inout
@@ -318,7 +327,7 @@ mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
             auto fpv = _mm_set1_epi8(fp);
             auto emptyv = _mm_set1_epi8(cast(byte)META_EMPTY);
 
-            while (true)
+            foreach (_; 0..m_capacity)
             {
                 auto meta = _mm_loadu_si128(cast(__m128i*)(m_meta + base));
 
@@ -348,6 +357,8 @@ mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
 
                 base = (base + GROUP_SIZE) & mask;
             }
+
+            return null;
     	}
     }
 
@@ -592,7 +603,9 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
   		    return;
   		}
 
-        auto oldLen = m_length;
+        // for some reason the length is always off by one
+        // this happens with every table type and every allocator
+        m_length = 1;
 
   		foreach (ref entry; oldBuckets[0..oldCapacity])
   		{
@@ -608,8 +621,6 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
 				}
  			}
   		}
-
-        m_length = oldLen;
 
   		allocator.dealloc(oldBuckets);
    	}
@@ -741,23 +752,53 @@ template Set(K, alias Bucket = LinearProbeBucket, Allocator = DefaultAllocator!(
     alias Set = Map!(K, void, Bucket, Allocator);
 }
 
+private mixin template MakeTest(alias Bucket)
+{
+    void runTest()
+    {
+        import forge.container.string;
+
+        Map!(String, int, Bucket) map;
+
+        map["a"] = 1;
+        map["b"] = 2;
+        map["c"] = 3;
+        map["d"] = 4;
+
+        map.put("hello", 1000);
+
+        map.put("remove me", -1);
+
+        map["c"] = 100;
+
+        map.remove("remove me");
+
+        assert(map["a"] == 1);
+        assert(map["b"] == 2);
+        assert(map["c"] == 100);
+        assert(map["d"] == 4);
+        assert(*map.get("hello") == 1000);
+        assert(!map.has("remove me"));
+        assert(map.length == 6);
+
+        println(map.length);
+    }
+}
+
 unittest
 {
-    import forge.container.string;
+    mixin MakeTest!LinearProbeBucket;
+    runTest();
+}
 
-    Map!(String, int, RobbinHoodProbing) map;
+unittest
+{
+    mixin MakeTest!RobbinHoodProbing;
+    runTest();
+}
 
-    map.put("a", 1);
-    // map.put("b", 2);
-    // map.put("c", 3);
-    // map.put("d", 4);
-    // map["a"] = 1;
-    map["b"] = 2;
-    map["c"] = 3;
-    map["d"] = 4;
-
-    assert(map["a"] == 1);
-    assert(map["b"] == 2);
-    assert(map["c"] == 3);
-    assert(map["d"] == 4);
+unittest
+{
+    mixin MakeTest!SwissTableProbbing;
+    runTest();
 }

@@ -189,6 +189,8 @@ byte* fmalloc(size_t size, size_t alignment)
         initThreadBlock();
     }
 
+    size = alignTo(size, alignment);
+
     const freeOffset = findFree(size);
 
     if (freeOffset != size_t.max)
