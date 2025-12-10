@@ -10,7 +10,7 @@ byte* malloc(size_t size, size_t alignment = size_t.alignof) @nogc
 {
     version (use_mimalloc)
     {
-        return cast(byte*) mi_aligned_alloc(alignment, size);
+        return cast(byte*) mi_malloc(alignTo(size, alignment));
     }
     else
     {
@@ -22,7 +22,7 @@ void free(byte* ptr, size_t alignment = size_t.alignof) @nogc
 {
     version (use_mimalloc)
     {
-        mi_free_aligned(ptr, alignment);
+        mi_free(ptr);
     }
     else
     {

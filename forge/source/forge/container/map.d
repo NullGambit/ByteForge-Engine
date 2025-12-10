@@ -46,16 +46,25 @@ mixin template LinearProbeBucket(float BucketLoadFactor = 0.65)
             {
                 auto entry = &m_bucket[index];
 
-                if (!entry.isOccupied || entry.hash == hash)
+                auto isSame = entry.hash == hash;
+
+                if (!entry.isOccupied || isSame)
           		{
+                    if (!isSame)
+                    {
+                        m_length++;
+                    }
+
                     auto newEntry = makeEntry(k, v, hash);
          			emplaceEntry(newEntry, index);
-
-                    m_length++;
 
                     static if (!is (V == void))
                     {
                         return &m_bucket[index].value;
+                    }
+                    else
+                    {
+                        return;
                     }
           		}
 
@@ -121,11 +130,16 @@ mixin template RobbinHoodProbing(float BucketLoadFactor = 0.75)
     		{
                 auto entry = &m_bucket[index];
 
-                if (!entry.isOccupied || entry.hash == hash)
+                auto isSame = entry.hash == hash;
+
+                if (!entry.isOccupied || isSame)
                 {
                     emplaceEntry(current, index);
 
-                    m_length++;
+                    if (!isSame)
+                    {
+                        m_length++;
+                    }
 
                     static if (!is (V == void))
                     {
@@ -243,7 +257,7 @@ mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
 
         void onDestroy()
         {
-            allocator.dealloc(m_meta, ALIGNMENT);
+            allocator.dealloc(m_meta);
             m_meta = null;
         }
 
@@ -264,10 +278,10 @@ mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
             {
                 if (m_meta)
                 {
-                    allocator.dealloc(m_meta, ALIGNMENT);
+                    allocator.dealloc(m_meta);
                 }
 
-                m_meta = allocator.alloc!ubyte(newSize, ALIGNMENT);
+                m_meta = allocator.alloc!ubyte(alignedSize);
             }
 
             memset(m_meta, META_EMPTY, alignedSize);
@@ -282,10 +296,11 @@ mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
             while (true)
             {
                 auto meta = m_meta[index];
+                auto isOld = meta == META_TOMBSTONE;
 
                 if
                 (
-                    (meta == META_EMPTY || meta == META_TOMBSTONE)
+                    (meta == META_EMPTY || isOld)
                     ||
                     (meta == fp && m_bucket[index].hash == hash)
                 )
@@ -296,7 +311,10 @@ mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
 
                     emplaceEntry(entry, index);
 
-                    m_length++;
+                    if (!isOld)
+                    {
+                        m_length++;
+                    }
 
                     static if (!is (V == void))
                     {
@@ -311,7 +329,10 @@ mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
                 index = getIndex(index + 1);
             }
 
-            return null;
+            static if (!is (V == void))
+            {
+                return null;
+            }
     	}
 
         inout(Entry)* probeEntry(A)(const auto ref A key) inout
@@ -392,15 +413,15 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
 
     ~this()
     {
-        allocator.dealloc(m_bucket);
-        m_bucket = null;
-        m_length = 0;
-        m_capacity = 0;
-
         static if (__traits(hasMember, typeof(this), "onDestroy"))
         {
             onDestroy();
         }
+
+        allocator.dealloc(m_bucket);
+        m_bucket = null;
+        m_length = 0;
+        m_capacity = 0;
     }
 
     mixin Bucket;
@@ -560,7 +581,7 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
 	    auto put(A)(auto ref A k)
 		{
 		    validateBucket();
-            return put(k, 0);
+            return putImpl(k, 0);
 		}
 	}
 
@@ -603,9 +624,7 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
   		    return;
   		}
 
-        // for some reason the length is always off by one
-        // this happens with every table type and every allocator
-        m_length = 1;
+        m_length = 0;
 
   		foreach (ref entry; oldBuckets[0..oldCapacity])
   		{
@@ -649,92 +668,144 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
 
 		    foreach (ref entry; this)
 			{
-                emplace(&newSelf.m_bucket[i++], memutil.clone(entry));
+			    static if (!is (V == void))
+				{
+                    emplace(&newSelf.m_bucket[i++], memutil.clone(entry));
+				}
+				else
+				{
+				    emplace(&newSelf.m_bucket[i++].key, memutil.clone(entry));
+				}
 			}
 		}
 
 		return newSelf;
     }
 
-    int opApply(scope int delegate(ref Entry) dg)
+	static if (!is (V == void))
 	{
-		foreach (ref entry; m_bucket[0..m_capacity])
-		{
-		    if (!entry.isOccupied)
-			{
-			    continue;
-			}
-
-			auto result = dg(entry);
-
-			if (result)
-			{
-				return result;
-			}
-		}
-
-		return 0;
-	}
-
-	int opApply(scope int delegate(ref K, ref V) dg)
-	{
-    	foreach (ref entry; m_bucket[0..m_capacity])
+    	int opApply(scope int delegate(ref K, ref V) dg)
     	{
-    	    if (!entry.isOccupied)
-    		{
-    		    continue;
-    		}
+           	foreach (ref entry; m_bucket[0..m_capacity])
+           	{
+           	    if (!entry.isOccupied)
+          		{
+          		    continue;
+          		}
 
-    		auto result = dg(entry.key, entry.value);
+          		auto result = dg(entry.key, entry.value);
 
-    		if (result)
-    		{
-    			return result;
-    		}
+          		if (result)
+          		{
+         			return result;
+          		}
+           	}
+
+    		return 0;
     	}
 
-		return 0;
-	}
-
-	int opApply(scope int delegate(const ref Entry) dg) const
-    {
-        foreach (ref entry; m_bucket[0..m_capacity])
+        int opApply(scope int delegate(const ref K, const ref V) dg) const
         {
-            if (!entry.isOccupied)
-            {
-                continue;
-            }
+           	foreach (ref entry; m_bucket[0..m_capacity])
+           	{
+           	    if (!entry.isOccupied)
+          		{
+          		    continue;
+          		}
 
-            auto result = dg(entry);
+          		auto result = dg(entry.key, entry.value);
 
-            if (result)
-            {
-           	    return result;
-            }
+          		if (result)
+          		{
+         			return result;
+          		}
+           	}
+
+            return 0;
         }
 
-        return 0;
-    }
+        int opApply(scope int delegate(ref Entry) dg)
+    	{
+    		foreach (ref entry; m_bucket[0..m_capacity])
+    		{
+    		    if (!entry.isOccupied)
+    			{
+    			    continue;
+    			}
 
-    int opApply(scope int delegate(const ref K, const ref V) dg) const
-    {
-       	foreach (ref entry; m_bucket[0..m_capacity])
+    			auto result = dg(entry);
+
+    			if (result)
+    			{
+    				return result;
+    			}
+    		}
+
+    		return 0;
+    	}
+
+	    int opApply(scope int delegate(const ref Entry) dg) const
+        {
+            foreach (ref entry; m_bucket[0..m_capacity])
+            {
+                if (!entry.isOccupied)
+                {
+                    continue;
+                }
+
+                auto result = dg(entry);
+
+                if (result)
+                {
+               	    return result;
+                }
+            }
+
+            return 0;
+        }
+	}
+	else
+	{
+        int opApply(scope int delegate(ref K) dg)
+    	{
+           	foreach (ref entry; m_bucket[0..m_capacity])
+           	{
+           	    if (!entry.isOccupied)
+          		{
+          		    continue;
+          		}
+
+          		auto result = dg(entry.key);
+
+          		if (result)
+          		{
+         			return result;
+          		}
+           	}
+
+    		return 0;
+    	}
+
+        int opApply(scope int delegate(const ref K) dg) const
        	{
-       	    if (!entry.isOccupied)
-      		{
-      		    continue;
-      		}
+               	foreach (ref entry; m_bucket[0..m_capacity])
+               	{
+               	    if (!entry.isOccupied)
+              		{
+              		    continue;
+              		}
 
-      		auto result = dg(entry.key, entry.value);
+              		auto result = dg(entry.key);
 
-      		if (result)
-      		{
-     			return result;
-      		}
+              		if (result)
+              		{
+             			return result;
+              		}
+               	}
+
+      		return 0;
        	}
-
-        return 0;
-    }
+	}
 
 	void toString(W)(auto ref W w) const
 	{
@@ -747,14 +818,14 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
 	}
 }
 
-template Set(K, alias Bucket = LinearProbeBucket, Allocator = DefaultAllocator!(HashEntry!(K, void)))
+template Set(K, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllocator)
 {
     alias Set = Map!(K, void, Bucket, Allocator);
 }
 
-private mixin template MakeTest(alias Bucket)
+private mixin template MakeTests(alias Bucket)
 {
-    void runTest()
+    void runMapTest()
     {
         import forge.container.string;
 
@@ -779,26 +850,53 @@ private mixin template MakeTest(alias Bucket)
         assert(map["d"] == 4);
         assert(*map.get("hello") == 1000);
         assert(!map.has("remove me"));
-        assert(map.length == 6);
+        assert(map.length == 5);
+    }
 
-        println(map.length);
+    void runSetTest()
+    {
+        import forge.container.string;
+
+        Set!(String, Bucket) set;
+
+        set.put("a");
+        set.put("b");
+        set.put("c");
+        set.put("d");
+
+        set.put("hello");
+
+        set.put("remove me");
+
+        set.remove("remove me");
+
+        assert(set.has("a"));
+        assert(set.has("b"));
+        assert(set.has("c"));
+        assert(set.has("d"));
+        assert(set.has("hello"));
+        assert(!set.has("remove me"));
+        assert(set.length == 5);
     }
 }
 
 unittest
 {
-    mixin MakeTest!LinearProbeBucket;
-    runTest();
+    mixin MakeTests!LinearProbeBucket;
+    runMapTest();
+    runSetTest();
 }
 
 unittest
 {
-    mixin MakeTest!RobbinHoodProbing;
-    runTest();
+    mixin MakeTests!RobbinHoodProbing;
+    runMapTest();
+    runSetTest();
 }
 
 unittest
 {
-    mixin MakeTest!SwissTableProbbing;
-    runTest();
+    mixin MakeTests!SwissTableProbbing;
+    runMapTest();
+    runSetTest();
 }
