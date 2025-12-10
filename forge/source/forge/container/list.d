@@ -4,13 +4,15 @@ import forge.mem.allocators;
 import forge.container.contigious;
 import forge.container.core;
 
-@nogc:
+import forge.mem.allocators;
 
-struct List(T, Allocator = DefaultAllocator!T)
+struct List(T, alias Allocator = DefaultAllocator)
 {
+    mixin Allocator allocator;
+
 	mixin ContigiousCore!T;
 	mixin ContigiousRead!T;
-	mixin ContigiousWrite!(T, Allocator);
+	mixin ContigiousWrite!(T);
 
 	this(Args...)(auto ref Args args)
 	{
@@ -38,4 +40,41 @@ struct List(T, Allocator = DefaultAllocator!T)
 			ptr[m_length++] = value;
 		}
 	}
+}
+
+unittest
+{
+    List!int list;
+
+    list.append(1);
+    list.append(2);
+    list.append(3);
+    list.append(4);
+
+    assert(list.length == 4);
+
+    assert(list.back == 4);
+    assert(list.back == list[list.length-1]);
+
+    import forge.fmt;
+
+    assert(list.front == 1);
+    assert(list.front == list[0]);
+
+    foreach (i, item; list)
+    {
+        assert(i + 1 == item);
+    }
+
+    list.resize(8);
+
+    assert(list.length == 8);
+
+    list[6] = 10;
+
+    assert(list[5] == int.init);
+    assert(list[6] == 10);
+    assert(list[7] == int.init);
+
+    assert(list.contains(3));
 }

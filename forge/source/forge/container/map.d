@@ -112,7 +112,7 @@ mixin template LinearProbeBucket(float BucketLoadFactor = 0.65)
    	}
 }
 
-mixin template RobbinHoodProbing(float BucketLoadFactor = 0.75)
+mixin template RobbinHoodProbing(float BucketLoadFactor = 0.65)
 {
     enum LoadFactor = BucketLoadFactor;
 
@@ -328,13 +328,9 @@ mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
 
                 index = getIndex(index + 1);
             }
-
-            static if (!is (V == void))
-            {
-                return null;
-            }
     	}
 
+        @trusted
         inout(Entry)* probeEntry(A)(const auto ref A key) inout
     	{
             auto hash = getMixedHash(key);
@@ -402,7 +398,7 @@ mixin template SwissTableProbbing(float BucketLoadFactor = 0.75)
    	}
 }
 
-struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllocator)
+struct Map(K, V, alias Bucket = RobbinHoodProbing, alias Allocator = DefaultAllocator)
 {
 	alias Entry = HashEntry!(K, V);
 
@@ -818,7 +814,7 @@ struct Map(K, V, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllo
 	}
 }
 
-template Set(K, alias Bucket = LinearProbeBucket, alias Allocator = DefaultAllocator)
+template Set(K, alias Bucket = RobbinHoodProbing, alias Allocator = DefaultAllocator)
 {
     alias Set = Map!(K, void, Bucket, Allocator);
 }

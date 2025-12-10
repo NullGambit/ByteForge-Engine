@@ -5,15 +5,15 @@ module joltc;
 
 extern (C):
 
-struct IAllocator
-{
-    byte* function(size_t) Alloc;
-    void function(byte*) Free;
-}
+// struct IAllocator
+// {
+//     byte* function(size_t) Alloc;
+//     void function(byte*) Free;
+// }
 
 enum JOLT_C_H_ = 1;
 
-__gshared IAllocator gJphAllocator;
+// __gshared IAllocator gJphAllocator;
 
 enum JPH_DEFAULT_COLLISION_TOLERANCE = 1.0e-4f; // float cDefaultCollisionTolerance = 1.0e-4f
 enum JPH_DEFAULT_PENETRATION_TOLERANCE = 1.0e-4f; // float cDefaultPenetrationTolerance = 1.0e-4f

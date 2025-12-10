@@ -109,10 +109,8 @@ mixin template ContigiousCore(T, bool View = false)
 	}
 }
 
-mixin template ContigiousWrite(T, alias Allocator = DefaultAllocator)
+mixin template ContigiousWrite(T)
 {
-	mixin Allocator allocator;
-
 	private uint m_capacity;
 
 	@property
@@ -178,21 +176,34 @@ mixin template ContigiousWrite(T, alias Allocator = DefaultAllocator)
 		return pop();
 	}
 
-	auto clone()
+	typeof(this) clone()
 	{
-		import core.stdc.string;
+	    import core.lifetime;
+		import forge.mem.utils : utilClone = clone;
 
-	    typeof(this) newSelf;
+       	typeof(this) newSelf;
 
-		newSelf.m_length = m_length;
-		newSelf.m_capacity = m_capacity;
-		// newSelf.allocator = allocator;
+        newSelf.m_length = m_length;
+        newSelf.m_capacity = m_capacity;
+        // newSelf.allocator = allocator;
 
-		newSelf.ptr = allocator.alloc!T(m_capacity);
+        newSelf.ptr = allocator.alloc!T(m_capacity);
 
-		memcpy(newSelf.ptr, ptr, m_capacity);
+        static if (__traits(isPOD, T) && !is (T == class))
+        {
+            import core.stdc.string;
 
-		return newSelf;
+            memcpy(newSelf.ptr, ptr, m_capacity);
+        }
+        else
+        {
+            foreach (i, ref item; this)
+            {
+                emplace(&newSelf.ptr[i], utilClone(item));
+            }
+        }
+
+        return newSelf;
 	}
 
 	void clear()
@@ -236,7 +247,7 @@ mixin template ContigiousWrite(T, alias Allocator = DefaultAllocator)
 		}
 		else
 		{
-			memcpy(temp, ptr, m_length);
+			memcpy(temp, ptr, m_length * T.sizeof);
 		}
 
 		if (ptr != null)
@@ -286,6 +297,18 @@ mixin template ContigiousRead(T)
 	bool contains(S)(const auto ref S s) const
 	{
 		return indexOf(s) != -1;
+	}
+
+	@property
+	ref inout(T) back() inout
+	{
+	    return ptr[m_length-1];
+	}
+
+	@property
+	ref inout(T) front() inout
+	{
+	    return ptr[0];
 	}
 }
 

@@ -13,9 +13,11 @@ import forge.container.contigious;
 // a dynamically sized string struct that can take an allocator
 struct BaseString(T, alias Allocator = DefaultAllocator)
 {
+    mixin Allocator allocator;
+
 	mixin ContigiousCore!T;
 	mixin ContigiousRead!T;
-	mixin ContigiousWrite!(T, Allocator);
+	mixin ContigiousWrite!(T);
 	mixin StringRead!T;
 
 	void append(S)(const auto ref S value)

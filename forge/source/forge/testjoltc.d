@@ -19,23 +19,28 @@ enum BroadPhaseLayers : JPH_BroadPhaseLayer
     NUM_LAYERS,
 }
 
-import forge.mem.virtual_mem;
+import forge.mem.allocators;
 import std.stdio;
 
-size_t totalMemory;
+struct JphAllocStats
+{
+    size_t total;
+}
+
+JphAllocStats allocStats;
+
 extern (C)
 {
     byte* jphAlloc(size_t size)
     {
-        writefln("allocating %s bytes", size);
-        totalMemory += size;
-        return virtualAlloc(size);
+        writeln("allocating");
+        allocStats.total += size;
+        return malloc(size);
     }
 
     void jphFree(byte* ptr)
     {
-        // writeln("freeing");
-        virtualFree(ptr);
+        free(ptr);
     }
 }
 
@@ -199,7 +204,7 @@ int runTest()
     JPH_PhysicsSystem_Destroy(system);
     JPH_Shutdown();
 
-    writefln("Allocated %s bytes in total", totalMemory);
+    writefln("Allocated %s bytes in total", allocStats.total);
 
     return 0;
 }

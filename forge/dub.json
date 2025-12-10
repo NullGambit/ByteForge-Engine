@@ -12,7 +12,8 @@
       "path": "../libs/mimalloc"
     }
   },
-  "versions": ["_use_mimalloc"],
+  "versions": ["use_mimalloc"],
+  "lflags": ["libmimalloc.so.2.2"],
   "description": "A minimal D application.",
   "license": "MIT",
   "name": "forge",
