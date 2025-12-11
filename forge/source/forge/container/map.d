@@ -86,6 +86,11 @@ mixin template LinearProbeBucket(float BucketLoadFactor = 0.65)
             {
                 auto entry = &m_bucket[index];
 
+                if (!entry.isOccupied)
+                {
+                    return null;
+                }
+
                 if (entry.hash == hash)
           		{
          			return entry;
@@ -151,14 +156,14 @@ mixin template RobbinHoodProbing(float BucketLoadFactor = 0.65)
                     }
                 }
 
-                auto currentDistance = (index - (entry.hash & mask)) & mask;
+                auto entryDistance = (index + m_capacity - hash) & mask;
 
-                if (currentDistance < distance)
+                if (entryDistance > distance)
                 {
                     import std.algorithm.mutation;
 
                     swap(current, *entry);
-                    distance = currentDistance;
+                    distance = entryDistance;
                 }
 
     			index = getIndex(index + 1);
@@ -171,6 +176,8 @@ mixin template RobbinHoodProbing(float BucketLoadFactor = 0.65)
             const hash = getMixedHash(key);
            	auto index = getIndex(hash);
             auto distance = 0UL;
+
+            // println("{}: {}", key, hash);
 
             foreach (_; 0..m_capacity)
             {
@@ -186,7 +193,7 @@ mixin template RobbinHoodProbing(float BucketLoadFactor = 0.65)
                     return entry;
                 }
 
-                auto currentDistance = (index - (entry.hash & mask)) & mask;
+                auto currentDistance = (index + m_capacity - hash) & mask;
 
                 if (currentDistance < distance)
                 {
@@ -457,10 +464,31 @@ struct Map(K, V, alias Bucket = RobbinHoodProbing, alias Allocator = DefaultAllo
 		pragma(inline, true)
         ulong getMixedHash(T)(const ref T value) const
         {
-            import std.traits;
-            auto h = typeid(Unqual!T).getHash(&value);
+            // import std.traits;
+            // auto h = typeid(Unqual!T).getHash(&value);
 
-            return mix64(h);
+            // return mix64(h);
+            //
+            static if (__traits(hasMember, T, "toHash"))
+            {
+                return value.toHash();
+            }
+            else
+            {
+                import forge.digest;
+                static if (__traits(compiles, xxhash64(value)))
+                {
+                    return xxhash64(value);
+                }
+                else static if (__traits(compiles, xxhash64(value.ptr, value.length)))
+                {
+                    return xxhash64(value.ptr, value.length);
+                }
+                else
+                {
+                    return xxhash64(&value, value.sizeof);
+                }
+            }
         }
 
 		pragma(inline, true)

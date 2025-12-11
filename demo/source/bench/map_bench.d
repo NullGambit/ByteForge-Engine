@@ -1,38 +1,18 @@
-module map_bench;
+module bench.map_bench;
 
 import forge.container;
 import forge.fmt;
 
+import bench.util;
+
 void mapBench()
 {
-    List!String mapEntries;
-
     enum EntryCount = 1_000_000;
     enum MinKeySize = 4;
     enum MaxKeySize = 32;
     enum RunCount = 1;
 
-    mapEntries.reserve(EntryCount);
-
-    foreach (i; 0..EntryCount)
-    {
-        import std.random;
-        import core.lifetime;
-
-        auto keySize = uniform(MinKeySize, MaxKeySize);
-
-        String key;
-
-        key.reserve(keySize);
-
-        foreach (_; 0..keySize)
-        {
-            auto c = uniform('/', '~');
-            key.append(c);
-        }
-
-        mapEntries.append(key.move());
-    }
+    auto mapEntries = makeKeys(EntryCount, MinKeySize, MaxKeySize);
 
     import std.datetime.stopwatch;
     import core.lifetime;

@@ -2,8 +2,8 @@ module forge.engine.time;
 
 static struct Time
 {
-    package static float _delta;
-    package static float _unscaledDelta;
+    package __gshared float _delta;
+    package __gshared float _unscaledDelta;
     __gshared float scale;
 
     @property

@@ -1,0 +1,15 @@
+{
+	"authors": [
+		"delta"
+	],
+	"copyright": "Copyright © 2025, delta",
+	"description": "A minimal D application.",
+	"license": "BSD-2-Clause",
+	"name": "xxhash",
+	"targetType": "library",
+	"lflags": [
+    "../libs/xxhash/xxHash/libxxhash.a",
+    "../libs/xxhash/xxHash/libxxhash.so"
+  ],
+  "copyFiles": ["./xxHash/libxxhash.so"]
+}

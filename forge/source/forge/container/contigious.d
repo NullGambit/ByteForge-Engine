@@ -360,8 +360,9 @@ mixin template StringRead(T)
 
 	size_t toHash() const nothrow
 	{
+	    import forge.digest;
 	    auto s = toString();
-	    return typeid(string).getHash(&s);
+	    return xxhash64(s);
 	}
 
 	void read(byte[] bytes)
