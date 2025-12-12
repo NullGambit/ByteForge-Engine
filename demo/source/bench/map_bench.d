@@ -17,10 +17,9 @@ void mapBench()
     import std.datetime.stopwatch;
     import core.lifetime;
 
-    void runForgeBench(alias Bucket, string name)()
+    void runForgeBench(string name, float LoadFactor)()
     {
-        Map!(String, int, Bucket) map;
-        // map.rehash(EntryCount);
+        Map!(String, int, LoadFactor) map;
 
         auto putEntries = mapEntries.clone();
 
@@ -38,11 +37,7 @@ void mapBench()
 
             foreach (ref entry; mapEntries)
             {
-                auto value = map.get(entry);
-                if (value)
-                {
-                    count += *value;
-                }
+                count = *map.get(entry);
             }
         };
 
@@ -130,9 +125,8 @@ void mapBench()
         println("{}::del: {}", name, delResult[0]);
     }
 
-    runForgeBench!(LinearProbeBucket, "forge_linear")();
-    runForgeBench!(RobbinHoodProbing, "forge_robinhood")();
-    runForgeBench!(SwissTableProbbing, "forge_swiss")();
+    runForgeBench!("forge", 0.65)();
 
     runBuiltinBench!("builtin")();
+
 }

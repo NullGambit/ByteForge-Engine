@@ -43,6 +43,9 @@ void main()
     import bench.map_bench;
 
     mapBench();
+    //
+    // map.remove("b");
+
 
     // import forge.digest;
     // import forge.container;
