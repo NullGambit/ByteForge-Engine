@@ -38,11 +38,58 @@ struct Fields
     Data data;
 }
 
+import std.traits;
+
+void call(Fn, Args...)(auto ref Fn fn, auto ref Args args)
+if (isCallable!Fn)
+{
+    fn(args);
+}
+
+struct Functor
+{
+    int x = 0;
+    char padding;
+
+    void opCall(int y)
+    {
+        println("hello {}", x + y);
+    }
+}
+
+struct SignalDelegate(R, Args...)
+{
+    void *obj;
+    R delegate(Args) fnPtr;
+}
+
+auto makeDelegate()
+{
+    SignalDelegate!(void, int) del;
+
+    auto fn = newObj!Functor();
+
+    fn.x = 10;
+
+    del.obj = fn;
+    del.fnPtr = &fn.opCall;
+
+    return del;
+}
+
 void main()
 {
-    import bench.map_bench;
+    import forge.events.signal;
 
-    mapBench();
+    Signal!(void, int) signal;
+
+    Functor fn = {x: 10};
+
+    auto id = signal.connect(&fn.opCall);
+
+    // signal.disconnect(id);
+
+    signal(20);
     //
     // map.remove("b");
 
