@@ -77,52 +77,52 @@ auto makeDelegate()
     return del;
 }
 
+void job1(void*)
+{
+    println("job1");
+}
+
+void job2(void*)
+{
+    println("job2");
+}
+
+void job3(void*)
+{
+    println("job3");
+}
+
 void main()
 {
-    import forge.events.signal;
+    import core.sync.condition;
+    import forge.mem.box;
 
-    Signal!(void, int) signal;
+    auto m = Box!Mutex();
+    auto cv = Box!Condition(m);
 
-    Functor fn = {x: 10};
+    cv.notify();
 
-    auto id = signal.connect(&fn.opCall);
+    import forge.concurrency.jobs;
 
-    // signal.disconnect(id);
+    foreach (_; 0..1)
+    {
+        JobCounter counter;
 
-    signal(20);
-    //
-    // map.remove("b");
+        startJob(Job(fn: &job1, counter: &counter));
+        startJob(Job(fn: &job1, counter: &counter));
+        startJob(Job(fn: &job1, counter: &counter));
+        startJob(Job(fn: &job1, counter: &counter));
+        startJob(Job(fn: &job2, counter: &counter));
+        startJob(Job(fn: &job2, counter: &counter));
+        startJob(Job(fn: &job2, counter: &counter));
+        startJob(Job(fn: &job3, counter: &counter));
+        startJob(Job(fn: &job3, counter: &counter));
+        startJob(Job(fn: &job3, counter: &counter));
 
+        waitForJobs(&counter);
 
-    // import forge.digest;
-    // import forge.container;
+        println("finished all jobs");
+    }
 
-    // Map!(String, int, RobbinHoodProbing) map;
-
-    // map["a"] = 1;
-    // map["b"] = 2;
-    // map["c"] = 3;
-    // map["d"] = 4;
-
-    // // map.put("d", 4);
-
-    // map.put("hello", 1000);
-
-    // map.put("remove me", -1);
-
-    // map["c"] = 100;
-
-    // map.remove("remove me");
-
-    // println(map["a"] == 1);
-    // println(map["b"] == 2);
-    // println(map["c"] == 100);
-    // println(*map.get("d"));
-    // println(*map.get("d"));
-
-    // println(xxhash64("d"));
-
-    // import bench.hash_bench;
-
-    // runHashBench();
+    stopAllJobThreads();
 }

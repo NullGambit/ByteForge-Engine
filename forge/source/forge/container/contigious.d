@@ -261,12 +261,25 @@ mixin template ContigiousWrite(T)
 	void resize(uint newSize)
 	{
 		import core.stdc.string;
+		import core.lifetime;
 
 		checkCapacity(newSize);
 
 		if (newSize > m_length)
 		{
-			memset(ptr + m_length, 0, newSize - m_length);
+		    auto diff = newSize - m_length;
+
+		    static if (__traits(isPOD, T))
+			{
+			    memset(ptr + m_length, 0, diff);
+			}
+			else
+			{
+			    foreach (ref item; ptr[m_length..diff])
+				{
+				    emplace(&item, T.init);
+				}
+			}
 		}
 
 		m_length = newSize;
