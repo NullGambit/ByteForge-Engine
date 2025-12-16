@@ -323,6 +323,12 @@ mixin template ContigiousRead(T)
 	{
 	    return ptr[0];
 	}
+
+	@property
+	bool isEmpty() const pure
+	{
+	    return m_length == 0;
+	}
 }
 
 // only string read is defined because it is only one needed to share between a String and a StringView

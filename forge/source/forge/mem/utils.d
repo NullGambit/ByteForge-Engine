@@ -1,7 +1,5 @@
 module forge.mem.utils;
 
-@nogc:
-
 static T alignTo(T)(T value, T alignment) pure
 {
     auto mask = alignment - 1;

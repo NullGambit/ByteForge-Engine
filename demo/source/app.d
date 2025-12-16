@@ -97,14 +97,27 @@ void main()
     import core.sync.condition;
     import forge.mem.box;
 
-    auto m = Box!Mutex();
-    auto cv = Box!Condition(m);
+    // struct Whatever
+    // {
+    //     Box!Mutex m;
+    //     Box!Condition cv;
 
-    cv.notify();
+    //     this(int dummy)
+    //     {
+    //         m = Box!Mutex();
+    //         cv = Box!Condition(m);
+    //     }
+    // }
+
+    // auto w = Whatever(0);
+
+    // w.cv.notify();
 
     import forge.concurrency.jobs;
 
-    foreach (_; 0..1)
+    enum Iterations = 512;
+
+    foreach (i; 0..Iterations)
     {
         JobCounter counter;
 
@@ -120,9 +133,9 @@ void main()
         startJob(Job(fn: &job3, counter: &counter));
 
         waitForJobs(&counter);
-
-        println("finished all jobs");
     }
+
+    println("finished all jobs");
 
     stopAllJobThreads();
 }

@@ -14,7 +14,7 @@ struct Box(T, alias allocFn = newObj, alias freeFn = delObj)
 
 	this(Args...)(auto ref Args args)
 	{
-		ptr = allocFn!T(args);
+	    ptr = allocFn!T(args);
 	}
 
 	~this()
