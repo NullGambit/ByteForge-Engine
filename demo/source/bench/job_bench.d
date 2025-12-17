@@ -46,9 +46,10 @@ void jobBench()
 
     void runForgeJob1(string name)()
     {
+        import forge.concurrency.jobs;
+
         auto doBench = ()
         {
-            import forge.concurrency.jobs;
 
             JobCounter[MaxJobsToPush] counters;
 
