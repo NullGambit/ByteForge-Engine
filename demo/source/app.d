@@ -77,65 +77,50 @@ auto makeDelegate()
     return del;
 }
 
-void job1(void*)
-{
-    println("job1");
-}
+shared uint g_jobsDone;
 
-void job2(void*)
+void job(void*)
 {
-    println("job2");
-}
+    import core.atomic;
+    import std.random;
+    import core.thread;
+    import forge.concurrency.util;
 
-void job3(void*)
-{
-    println("job3");
+    auto delay = uniform(0, 15);
+
+    Thread.sleep(delay.msecs);
+
+    println("finished job #{} on thread {}", g_jobsDone.atomicFetchAdd(1), getThreadName());
 }
 
 void main()
 {
-    import core.sync.condition;
-    import forge.mem.box;
+    import bench.job_bench;
 
-    // struct Whatever
+    jobBench();
+    // import core.sync.condition;
+    // import forge.mem.box;
+
+    // import forge.concurrency.jobs;
+
+    // enum MaxJobsToPush = 126;
+
+    // JobCounter[MaxJobsToPush] counters;
+
+    // foreach (i; 0..MaxJobsToPush)
     // {
-    //     Box!Mutex m;
-    //     Box!Condition cv;
-
-    //     this(int dummy)
-    //     {
-    //         m = Box!Mutex();
-    //         cv = Box!Condition(m);
-    //     }
+    //     startJob(Job(fn: &job, counter: &counters[i]));
     // }
 
-    // auto w = Whatever(0);
+    // foreach (ref counter; counters)
+    // {
+    //     waitForJobs(&counter);
+    // }
 
-    // w.cv.notify();
+    // println("finished all jobs");
+    // println(g_jobsDone);
 
-    import forge.concurrency.jobs;
+    // assert(g_jobsDone == MaxJobsToPush);
 
-    enum Iterations = 512;
-
-    foreach (i; 0..Iterations)
-    {
-        JobCounter counter;
-
-        startJob(Job(fn: &job1, counter: &counter));
-        startJob(Job(fn: &job1, counter: &counter));
-        startJob(Job(fn: &job1, counter: &counter));
-        startJob(Job(fn: &job1, counter: &counter));
-        startJob(Job(fn: &job2, counter: &counter));
-        startJob(Job(fn: &job2, counter: &counter));
-        startJob(Job(fn: &job2, counter: &counter));
-        startJob(Job(fn: &job3, counter: &counter));
-        startJob(Job(fn: &job3, counter: &counter));
-        startJob(Job(fn: &job3, counter: &counter));
-
-        waitForJobs(&counter);
-    }
-
-    println("finished all jobs");
-
-    stopAllJobThreads();
+    // stopAllJobThreads();
 }

@@ -34,7 +34,7 @@ void startJob(Job job)
         (*job.counter).atomicFetchAdd(1);
     }
 
-    selectedWorker.pushBottom(job);
+    selectedWorker.push(job);
 }
 
 void waitForJobs(JobCounter *counter)
@@ -61,8 +61,8 @@ __gshared bool g_run = true;
 
 struct WorkerThread
 {
-    shared uint head;
-    shared uint tail;
+    shared long head;
+    shared long tail;
 
     Job[MaxJobsPerThread] buffer;
 
@@ -72,19 +72,16 @@ struct WorkerThread
         return MaxJobsPerThread - 1;
     }
 
-    void pushBottom(Job job)
+    void push(Job job)
     {
         auto t = tail.atomicLoad;
-        auto h = head.atomicLoad;
-
-        assert (t - h < MaxJobsPerThread, "buffer overflow");
 
         buffer[t & mask] = job;
 
         tail.atomicStore(t + 1);
     }
 
-    bool popBottom(out Job job)
+    bool pop(out Job job)
     {
         auto h = head.atomicLoad;
         auto t = tail.atomicLoad;
@@ -94,20 +91,12 @@ struct WorkerThread
             return false;
         }
 
-        job = buffer[h & mask];
-
-        head.atomicStore(h + 1);
-
-        if (h == t)
+        if (!cas(&head, h, h + 1))
         {
-            if (cas(&head, t, t + 1) != h)
-            {
-                tail.atomicStore(t + 1);
-                return false;
-            }
-
-            tail.atomicStore(t + 1);
+            return false;
         }
+
+        job = buffer[h & mask];
 
         return true;
     }
@@ -117,20 +106,58 @@ struct WorkerThread
         auto h = atomicLoad(head);
         auto t = atomicLoad(tail);
 
-        if (h >= t)
+        if (h < t)
         {
-            return false;
+            job = buffer[h & mask];
+
+            return cas(&head, h, h + 1);
         }
 
-        job = buffer[h & mask];
-
-        if (cas(&head, h, h + 1) != h)
-        {
-            return false;
-        }
-
-        return true;
+        return false;
     }
+    // void push(Job job)
+    // {
+    //     auto b = bottom.atomicLoad;
+
+    //     buffer[b & mask] = job;
+
+    //     bottom.atomicStore(b + 1);
+    // }
+
+    // bool pop(out Job job)
+    // {
+    //     auto t = top.atomicLoad;
+    //     auto b = bottom.atomicLoad;
+
+    //     if (t >= b)
+    //     {
+    //         return false;
+    //     }
+
+    //     if (!cas(&top, t, t + 1))
+    //     {
+    //         return false;
+    //     }
+
+    //     job = buffer[t & mask];
+
+    //     return true;
+    // }
+
+    // bool stealTop(out Job job)
+    // {
+    //     auto t = atomicLoad(top);
+    //     auto b = atomicLoad(bottom);
+
+    //     if (t < b)
+    //     {
+    //         job = buffer[t & mask];
+
+    //         return cas(&top, t, t + 1);
+    //     }
+
+    //     return false;
+    // }
 }
 
 __gshared List!WorkerThread g_workers;
@@ -163,35 +190,32 @@ WorkerThread* findWorker(FindLowest FindLowestFlag)()
 {
     WorkerThread *selectedWorker;
 
-    uint lastAvailable;
+    long lastAvailable;
 
     static if (FindLowestFlag)
     {
         lastAvailable = uint.max;
     }
 
-    while (selectedWorker == null)
+    foreach (ref worker; g_workers)
     {
-        foreach (ref worker; g_workers)
+        auto available = worker.tail.atomicLoad - worker.head.atomicLoad;
+
+        bool cond;
+
+        static if (FindLowestFlag)
         {
-            auto available = worker.tail.atomicLoad - worker.head.atomicLoad;
+            cond = available < lastAvailable;
+        }
+        else
+        {
+            cond = available >= lastAvailable;
+        }
 
-            bool cond;
-
-            static if (FindLowestFlag)
-            {
-                cond = available < lastAvailable;
-            }
-            else
-            {
-                cond = available >= lastAvailable;
-            }
-
-            if (cond)
-            {
-                lastAvailable = available;
-                selectedWorker = &worker;
-            }
+        if (cond)
+        {
+            lastAvailable = available;
+            selectedWorker = &worker;
         }
     }
 
@@ -202,7 +226,7 @@ bool stealFromOther(uint thisIndex, out Job job)
 {
     foreach (i, ref worker; g_workers)
     {
-        if (i != thisIndex && worker.stealTop(job))
+        if (i != thisIndex && worker.pop(job))
         {
             return true;
         }
@@ -213,16 +237,26 @@ bool stealFromOther(uint thisIndex, out Job job)
 
 void worker(uint index)
 {
+    import forge.concurrency.util;
+    import forge.fmt;
+
+    auto name = format("worker#{}", index);
+
+    setThreadName(name.toString);
+
     auto thisWorker = &g_workers[index];
 
     while (g_run)
     {
         Job job;
 
-        if (!thisWorker.popBottom(job))
+        if (!thisWorker.pop(job))
         {
-            Thread.yield();
-            continue;
+            if (!stealFromOther(index, job))
+            {
+                Thread.yield();
+                continue;
+            }
         }
 
         job.fn(job.param);
