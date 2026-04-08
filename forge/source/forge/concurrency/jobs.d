@@ -8,7 +8,11 @@ alias JobCounter = shared(int);
 
 enum MaxJobsPerThread = 1024;
 
-struct Job
+struct Jop
+{
+}
+
+struct JobData
 {
     void function(void*) fn;
     void delegate() onFinish;
@@ -21,7 +25,7 @@ bool isDone(JobCounter counter)
     return counter.atomicLoad <= 0;
 }
 
-void startJob(Job job)
+void startJob(JobData job)
 {
     assert (job.fn != null, "the job fn must not be null");
 
@@ -55,6 +59,23 @@ void stopAllJobThreads()
     g_run = false;
 }
 
+void initJobPool(uint maxThreads = totalCPUs)
+{
+    if (g_run.atomicLoad)
+    {
+        return;
+    }
+
+    g_run.atomicStore(true);
+
+    g_workers.resize(maxThreads);
+
+    foreach (i; 0..maxThreads)
+    {
+        spawn(&worker, i);
+    }
+}
+
 private:
 
 import forge.container.list;
@@ -62,27 +83,27 @@ import std.parallelism : totalCPUs;
 import std.concurrency;
 import forge.mem.box;
 
-__gshared bool g_run = true;
+__gshared bool g_run = false;
 
 struct WorkerThread
 {
     shared long head;
     shared long tail;
 
-    Job[MaxJobsPerThread] buffer;
+    JobData[MaxJobsPerThread] buffer;
 
     enum MASK = MaxJobsPerThread - 1;
 
-    void push(Job job)
+    void push(JobData job)
     {
         auto t = tail.atomicLoad;
 
         buffer[t & MASK] = job;
 
-        tail.atomicStore(t + 1);
+        t.atomicStore(t + 1);
     }
 
-    bool pop(out Job job)
+    bool pop(out JobData job)
     {
         auto h = head.atomicLoad;
         auto t = tail.atomicLoad;
@@ -99,24 +120,11 @@ struct WorkerThread
 
         job = buffer[h & MASK];
 
-        return true;
+        return job.fn != null;
     }
 }
 
 __gshared List!WorkerThread g_workers;
-
-shared static this()
-{
-    g_workers.resize(totalCPUs);
-}
-
-shared static this()
-{
-    foreach (i; 0..totalCPUs)
-    {
-        spawn(&worker, i);
-    }
-}
 
 import forge.fmt;
 import std.typecons;
@@ -149,7 +157,7 @@ WorkerThread* findWorker(FindLowest FindLowestFlag)()
             cond = available >= lastAvailable;
         }
 
-        if (cond)
+        if (cond && available < MaxJobsPerThread)
         {
             lastAvailable = available;
             selectedWorker = &worker;
@@ -159,7 +167,7 @@ WorkerThread* findWorker(FindLowest FindLowestFlag)()
     return selectedWorker;
 }
 
-bool stealFromOther(uint thisIndex, out Job job)
+bool stealFromOther(uint thisIndex, out JobData job)
 {
     foreach (i, ref worker; g_workers)
     {
@@ -185,7 +193,7 @@ void worker(uint index)
 
     while (g_run)
     {
-        Job job;
+        JobData job;
 
         if (!thisWorker.pop(job))
         {

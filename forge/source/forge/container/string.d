@@ -11,7 +11,7 @@ import forge.container.contigious;
 @nogc:
 
 // a dynamically sized string struct that can take an allocator
-struct BaseString(T, alias Allocator = DefaultAllocator)
+struct BaseString(T, alias Allocator = DefaultAllocator, bool NullTerminate = false)
 {
     mixin Allocator allocator;
 
@@ -23,11 +23,23 @@ struct BaseString(T, alias Allocator = DefaultAllocator)
 	void append(S)(const auto ref S value)
 	if (StringLike!S)
 	{
-		checkCapacity(m_length + cast(uint)value.length);
+	    auto lengthModifier = cast(uint)value.length;
+
+		static if (NullTerminate)
+		{
+		    lengthModifier++;
+		}
+
+		checkCapacity(m_length + lengthModifier);
 
 		memcpy(ptr + m_length, value.ptr, value.length);
 
 		m_length += cast(uint) value.length;
+
+		static if (NullTerminate)
+		{
+		    ptr[m_length + 1] = '\0';
+		}
 	}
 
 	void append(const char c)
@@ -39,6 +51,11 @@ struct BaseString(T, alias Allocator = DefaultAllocator)
 		}
 
 		ptr[m_length++] = c;
+
+		static if (NullTerminate)
+		{
+		    ptr[m_length + 1] = '\0';
+		}
 	}
 
 	void toUpper()
@@ -67,7 +84,55 @@ struct BaseString(T, alias Allocator = DefaultAllocator)
 	{
 		append(s);
 	}
+
+	BaseString!(T, CsAllocator, true) toCstring(alias CsAllocator = DefaultAllocator)()
+	{
+	    static if (NullTerminate)
+		{
+		    return this;
+		}
+
+	    import std.algorithm.mutation : move;
+
+	    BaseString!(T, CsAllocator, true) cstring = move(this);
+
+		const n = cstring.length + 1;
+
+		cstring.reserve(n);
+
+		cstring.ptr[n] = '\0';
+
+		return cstring;
+	}
 }
 
 // a dynamically sized string struct
-alias String = BaseString!(char, DefaultAllocator);
+alias String = BaseString!(char, DefaultAllocator, false);
+// a null terminated dynamically sized string struct that is compatible with c
+alias Cstring = BaseString!(char, DefaultAllocator, true);
+
+unittest
+{
+    Cstring str;
+
+    str.append("hello");
+
+    auto len = str.length+1;
+
+    assert(str.ptr[len] == '\0');
+
+    str.append(' ');
+
+    assert(str.ptr[len] == '\0');
+    assert(str.ptr[str.length+1] == '\0');
+
+    str.append("World");
+
+    assert(str.ptr[str.length+1] == '\0');
+
+    String s1 = "hello";
+
+    auto cs1 = s1.toCstring;
+
+    assert(cs1.ptr[cs1.length+1] == '\0');
+}

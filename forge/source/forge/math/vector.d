@@ -106,7 +106,7 @@ struct Vec(T, size_t S) if (is(T : real))
 
     T squareLength() const pure
     {
-        T result = 0.0f;
+        T result = T.init;
 
         static foreach (i; 0..S)
         {
@@ -120,7 +120,7 @@ struct Vec(T, size_t S) if (is(T : real))
     {
         import std.math;
 
-        return sqrt(squareLength);
+        return cast(T)sqrt(cast(real)squareLength);
     }
 
     void normalize()
@@ -132,6 +132,10 @@ struct Vec(T, size_t S) if (is(T : real))
 alias Vec2 = Vec!(float, 2);
 alias Vec3 = Vec!(float, 3);
 alias Vec4 = Vec!(float, 4);
+
+alias IVec2 = Vec!(int, 2);
+alias IVec3 = Vec!(int, 3);
+alias IVec4 = Vec!(int, 4);
 
 auto dot(T)(const ref T a, const ref T b) pure
 {
@@ -145,7 +149,7 @@ auto dot(T)(const ref T a, const ref T b) pure
     return result;
 }
 
-auto normalize(T)(T vec) pure
+auto normalized(T)(T vec) pure
 {
     vec.normalize();
     return vec;

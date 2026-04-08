@@ -2,8 +2,8 @@ module forge.container.pair;
 
 @nogc:
 
-struct Pair(K, V)
+struct Pair(A, B, string AName = "a", string BName = "b")
 {
-	K key;
-	V value;
+    mixin("A " ~ AName ~ ";");
+    mixin("B " ~ BName ~ ";");
 }

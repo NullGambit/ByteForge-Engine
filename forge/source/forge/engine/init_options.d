@@ -1,10 +1,9 @@
 module forge.engine.init_options;
-import dlib.math.vector;
-
-// import dlib.math.vector;
+import forge.math.vector;
+import forge.container.string;
 
 struct EngineInitOptions
 {
-    string windowName;
-    Vector2i windowSize;
+    String windowName;
+    IVec2 windowSize;
 }
